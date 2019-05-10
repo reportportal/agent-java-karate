@@ -1,4 +1,3 @@
-package test.java.utilities;
 
         import com.intuit.karate.CallContext;
         import com.intuit.karate.ScriptContext;
