@@ -1,0 +1,10 @@
+.idea/
+build/
+target/
+target/*
+out/*
+out/**
+out/
+.iml
+.idea
+.DS_Store
