@@ -5,6 +5,6 @@ target/*
 out/*
 out/**
 out/
-.iml
-.idea
+*.iml
+.idea/
 .DS_Store
