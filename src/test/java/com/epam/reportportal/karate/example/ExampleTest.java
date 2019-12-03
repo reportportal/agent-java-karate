@@ -1,5 +1,6 @@
-package com.epam;
+package com.epam.reportportal.karate.example;
 
+import com.epam.reportportal.karate.AgentRunner;
 import com.intuit.karate.KarateOptions;
 import com.intuit.karate.Results;
 import org.junit.Assert;

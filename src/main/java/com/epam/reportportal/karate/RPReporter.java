@@ -1,4 +1,4 @@
-package com.epam;
+package com.epam.reportportal.karate;
 
 import com.epam.reportportal.listeners.ListenerParameters;
 import com.epam.reportportal.service.Launch;
@@ -25,24 +25,36 @@ import static rp.com.google.common.base.Strings.isNullOrEmpty;
 
 class RPReporter {
 
-    private static final Logger logger = LoggerFactory.getLogger(RPReporter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(RPReporter.class);
     private static final String INFO_LEVEL = "INFO";
     private static final String ERROR_LEVEL = "ERROR";
     private static final String PASSED = "passed";
     private static final String FAILED = "failed";
     private Supplier<Launch> launch;
-    private ConcurrentHashMap<String, Maybe<String>> featureIdMapping;
+    private ConcurrentHashMap<String, Maybe<String>> featureIdMap;
 
     private Maybe<String> scenarioId;
 
     RPReporter() {
-        featureIdMapping = new ConcurrentHashMap<>();
-        this.launch = Suppliers.memoize(() -> {
+        this(Suppliers.memoize(() -> {
             final ReportPortal reportPortal = ReportPortal.builder().build();
-            StartLaunchRQ rq = startLaunch(reportPortal.getParameters());
+            ListenerParameters parameters = reportPortal.getParameters();
+            StartLaunchRQ rq1 = new StartLaunchRQ();
+            rq1.setName(parameters.getLaunchName());
+            rq1.setStartTime(Calendar.getInstance().getTime());
+            rq1.setMode(parameters.getLaunchRunningMode());
+            if (!isNullOrEmpty(parameters.getDescription())) {
+                rq1.setDescription(parameters.getDescription());
+            }
+            StartLaunchRQ rq = rq1;
             rq.setStartTime(Calendar.getInstance().getTime());
             return reportPortal.newLaunch(rq);
-        });
+        }));
+    }
+
+    RPReporter(Supplier<Launch> launch) {
+        this.launch = launch;
+        featureIdMap = new ConcurrentHashMap<>();
     }
 
     void startLaunch() {
@@ -54,35 +66,24 @@ class RPReporter {
         rq.setEndTime(Calendar.getInstance().getTime());
 
         ListenerParameters parameters = launch.get().getParameters();
-        logger.info("LAUNCH URL: {}/ui/#{}/launches/all/{}", parameters.getBaseUrl(), parameters.getProjectName(),
+        LOGGER.info("LAUNCH URL: {}/ui/#{}/launches/all/{}", parameters.getBaseUrl(), parameters.getProjectName(),
                 System.getProperty("rp.launch.id"));
 
         launch.get().finish(rq);
     }
 
-    private StartLaunchRQ startLaunch(ListenerParameters parameters) {
-        StartLaunchRQ rq = new StartLaunchRQ();
-        rq.setName(parameters.getLaunchName());
-        rq.setStartTime(Calendar.getInstance().getTime());
-        rq.setMode(parameters.getLaunchRunningMode());
-        if (!isNullOrEmpty(parameters.getDescription())) {
-            rq.setDescription(parameters.getDescription());
-        }
-        return rq;
-    }
-
-    synchronized void startFeature(FeatureResult featureResult) {
+    void startFeature(FeatureResult featureResult) {
         StartTestItemRQ rq = new StartTestItemRQ();
         rq.setName(String.valueOf(featureResult.toMap().get("name")));
         rq.setStartTime(Calendar.getInstance().getTime());
         rq.setType("STORY");
         Maybe<String> featureId = launch.get().startTestItem(rq);
-        featureIdMapping.put(featureResult.getCallName(), featureId);
+        featureIdMap.put(featureResult.getCallName(), featureId);
     }
 
-    synchronized void finishFeature(FeatureResult featureResult) {
-        if (!featureIdMapping.containsKey(featureResult.getCallName())) {
-            logger.error("BUG: Trying to finish unspecified feature.");
+    void finishFeature(FeatureResult featureResult) {
+        if (!featureIdMap.containsKey(featureResult.getCallName())) {
+            LOGGER.error("BUG: Trying to finish unspecified feature.");
         }
 
         for (ScenarioResult scenarioResult : featureResult.getScenarioResults()) {
@@ -105,21 +106,21 @@ class RPReporter {
         rq.setEndTime(Calendar.getInstance().getTime());
         rq.setStatus(featureResult.isFailed() ? FAILED : PASSED);
 
-        launch.get().finishTestItem(featureIdMapping.remove(featureResult.getCallName()), rq);
+        launch.get().finishTestItem(featureIdMap.remove(featureResult.getCallName()), rq);
     }
 
-    private synchronized void startScenario(ScenarioResult scenarioResult, FeatureResult featureResult) {
+    private void startScenario(ScenarioResult scenarioResult, FeatureResult featureResult) {
         StartTestItemRQ rq = new StartTestItemRQ();
         rq.setName("SCENARIO: " + scenarioResult.toMap().get("name"));
         rq.setStartTime(Calendar.getInstance().getTime());
         rq.setType("SCENARIO");
 
-        scenarioId = launch.get().startTestItem(featureIdMapping.get(featureResult.getCallName()), rq);
+        scenarioId = launch.get().startTestItem(featureIdMap.get(featureResult.getCallName()), rq);
     }
 
-    private synchronized void finishScenario(ScenarioResult scenarioResult) {
+    private void finishScenario(ScenarioResult scenarioResult) {
         if (scenarioId == null) {
-            logger.error("BUG: Trying to finish unspecified scenario.");
+            LOGGER.error("BUG: Trying to finish unspecified scenario.");
             return;
         }
 

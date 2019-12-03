@@ -1,4 +1,4 @@
-package com.epam;
+package com.epam.reportportal.karate;
 
 import com.intuit.karate.*;
 import com.intuit.karate.core.*;
@@ -12,9 +12,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
-public class AgentRunner extends Runner {
+public class AgentRunner {
 
-    private static final Logger logger = LoggerFactory.getLogger(AgentRunner.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AgentRunner.class);
     public static Results parallel(Class<?> clazz, int threadCount) {
         return parallel(clazz, threadCount, null);
     }
@@ -87,14 +87,14 @@ public class AgentRunner extends Runner {
                             Engine.saveResultXml(finalReportDir, result, null);
                         }
                         String status = result.isFailed() ? "fail" : "pass";
-                        logger.info("<<{}>> feature {} of {}: {}", status, index, count, feature.getRelativePath());
+                        LOGGER.info("<<{}>> feature {} of {}: {}", status, index, count, feature.getRelativePath());
                         result.printStats(file.getPath());
 
                         reporter.finishFeature(result);
                     } else {
                         results.addToSkipCount(1);
-                        if (logger.isTraceEnabled()) {
-                            logger.trace("<<skip>> feature {} of {}: {}", index, count, feature.getRelativePath());
+                        if (LOGGER.isTraceEnabled()) {
+                            LOGGER.trace("<<skip>> feature {} of {}: {}", index, count, feature.getRelativePath());
                         }
                     }
                     latch.countDown();
@@ -120,7 +120,7 @@ public class AgentRunner extends Runner {
             }
 
         } catch (Exception e) {
-            logger.error("karate parallel runner failed: ", e.getMessage());
+            LOGGER.error("karate parallel runner failed: {}", e.getMessage());
             results.setFailureReason(e);
         } finally {
             featureExecutor.shutdownNow();

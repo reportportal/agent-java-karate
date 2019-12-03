@@ -29,6 +29,10 @@
         </encoder>
     </appender>
 
+    <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="FILE" />
+    </appender>
+
     <logger name="com.intuit.karate" level="DEBUG"/>
 
     <!-- By default, the level of the root level is set to DEBUG -->
@@ -36,6 +40,7 @@
         <appender-ref ref="RP"/>
         <appender-ref ref="STDOUT"/>
         <appender-ref ref="FILE" />
+        <appender-ref ref="ASYNC" />
     </root>
 
 
