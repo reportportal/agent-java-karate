@@ -14,19 +14,6 @@
         <test.runner.dir>src/test/java/feature</test.runner.dir>
     </properties>
 
-
-    <repositories>
-        <repository>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-            <id>bintray-epam-reportportal</id>
-            <name>bintray</name>
-            <url>http://dl.bintray.com/epam/reportportal</url>
-        </repository>
-    </repositories>
-
-
     <dependencies>
         <dependency>
             <groupId>com.intuit.karate</groupId>
