@@ -1,5 +1,11 @@
 # agent-java-karate
 
+- [Description](#description)
+- [Agent Configuration](#agent-configuration)
+- [Properties File Configuration](#properties-file-configuration)
+- [Execution](#execution)
+
+
 ## Description
 ReportPortal Java agent for Karate testing tool.
 
@@ -56,10 +62,10 @@ the agent repository can be taken from `reportportal`. E.g.:
        implementation 'com.github.reportportal:agent-java-karate:Tag_or_Version'
    ```
 
-### Properties file configuration
+## Properties File Configuration
 * Create `reportportal.properties` file in `src\main\resources` directory.
 * Add the following parameters:
-
+```
 rp.endpoint = <REPORTPORTAL_URL_ADDRESS>  
 rp.uuid = <REPORTPORTAL_PERSONAL_UUID>  
 rp.launch = <REPORTPORTAL_LAUNCH_NAME>  
@@ -79,22 +85,22 @@ rp.skipped.issue=true
 rp.batch.size.logs=20  
 rp.keystore.resource=<PATH_TO_YOUR_KEYSTORE>  
 rp.keystore.password=<PASSWORD_OF_YOUR_KEYSTORE>  
-
+```
 
 ## Execution
 To publish test results to ReportPortal, the test project should run by `KarateReportPortalRunner` instead of Karate runner.
 E.g.:  
 
-```java
-class scenarioRunnerTest {
-
-    @Test
-    void testParallel() {
-        KarateReportPortalRunner
-                .path("classpath:examples")
-                .outputCucumberJson(true)
-                .tags("~@ignore")
-                .parallel(1);
+  ```java
+    class scenarioRunnerTest {
+    
+        @Test
+        void testParallel() {
+            KarateReportPortalRunner
+                    .path("classpath:examples")
+                    .outputCucumberJson(true)
+                    .tags("~@ignore")
+                    .parallel(1);
+        }
     }
-}
-```
+  ```
