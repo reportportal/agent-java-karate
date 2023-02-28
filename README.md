@@ -45,7 +45,23 @@ the following configuration can be used:
     ```groovy
         implementation 'com.github.vrymar:agent-java-karate:v1.0.0'
     ```
-  
+
+
+* Add reportportal `client-java` dependency:
+  * Maven pom.xml
+  ```xml
+    <dependency>
+            <groupId>com.epam.reportportal</groupId>
+            <artifactId>client-java</artifactId>
+            <version>Tag_or_Version</version>
+    </dependency>
+  ```
+  * Gradle build.gradle
+  ```groovy
+    implementation 'com.epam.reportportal:client-java:Tag_or_Version'
+  ```
+
+
 **Note**: When the agent is approved by ReportPortal, 
 the agent repository can be taken from `reportportal`. E.g.: 
 * Maven pom.xml
