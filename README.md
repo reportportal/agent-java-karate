@@ -37,13 +37,13 @@ the following configuration can be used:
         <dependency>
             <groupId>com.github.vrymar</groupId>
             <artifactId>agent-java-karate</artifactId>
-            <version>1.0.0</version>
+            <version>v1.0.0</version>
         </dependency>
     ```
 
     * Gradle build.gradle
     ```groovy
-        implementation 'com.github.vrymar:agent-java-karate:1.0.0'
+        implementation 'com.github.vrymar:agent-java-karate:v1.0.0'
     ```
   
 **Note**: When the agent is approved by ReportPortal, 
