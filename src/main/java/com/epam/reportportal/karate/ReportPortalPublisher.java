@@ -33,8 +33,6 @@ public class ReportPortalPublisher {
     private final ConcurrentHashMap<String, Maybe<String>> scenarioIdMap;
     private Maybe<String> scenarioId;
 
-    private Maybe<String> stepId;
-
     public ReportPortalPublisher() {
         this(createLaunchSupplier());
     }
@@ -117,9 +115,9 @@ public class ReportPortalPublisher {
 
     private void startScenario(ScenarioResult scenarioResult, FeatureResult featureResult) {
         StartTestItemRQ rq = new StartTestItemRQ();
-        rq.setName("SCENARIO: " + scenarioResult.getScenario().getName());
+        rq.setName(scenarioResult.getScenario().getName());
         rq.setStartTime(Calendar.getInstance().getTime());
-        rq.setType("SCENARIO");
+        rq.setType("STEP");
 
         scenarioId = launch.get().startTestItem(featureIdMap.get(featureResult.getCallNameForReport()), rq);
         scenarioIdMap.put(scenarioResult.getScenario().getName(), scenarioId);
@@ -137,30 +135,8 @@ public class ReportPortalPublisher {
         launch.get().finishTestItem(scenarioIdMap.remove(scenarioResult.getScenario().getName()), rq);
     }
 
-    private void startStep(StepResult stepResult) {
-        StartTestItemRQ rq = new StartTestItemRQ();
-        rq.setName(stepResult.getStep().getPrefix() + " " + stepResult.getStep().getText());
-        rq.setStartTime(Calendar.getInstance().getTime());
-        rq.setType("STEP");
-        stepId = launch.get().getStepReporter().startNestedStep(rq);
-    }
-
-    private void finishStep(StepResult stepResult) {
-        if (stepId == null) {
-            LOGGER.error("ERROR: Trying to finish unspecified step.");
-            return;
-        }
-
-        FinishTestItemRQ rq = new FinishTestItemRQ();
-        rq.setEndTime(Calendar.getInstance().getTime());
-        rq.setStatus(stepResult.getErrorMessage() == null ? PASSED : FAILED);
-        launch.get().finishTestItem(stepId, rq);
-        stepId = null;
-    }
-
     private void sendStepResults(List<StepResult> stepResults) {
         for (StepResult stepResult : stepResults) {
-            startStep(stepResult);
             Result result = stepResult.getResult();
             String logLevel = PASSED.equalsIgnoreCase(result.getStatus()) ? INFO_LEVEL : ERROR_LEVEL;
             Step step = stepResult.getStep();
@@ -169,8 +145,7 @@ public class ReportPortalPublisher {
                 sendLog("\n-----------------DOC_STRING-----------------\n" + step.getDocString(), logLevel);
             }
 
-            sendLog(stepResult.getStepLog(), logLevel);
-            finishStep(stepResult);
+            sendLog(step.getPrefix() + " " + step.getText() + "\n\n" + stepResult.getStepLog(), logLevel);
         }
     }
 
