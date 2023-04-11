@@ -1,18 +1,19 @@
 package com.epam.reportportal.karate;
 
 import com.intuit.karate.Results;
-import org.junit.Assert;
 import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 public class KarateTest {
     @Test
     public void testParallel() {
         Results results = KarateReportPortalRunner
-                .path("classpath:feature/Test.feature")
+                .path("classpath:feature")
                 .outputCucumberJson(true)
                 .tags("~@ignore")
                 .parallel(1);
-        Assert.assertEquals(0, results.getFailCount());
-        Assert.assertEquals(0, results.getErrors().size());
+        assertEquals(0, results.getFailCount());
+        assertEquals(0, results.getErrors().size());
     }
 }
