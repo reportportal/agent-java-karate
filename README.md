@@ -37,13 +37,13 @@ the following configuration can be used:
         <dependency>
             <groupId>com.github.vrymar</groupId>
             <artifactId>agent-java-karate</artifactId>
-            <version>v1.0.0</version>
+            <version>Tag_or_Version</version>
         </dependency>
     ```
 
     * Gradle build.gradle
     ```groovy
-        implementation 'com.github.vrymar:agent-java-karate:v1.0.0'
+        implementation 'com.github.vrymar:agent-java-karate:Tag_or_Version'
     ```
 
 
