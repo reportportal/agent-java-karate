@@ -118,6 +118,7 @@ public class ReportPortalPublisher {
         rq.setName(scenarioResult.getScenario().getName());
         rq.setStartTime(Calendar.getInstance().getTime());
         rq.setType("STEP");
+        rq.setHasStats(false);
 
         scenarioId = launch.get().startTestItem(featureIdMap.get(featureResult.getCallNameForReport()), rq);
         scenarioIdMap.put(scenarioResult.getScenario().getName(), scenarioId);
