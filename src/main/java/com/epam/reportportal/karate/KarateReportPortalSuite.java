@@ -180,13 +180,14 @@ public class KarateReportPortalSuite extends Suite {
 
     }
 
+    @Override
     public void run() {
         try {
             if (this.backupReportDir) {
                 this.backupReportDirIfExists();
             }
 
-            this.hooks.forEach((h) -> h.beforeSuite(this));
+            this.hooks.forEach(h -> h.beforeSuite(this));
             int index = 0;
 
             for (FeatureCall feature : this.features) {
@@ -227,19 +228,22 @@ public class KarateReportPortalSuite extends Suite {
                 this.jobManager.server.stop();
             }
 
-            this.hooks.forEach((h) -> h.afterSuite(this));
+            this.hooks.forEach(h -> h.afterSuite(this));
         }
 
     }
 
+    @Override
     public void abort() {
         this.abort.set(true);
     }
 
+    @Override
     public boolean isAborted() {
         return this.abort.get();
     }
 
+    @Override
     public void saveFeatureResults(FeatureResult fr) {
         File file = ReportUtils.saveKarateJson(this.reportDir, fr, null);
         synchronized (this.featureResultFiles) {
@@ -260,6 +264,7 @@ public class KarateReportPortalSuite extends Suite {
 
         fr.printStats();
     }
+
 
     private void onFeatureDone(FeatureResult fr, int index) {
         reporter.startFeature(fr);
@@ -287,14 +292,17 @@ public class KarateReportPortalSuite extends Suite {
         reporter.finishFeature(fr);
     }
 
+    @Override
     public Stream<FeatureResult> getFeatureResults() {
-        return this.featureResultFiles.stream().sorted().map((file) -> FeatureResult.fromKarateJson(this.workingDir, Json.of(FileUtils.toString(file)).asMap()));
+        return this.featureResultFiles.stream().sorted().map(file -> FeatureResult.fromKarateJson(this.workingDir, Json.of(FileUtils.toString(file)).asMap()));
     }
 
+    @Override
     public Stream<ScenarioResult> getScenarioResults() {
-        return this.getFeatureResults().flatMap((fr) -> fr.getScenarioResults().stream());
+        return this.getFeatureResults().flatMap(fr -> fr.getScenarioResults().stream());
     }
 
+    @Override
     public ScenarioResult retryScenario(Scenario scenario) {
         FeatureRuntime fr = FeatureRuntime.of(this, new FeatureCall(scenario.getFeature()));
         ScenarioRuntime runtime = new ScenarioRuntime(fr, scenario);
@@ -302,6 +310,7 @@ public class KarateReportPortalSuite extends Suite {
         return runtime.result;
     }
 
+    @Override
     public Results updateResults(ScenarioResult sr) {
         Scenario scenario = sr.getScenario();
         File file = new File(this.reportDir + File.separator + scenario.getFeature().getKarateJsonFileName());
@@ -346,9 +355,9 @@ public class KarateReportPortalSuite extends Suite {
                 logger.warn("failed to backup existing dir: {}", file);
             }
         }
-
     }
 
+    @Override
     public long getFeaturesRemaining() {
         return this.futures.stream().filter((f) -> !f.isDone()).count();
     }

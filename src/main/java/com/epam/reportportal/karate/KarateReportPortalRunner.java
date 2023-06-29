@@ -20,6 +20,10 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class KarateReportPortalRunner {
+
+    private static final String USING_SYSTEM_PROPERTY_LOG_MESSAGE = "Using system property '{}': {}";
+    private static final String CLASSPATH = "classpath:";
+    private static final String PATH_DELIMITER = "/";
     private static final Logger LOGGER = LoggerFactory.getLogger(KarateReportPortalRunner.class);
 
     public KarateReportPortalRunner() {
@@ -74,9 +78,12 @@ public class KarateReportPortalRunner {
         JobConfig<T> jobConfig;
         Map<String, DriverRunner<?>> drivers;
 
+
         public Builder() {
+            super();
         }
 
+        @Override
         public synchronized Builder<T> copy() {
             Builder<T> b = new Builder<>();
             b.classLoader = this.classLoader;
@@ -133,7 +140,7 @@ public class KarateReportPortalRunner {
 
             String tempOptions = StringUtils.trimToNull(this.systemProperties.get("karate.options"));
             if (tempOptions != null) {
-                LOGGER.info("using system property '{}': {}", "karate.options", tempOptions);
+                LOGGER.info(USING_SYSTEM_PROPERTY_LOG_MESSAGE, "karate.options", tempOptions);
                 Main ko = Main.parseKarateOptions(tempOptions);
                 if (ko.getTags() != null) {
                     this.tags = ko.getTags();
@@ -146,7 +153,7 @@ public class KarateReportPortalRunner {
 
             String tempEnv = StringUtils.trimToNull(this.systemProperties.get("karate.env"));
             if (tempEnv != null) {
-                LOGGER.info("using system property '{}': {}", "karate.env", tempEnv);
+                LOGGER.info(USING_SYSTEM_PROPERTY_LOG_MESSAGE, "karate.env", tempEnv);
                 this.env = tempEnv;
             } else if (this.env != null) {
                 LOGGER.info("karate.env is: '{}'", this.env);
@@ -164,14 +171,14 @@ public class KarateReportPortalRunner {
 
             if (this.configDir == null) {
                 try {
-                    ResourceUtils.getResource(this.workingDir, "classpath:karate-config.js");
-                    this.configDir = "classpath:";
+                    ResourceUtils.getResource(this.workingDir, CLASSPATH + "karate-config.js");
+                    this.configDir = CLASSPATH;
                 } catch (Exception var5) {
                     this.configDir = this.workingDir.getPath();
                 }
             }
 
-            if (!this.configDir.startsWith("file:") && !this.configDir.startsWith("classpath:")) {
+            if (!this.configDir.startsWith("file:") && !this.configDir.startsWith(CLASSPATH)) {
                 this.configDir = "file:" + this.configDir;
             }
 
@@ -194,15 +201,15 @@ public class KarateReportPortalRunner {
             if (this.features == null) {
                 if (this.paths != null && !this.paths.isEmpty()) {
                     if (this.relativeTo != null) {
-                        this.paths = this.paths.stream().map((p) -> {
-                            if (p.startsWith("classpath:")) {
+                        this.paths = this.paths.stream().map(p -> {
+                            if (p.startsWith(CLASSPATH)) {
                                 return p;
                             } else {
                                 if (!p.endsWith(".feature")) {
                                     p = p + ".feature";
                                 }
 
-                                return this.relativeTo + "/" + p;
+                                return this.relativeTo + PATH_DELIMITER + p;
                             }
                         }).collect(Collectors.toList());
                     }
@@ -250,21 +257,25 @@ public class KarateReportPortalRunner {
             return this.features;
         }
 
+        @Override
         protected T forTempUse() {
             this.forTempUse = true;
             return (T) this;
         }
 
+        @Override
         public T configDir(String dir) {
             this.configDir = dir;
             return (T) this;
         }
 
+        @Override
         public T karateEnv(String env) {
             this.env = env;
             return (T) this;
         }
 
+        @Override
         public T systemProperty(String key, String value) {
             if (this.systemProperties == null) {
                 this.systemProperties = new HashMap<>();
@@ -274,6 +285,7 @@ public class KarateReportPortalRunner {
             return (T) this;
         }
 
+        @Override
         public T workingDir(File value) {
             if (value != null) {
                 this.workingDir = value;
@@ -282,6 +294,7 @@ public class KarateReportPortalRunner {
             return (T) this;
         }
 
+        @Override
         public T buildDir(String value) {
             if (value != null) {
                 this.buildDir = value;
@@ -290,21 +303,25 @@ public class KarateReportPortalRunner {
             return (T) this;
         }
 
+        @Override
         public T classLoader(ClassLoader value) {
             this.classLoader = value;
             return (T) this;
         }
 
+        @Override
         public T relativeTo(Class clazz) {
-            this.relativeTo = "classpath:" + ResourceUtils.toPathFromClassPathRoot(clazz);
+            this.relativeTo = CLASSPATH + ResourceUtils.toPathFromClassPathRoot(clazz);
             return (T) this;
         }
 
+        @Override
         public T path(String... value) {
             this.path(Arrays.asList(value));
             return (T) this;
         }
 
+        @Override
         public T path(List<String> value) {
             if (value != null) {
                 if (this.paths == null) {
@@ -317,6 +334,7 @@ public class KarateReportPortalRunner {
             return (T) this;
         }
 
+        @Override
         public T tags(List<String> value) {
             if (value != null) {
                 if (this.tags == null) {
@@ -329,11 +347,13 @@ public class KarateReportPortalRunner {
             return (T) this;
         }
 
+        @Override
         public T tags(String... tags) {
             this.tags(Arrays.asList(tags));
             return (T) this;
         }
 
+        @Override
         public T features(Collection<Feature> value) {
             if (value != null) {
                 if (this.features == null) {
@@ -346,10 +366,12 @@ public class KarateReportPortalRunner {
             return (T) this;
         }
 
+        @Override
         public T features(Feature... value) {
             return this.features(Arrays.asList(value));
         }
 
+        @Override
         public T reportDir(String value) {
             if (value != null) {
                 this.reportDir = value;
@@ -358,16 +380,19 @@ public class KarateReportPortalRunner {
             return (T) this;
         }
 
+        @Override
         public T scenarioName(String name) {
             this.scenarioName = name;
             return (T) this;
         }
 
+        @Override
         public T timeoutMinutes(int timeoutMinutes) {
             this.timeoutMinutes = timeoutMinutes;
             return (T) this;
         }
 
+        @Override
         public T hook(RuntimeHook hook) {
             if (hook != null) {
                 this.hooks.add(hook);
@@ -376,6 +401,7 @@ public class KarateReportPortalRunner {
             return (T) this;
         }
 
+        @Override
         public T hooks(Collection<RuntimeHook> hooks) {
             if (hooks != null) {
                 this.hooks.addAll(hooks);
@@ -384,71 +410,85 @@ public class KarateReportPortalRunner {
             return (T) this;
         }
 
+        @Override
         public T hookFactory(RuntimeHookFactory hookFactory) {
             this.hookFactory = hookFactory;
             return (T) this;
         }
 
+        @Override
         public T clientFactory(HttpClientFactory clientFactory) {
             this.clientFactory = clientFactory;
             return (T) this;
         }
 
+        @Override
         public Builder<T> threads(int value) {
             this.threadCount = value;
             return this;
         }
 
+        @Override
         public T outputHtmlReport(boolean value) {
             this.outputHtmlReport = value;
             return (T) this;
         }
 
+        @Override
         public T backupReportDir(boolean value) {
             this.backupReportDir = value;
             return (T) this;
         }
 
+        @Override
         public T outputCucumberJson(boolean value) {
             this.outputCucumberJson = value;
             return (T) this;
         }
 
+        @Override
         public T outputJunitXml(boolean value) {
             this.outputJunitXml = value;
             return (T) this;
         }
 
+        @Override
         public T dryRun(boolean value) {
             this.dryRun = value;
             return (T) this;
         }
 
+        @Override
         public T debugMode(boolean value) {
             this.debugMode = value;
             return (T) this;
         }
 
+        @Override
         public T callSingleCache(Map<String, Object> value) {
             this.callSingleCache = value;
             return (T) this;
         }
 
+        @Override
         public T callOnceCache(Map<String, ScenarioCall.Result> value) {
             this.callOnceCache = value;
             return (T) this;
         }
 
+        @Override
         public T suiteReports(SuiteReports value) {
             this.suiteReports = value;
             return (T) this;
         }
 
+        @Override
         public T customDrivers(Map<String, DriverRunner> customDrivers) {
             this.drivers = (Map<String, DriverRunner<?>>) (Map<?, ?>) customDrivers;
             return (T) this;
         }
 
+        @Override
         public Results jobManager(JobConfig value) {
             this.jobConfig = value;
             KarateReportPortalSuite suite = new KarateReportPortalSuite(this, reporter);
@@ -456,6 +496,7 @@ public class KarateReportPortalRunner {
             return suite.buildResults();
         }
 
+        @Override
         public Results parallel(int threadCount) {
             reporter.startLaunch();
             this.threads(threadCount);
@@ -466,6 +507,7 @@ public class KarateReportPortalRunner {
             return results;
         }
 
+        @Override
         public String toString() {
             return this.paths + "";
         }
