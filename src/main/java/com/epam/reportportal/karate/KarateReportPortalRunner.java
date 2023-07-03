@@ -80,7 +80,6 @@ public class KarateReportPortalRunner {
 
 
         public Builder() {
-            super();
         }
 
         @Override

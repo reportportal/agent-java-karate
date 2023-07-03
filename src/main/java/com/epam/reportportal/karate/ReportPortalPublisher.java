@@ -24,14 +24,21 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 public class ReportPortalPublisher {
     private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalPublisher.class);
-    private static final String INFO_LEVEL = "INFO";
-    private static final String ERROR_LEVEL = "ERROR";
+    private static final String INFO_LOG_LEVEL = "INFO";
+    private static final String ERROR_LOG_LEVEL = "ERROR";
+    private static final String WARN_LOG_LEVEL = "WARN";
     private static final String PASSED = "PASSED";
     private static final String FAILED = "FAILED";
+    private static final String SKIPPED = "SKIPPED";
+    private static final String STOPPED = "STOPPED";
+    private static final String RESETED = "RESETED";
+    private static final String CANCELLED = "CANCELLED";
+
     private final Supplier<Launch> launch;
     private final ConcurrentHashMap<String, Maybe<String>> featureIdMap;
     private final ConcurrentHashMap<String, Maybe<String>> scenarioIdMap;
     private Maybe<String> scenarioId;
+    private Maybe<String> stepId;
 
     public ReportPortalPublisher() {
         this(createLaunchSupplier());
@@ -117,8 +124,7 @@ public class ReportPortalPublisher {
         StartTestItemRQ rq = new StartTestItemRQ();
         rq.setName(scenarioResult.getScenario().getName());
         rq.setStartTime(Calendar.getInstance().getTime());
-        rq.setType("STEP");
-        rq.setHasStats(false);
+        rq.setType("SCENARIO");
 
         scenarioId = launch.get().startTestItem(featureIdMap.get(featureResult.getCallNameForReport()), rq);
         scenarioIdMap.put(scenarioResult.getScenario().getName(), scenarioId);
@@ -136,17 +142,43 @@ public class ReportPortalPublisher {
         launch.get().finishTestItem(scenarioIdMap.remove(scenarioResult.getScenario().getName()), rq);
     }
 
+    private void startStep(StepResult stepResult) {
+        StartTestItemRQ rq = new StartTestItemRQ();
+        rq.setName(stepResult.getStep().getPrefix() + " " + stepResult.getStep().getText());
+        rq.setStartTime(Calendar.getInstance().getTime());
+        rq.setType("STEP");
+        rq.setHasStats(false);
+        stepId = launch.get().getStepReporter().startNestedStep(rq);
+    }
+
+    private void finishStep(StepResult stepResult) {
+        if (stepId == null) {
+            LOGGER.error("ERROR: Trying to finish unspecified step.");
+            return;
+        }
+
+        FinishTestItemRQ rq = new FinishTestItemRQ();
+        rq.setEndTime(Calendar.getInstance().getTime());
+        rq.setStatus(getStepStatus(stepResult.getResult()));
+        launch.get().finishTestItem(stepId, rq);
+        stepId = null;
+    }
+
+
     private void sendStepResults(List<StepResult> stepResults) {
         for (StepResult stepResult : stepResults) {
+            startStep(stepResult);
             Result result = stepResult.getResult();
-            String logLevel = PASSED.equalsIgnoreCase(result.getStatus()) ? INFO_LEVEL : ERROR_LEVEL;
+            String logLevel = getLogLevel(result);
             Step step = stepResult.getStep();
 
             if (step.getDocString() != null) {
                 sendLog("\n-----------------DOC_STRING-----------------\n" + step.getDocString(), logLevel);
             }
 
-            sendLog(step.getPrefix() + " " + step.getText() + "\n\n" + stepResult.getStepLog(), logLevel);
+            sendLog(stepResult.getStepLog(), logLevel);
+            finishStep(stepResult);
+           //   sendLog(step.getPrefix() + " " + step.getText() + "\n\n" + stepResult.getStepLog(), logLevel);
         }
     }
 
@@ -159,5 +191,40 @@ public class ReportPortalPublisher {
             rq.setLogTime(Calendar.getInstance().getTime());
             return rq;
         });
+    }
+
+    private String getStepStatus(Result stepResult) {
+        String status = stepResult.getStatus();
+        switch (status) {
+            case "failed":
+                return FAILED;
+            case "passed":
+                return PASSED;
+            case "skipped":
+                return SKIPPED;
+            case "stopped":
+                return STOPPED;
+            case "interrupted":
+                return RESETED;
+            case "cancelled":
+                return CANCELLED;
+            default:
+                LOGGER.warn("Unknown step status received! Set it as SKIPPED");
+                return SKIPPED;
+        }
+    }
+
+    private String getLogLevel(Result stepResult) {
+        String status = stepResult.getStatus();
+        switch (status) {
+            case "failed":
+                return ERROR_LOG_LEVEL;
+            case "stopped":
+            case "interrupted":
+            case "cancelled":
+                return WARN_LOG_LEVEL;
+            default:
+                return INFO_LOG_LEVEL;
+        }
     }
 }

@@ -359,7 +359,7 @@ public class KarateReportPortalSuite extends Suite {
 
     @Override
     public long getFeaturesRemaining() {
-        return this.futures.stream().filter((f) -> !f.isDone()).count();
+        return this.futures.stream().filter(f -> !f.isDone()).count();
     }
 
     private void saveProgressJson() {
