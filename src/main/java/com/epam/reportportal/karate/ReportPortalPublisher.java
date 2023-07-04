@@ -160,6 +160,7 @@ public class ReportPortalPublisher {
         FinishTestItemRQ rq = new FinishTestItemRQ();
         rq.setEndTime(Calendar.getInstance().getTime());
         rq.setStatus(getStepStatus(stepResult.getResult()));
+       // rq.setStatus(stepResult.getErrorMessage() == null ? PASSED : FAILED);
         launch.get().finishTestItem(stepId, rq);
         stepId = null;
     }
@@ -169,6 +170,7 @@ public class ReportPortalPublisher {
         for (StepResult stepResult : stepResults) {
             startStep(stepResult);
             Result result = stepResult.getResult();
+           // String logLevel = PASSED.equalsIgnoreCase(result.getStatus()) ? INFO_LOG_LEVEL : ERROR_LOG_LEVEL;
             String logLevel = getLogLevel(result);
             Step step = stepResult.getStep();
 
