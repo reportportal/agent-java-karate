@@ -3,6 +3,7 @@ package com.epam.reportportal.karate;
 import com.epam.reportportal.listeners.ListenerParameters;
 import com.epam.reportportal.service.Launch;
 import com.epam.reportportal.service.ReportPortal;
+import com.epam.reportportal.utils.ReflectUtils;
 import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
@@ -13,11 +14,12 @@ import lombok.SneakyThrows;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.internal.util.reflection.FieldSetter;
+//import org.mockito.internal.util.reflection.FieldSetter;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
+import org.powermock.reflect.Whitebox;
 
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -67,7 +69,10 @@ public class ReportPortalPublisherTest {
         when(featureResult.getCallNameForReport()).thenReturn("featureName");
         ConcurrentHashMap<String, Maybe<String>> featureIdMap = new ConcurrentHashMap<>();
         featureIdMap.put("featureName", mock(Maybe.class));
-        FieldSetter.setField(reportPortalPublisher, ReportPortalPublisher.class.getDeclaredField("featureIdMap"), featureIdMap);
+        ReflectUtils.setField(reportPortalPublisher, ReportPortalPublisher.class.getDeclaredField("featureIdMap"), featureIdMap);
+
+        // Whitebox.setInternalState(reportPortalPublisher, ReportPortalPublisher.class.getDeclaredField("featureIdMap"), featureIdMap);
+       // FieldSetter.setField(reportPortalPublisher, ReportPortalPublisher.class.getDeclaredField("featureIdMap"), featureIdMap);
         reportPortalPublisher.finishFeature(featureResult);
         verify(launch, times(1)).finishTestItem(any(Maybe.class), any(FinishTestItemRQ.class));
     }
