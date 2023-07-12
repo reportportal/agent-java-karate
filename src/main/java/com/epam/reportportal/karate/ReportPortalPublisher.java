@@ -124,7 +124,7 @@ public class ReportPortalPublisher {
         StartTestItemRQ rq = new StartTestItemRQ();
         rq.setName(scenarioResult.getScenario().getName());
         rq.setStartTime(Calendar.getInstance().getTime());
-        rq.setType("SCENARIO");
+        rq.setType("STEP");
 
         scenarioId = launch.get().startTestItem(featureIdMap.get(featureResult.getCallNameForReport()), rq);
         scenarioIdMap.put(scenarioResult.getScenario().getName(), scenarioId);
@@ -160,7 +160,6 @@ public class ReportPortalPublisher {
         FinishTestItemRQ rq = new FinishTestItemRQ();
         rq.setEndTime(Calendar.getInstance().getTime());
         rq.setStatus(getStepStatus(stepResult.getResult()));
-       // rq.setStatus(stepResult.getErrorMessage() == null ? PASSED : FAILED);
         launch.get().finishTestItem(stepId, rq);
         stepId = null;
     }
@@ -170,7 +169,6 @@ public class ReportPortalPublisher {
         for (StepResult stepResult : stepResults) {
             startStep(stepResult);
             Result result = stepResult.getResult();
-           // String logLevel = PASSED.equalsIgnoreCase(result.getStatus()) ? INFO_LOG_LEVEL : ERROR_LOG_LEVEL;
             String logLevel = getLogLevel(result);
             Step step = stepResult.getStep();
 
@@ -178,9 +176,11 @@ public class ReportPortalPublisher {
                 sendLog("\n-----------------DOC_STRING-----------------\n" + step.getDocString(), logLevel);
             }
 
+
             sendLog(stepResult.getStepLog(), logLevel);
+
             finishStep(stepResult);
-           //   sendLog(step.getPrefix() + " " + step.getText() + "\n\n" + stepResult.getStepLog(), logLevel);
+            //  sendLog(step.getPrefix() + " " + step.getText() + "\n\n" + stepResult.getStepLog(), logLevel);
         }
     }
 

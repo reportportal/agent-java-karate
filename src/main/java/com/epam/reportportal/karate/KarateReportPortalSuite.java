@@ -196,10 +196,12 @@ public class KarateReportPortalSuite extends Suite {
                 CompletableFuture<Boolean> future = new CompletableFuture<>();
                 this.futures.add(future);
                 int finalIndex = index;
+
                 fr.setNext(() -> {
                     this.onFeatureDone(fr.result, finalIndex);
                     future.complete(Boolean.TRUE);
                 });
+
                 this.pendingTasks.submit(fr);
             }
 
@@ -271,7 +273,7 @@ public class KarateReportPortalSuite extends Suite {
         if (fr.getScenarioCount() > 0) {
             try {
                 this.saveFeatureResults(fr);
-
+                reporter.finishFeature(fr);
                 String status = fr.isFailed() ? "fail" : "pass";
                 logger.info("<<{}>> feature {} of {} ({} remaining) {}", status, index, this.featuresFound, this.getFeaturesRemaining() - 1L, fr.getFeature());
             } catch (Throwable var4) {
@@ -289,7 +291,7 @@ public class KarateReportPortalSuite extends Suite {
             this.saveProgressJson();
             this.progressFileLock.unlock();
         }
-        reporter.finishFeature(fr);
+        //reporter.finishFeature(fr);
     }
 
     @Override

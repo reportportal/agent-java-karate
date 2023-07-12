@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 
 public class KarateReportPortalRunner {
 
+    private static final String USING_SYSTEM_PROPERTY_LOG_MESSAGE = "Using system property '{}': {}";
     private static final String CLASSPATH = "classpath:";
     private static final String PATH_DELIMITER = "/";
     private static final Logger LOGGER = LoggerFactory.getLogger(KarateReportPortalRunner.class);
@@ -79,6 +80,7 @@ public class KarateReportPortalRunner {
 
 
         public Builder() {
+            super();
         }
 
         @Override
@@ -138,7 +140,7 @@ public class KarateReportPortalRunner {
 
             String tempOptions = StringUtils.trimToNull(this.systemProperties.get("karate.options"));
             if (tempOptions != null) {
-                LOGGER.info("using system property '{}': {}", "karate.options", tempOptions);
+                LOGGER.info(USING_SYSTEM_PROPERTY_LOG_MESSAGE, "karate.options", tempOptions);
                 Main ko = Main.parseKarateOptions(tempOptions);
                 if (ko.getTags() != null) {
                     this.tags = ko.getTags();
@@ -151,7 +153,7 @@ public class KarateReportPortalRunner {
 
             String tempEnv = StringUtils.trimToNull(this.systemProperties.get("karate.env"));
             if (tempEnv != null) {
-                LOGGER.info("Using system property '{}': {}", "karate.env", tempEnv);
+                LOGGER.info(USING_SYSTEM_PROPERTY_LOG_MESSAGE, "karate.env", tempEnv);
                 this.env = tempEnv;
             } else if (this.env != null) {
                 LOGGER.info("karate.env is: '{}'", this.env);
@@ -159,7 +161,7 @@ public class KarateReportPortalRunner {
 
             String tempConfig = StringUtils.trimToNull(this.systemProperties.get("karate.config.dir"));
             if (tempConfig != null) {
-                LOGGER.info("using system property '{}': {}", "karate.config.dir", tempConfig);
+                LOGGER.info(USING_SYSTEM_PROPERTY_LOG_MESSAGE, "karate.config.dir", tempConfig);
                 this.configDir = tempConfig;
             }
 
