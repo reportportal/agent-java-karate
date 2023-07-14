@@ -15,14 +15,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.powermock.core.classloader.annotations.PrepareForTest;
+//import org.powermock.core.classloader.annotations.PrepareForTest;
 
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@PrepareForTest({ReportPortal.class, Launch.class})
+//@PrepareForTest({ReportPortal.class, Launch.class})
 public class ReportPortalPublisherTest {
     private ReportPortalPublisher reportPortalPublisher;
     @Mock
