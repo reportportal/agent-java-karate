@@ -4,24 +4,15 @@ import java.lang.reflect.Field;
 
 public class ReflectUtils {
 
-    private ReflectUtils() {}
-
-    public static void setField(Object object, String fieldName, Object value) {
-        try {
-            var field = object.getClass().getDeclaredField(fieldName);
-            field.setAccessible(true);
-            field.set(object, value);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException("Failed to set " + fieldName + " of object", e);
-        }
+    private ReflectUtils() {
     }
 
-    public static void setField(Object object, Field field, Object value) {
+    public static void setField(Object object, Field fld, Object value) {
         try {
-            field.setAccessible(true);
-            field.set(object, value);
+            fld.setAccessible(true);
+            fld.set(object, value);
         } catch (IllegalAccessException e) {
-            String fieldName = field.getName();
+            String fieldName = fld.getName();
             throw new RuntimeException("Failed to set " + fieldName + " of object", e);
         }
     }
