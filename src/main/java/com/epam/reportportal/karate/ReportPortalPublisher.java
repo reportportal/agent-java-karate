@@ -37,7 +37,6 @@ public class ReportPortalPublisher {
     private final Supplier<Launch> launch;
     private final ConcurrentHashMap<String, Maybe<String>> featureIdMap;
     private final ConcurrentHashMap<String, Maybe<String>> scenarioIdMap;
-    private Maybe<String> scenarioId;
     private Maybe<String> stepId;
 
     public ReportPortalPublisher() {
@@ -121,11 +120,11 @@ public class ReportPortalPublisher {
     }
 
     private void startScenario(ScenarioResult scenarioResult, FeatureResult featureResult) {
+        Maybe<String> scenarioId;
         StartTestItemRQ rq = new StartTestItemRQ();
         rq.setName(scenarioResult.getScenario().getName());
         rq.setStartTime(Calendar.getInstance().getTime());
         rq.setType("STEP");
-
         scenarioId = launch.get().startTestItem(featureIdMap.get(featureResult.getCallNameForReport()), rq);
         scenarioIdMap.put(scenarioResult.getScenario().getName(), scenarioId);
     }
@@ -138,8 +137,8 @@ public class ReportPortalPublisher {
         FinishTestItemRQ rq = new FinishTestItemRQ();
         rq.setEndTime(Calendar.getInstance().getTime());
         rq.setStatus(scenarioResult.getFailureMessageForDisplay() == null ? PASSED : FAILED);
-        launch.get().finishTestItem(scenarioId, rq);
-        launch.get().finishTestItem(scenarioIdMap.remove(scenarioResult.getScenario().getName()), rq);
+        Maybe<String> removedScenarioId = scenarioIdMap.remove(scenarioResult.getScenario().getName());
+        launch.get().finishTestItem(removedScenarioId, rq);
     }
 
     private void startStep(StepResult stepResult) {
@@ -159,8 +158,8 @@ public class ReportPortalPublisher {
 
         FinishTestItemRQ rq = new FinishTestItemRQ();
         rq.setEndTime(Calendar.getInstance().getTime());
-        rq.setStatus(getStepStatus(stepResult.getResult()));
-        launch.get().finishTestItem(stepId, rq);
+        rq.setStatus(getStepStatus(stepResult.getResult().getStatus()));
+        launch.get().getStepReporter().finishNestedStep(rq);
         stepId = null;
     }
 
@@ -169,18 +168,15 @@ public class ReportPortalPublisher {
         for (StepResult stepResult : stepResults) {
             startStep(stepResult);
             Result result = stepResult.getResult();
-            String logLevel = getLogLevel(result);
+            String logLevel = getLogLevel(result.getStatus());
             Step step = stepResult.getStep();
 
             if (step.getDocString() != null) {
                 sendLog("\n-----------------DOC_STRING-----------------\n" + step.getDocString(), logLevel);
             }
 
-
             sendLog(stepResult.getStepLog(), logLevel);
-
             finishStep(stepResult);
-            //  sendLog(step.getPrefix() + " " + step.getText() + "\n\n" + stepResult.getStepLog(), logLevel);
         }
     }
 
@@ -195,8 +191,7 @@ public class ReportPortalPublisher {
         });
     }
 
-    private String getStepStatus(Result stepResult) {
-        String status = stepResult.getStatus();
+    private String getStepStatus(String status) {
         switch (status) {
             case "failed":
                 return FAILED;
@@ -216,8 +211,7 @@ public class ReportPortalPublisher {
         }
     }
 
-    private String getLogLevel(Result stepResult) {
-        String status = stepResult.getStatus();
+    private String getLogLevel(String status) {
         switch (status) {
             case "failed":
                 return ERROR_LOG_LEVEL;
