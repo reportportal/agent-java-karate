@@ -161,7 +161,7 @@ public class KarateReportPortalRunner {
 
             String tempConfig = StringUtils.trimToNull(this.systemProperties.get("karate.config.dir"));
             if (tempConfig != null) {
-                LOGGER.info("using system property '{}': {}", "karate.config.dir", tempConfig);
+                LOGGER.info(USING_SYSTEM_PROPERTY_LOG_MESSAGE, "karate.config.dir", tempConfig);
                 this.configDir = tempConfig;
             }
 
