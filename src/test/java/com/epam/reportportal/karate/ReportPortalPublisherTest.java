@@ -2,7 +2,6 @@ package com.epam.reportportal.karate;
 
 import com.epam.reportportal.listeners.ListenerParameters;
 import com.epam.reportportal.service.Launch;
-import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.utils.ReflectUtils;
 import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
@@ -15,14 +14,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-//import org.powermock.core.classloader.annotations.PrepareForTest;
 
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-//@PrepareForTest({ReportPortal.class, Launch.class})
 public class ReportPortalPublisherTest {
     private ReportPortalPublisher reportPortalPublisher;
     @Mock
