@@ -54,16 +54,9 @@ jobs:
       - name: Setup git credentials
         uses: oleksiyrudenko/gha-git-credentials@v2.1.1
         with:
-          name: 'vrymar'
-          email: 'vitalizzzer@gmail.com'
+          name: 'reportportal.io'
+          email: 'support@reportportal.io'
           token: ${{ secrets.GH_TOKEN }}
-
-#      - name: Setup git credentials
-#        uses: oleksiyrudenko/gha-git-credentials@v2.1.1
-#        with:
-#          name: 'reportportal.io'
-#          email: 'support@reportportal.io'
-#          token: ${{ secrets.GH_TOKEN }}
 
       - name: Release with Gradle
         id: release
