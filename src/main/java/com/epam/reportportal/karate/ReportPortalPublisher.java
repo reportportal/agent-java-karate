@@ -163,7 +163,6 @@ public class ReportPortalPublisher {
         stepId = null;
     }
 
-
     private void sendStepResults(List<StepResult> stepResults) {
         for (StepResult stepResult : stepResults) {
             startStep(stepResult);
@@ -175,7 +174,10 @@ public class ReportPortalPublisher {
                 sendLog("\n-----------------DOC_STRING-----------------\n" + step.getDocString(), logLevel);
             }
 
-            sendLog(stepResult.getStepLog(), logLevel);
+            if (!stepResult.getStepLog().isEmpty()) {
+                sendLog(stepResult.getStepLog(), logLevel);
+            }
+
             finishStep(stepResult);
         }
     }
