@@ -21,8 +21,9 @@ apply from: "${project.scripts_url}/${project.scripts_branch}/release-commons.gr
 apply from: "${project.scripts_url}/${project.scripts_branch}/build-quality.gradle"
 apply from: "${project.scripts_url}/${project.scripts_branch}/signing.gradle"
 
-sourceCompatibility = JavaVersion.VERSION_11
-targetCompatibility = JavaVersion.VERSION_11
+
+sourceCompatibility=JavaVersion.VERSION_11
+targetCompatibility=JavaVersion.VERSION_11
 compileJava.options.encoding = 'UTF-8'
 compileTestJava.options.encoding = 'UTF-8'
 
@@ -76,4 +77,6 @@ processResources {
         expand(project.properties)
     }
 }
+
+
 
