@@ -17,10 +17,10 @@
 apply plugin: 'java-library'
 
 // Blocking issue for gradle version >=7.0:https://github.com/reportportal/gradle-scripts/issues/37
-apply from: "${project.scripts_url}/${project.scripts_branch}/release-commons.gradle"
-apply from: "${project.scripts_url}/${project.scripts_branch}/build-quality.gradle"
-apply from: "${project.scripts_url}/${project.scripts_branch}/signing.gradle"
-
+//apply from: "${project.scripts_url}/${project.scripts_branch}/release-commons.gradle"
+//apply from: "${project.scripts_url}/${project.scripts_branch}/build-quality.gradle"
+//apply from: "${project.scripts_url}/${project.scripts_branch}/signing.gradle"
+//
 
 sourceCompatibility = JavaVersion.VERSION_11
 targetCompatibility = JavaVersion.VERSION_11
