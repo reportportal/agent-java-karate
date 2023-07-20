@@ -174,7 +174,9 @@ public class ReportPortalPublisher {
                 sendLog("\n-----------------DOC_STRING-----------------\n" + step.getDocString(), logLevel);
             }
 
-            if (!stepResult.getStepLog().isEmpty()) {
+            if (stepResult.getStepLog() != null
+                    && !stepResult.getStepLog().isEmpty()
+                    && !stepResult.getStepLog().equals(" ")) {
                 sendLog(stepResult.getStepLog(), logLevel);
             }
 
