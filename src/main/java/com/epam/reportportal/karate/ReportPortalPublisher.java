@@ -174,12 +174,9 @@ public class ReportPortalPublisher {
                 sendLog("\n-----------------DOC_STRING-----------------\n" + step.getDocString(), logLevel);
             }
 
-            String stepLog = stepResult.getStepLog();
-            LOGGER.warn("STEP LOG 1: " + stepLog);
             if (stepResult.getStepLog() != null
                     && !stepResult.getStepLog().isEmpty()
                     && !stepResult.getStepLog().equals(" ")) {
-                LOGGER.warn("STEP LOG 2: " + stepLog);
                 sendLog(stepResult.getStepLog(), logLevel);
             }
 
@@ -188,7 +185,6 @@ public class ReportPortalPublisher {
     }
 
     private void sendLog(final String message, final String level) {
-        LOGGER.warn("STEP LOG 3: " + message);
         ReportPortal.emitLog(itemId -> {
             SaveLogRQ rq = new SaveLogRQ();
             rq.setMessage(message);
