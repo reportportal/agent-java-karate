@@ -22,8 +22,8 @@ apply from: "${project.scripts_url}/${project.scripts_branch}/build-quality.grad
 apply from: "${project.scripts_url}/${project.scripts_branch}/signing.gradle"
 
 
-sourceCompatibility=JavaVersion.VERSION_11
-targetCompatibility=JavaVersion.VERSION_11
+sourceCompatibility = JavaVersion.VERSION_11
+targetCompatibility = JavaVersion.VERSION_11
 compileJava.options.encoding = 'UTF-8'
 compileTestJava.options.encoding = 'UTF-8'
 
