@@ -174,11 +174,12 @@ public class ReportPortalPublisher {
                 sendLog("\n-----------------DOC_STRING-----------------\n" + step.getDocString(), logLevel);
             }
 
-            LOGGER.warn("STEP LOG 1: " + stepResult.getStepLog());
+            String stepLog = stepResult.getStepLog();
+            LOGGER.warn("STEP LOG 1: " + stepLog);
             if (stepResult.getStepLog() != null
                     && !stepResult.getStepLog().isEmpty()
                     && !stepResult.getStepLog().equals(" ")) {
-                LOGGER.warn("STEP LOG 2: " + stepResult.getStepLog());
+                LOGGER.warn("STEP LOG 2: " + stepLog);
                 sendLog(stepResult.getStepLog(), logLevel);
             }
 
