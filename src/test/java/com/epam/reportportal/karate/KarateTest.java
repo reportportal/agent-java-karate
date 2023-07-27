@@ -1,13 +1,13 @@
 package com.epam.reportportal.karate;
 
 import com.intuit.karate.Results;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class KarateTest {
+class KarateTest {
     @Test
-    public void testParallel() {
+    void testParallel() {
         Results results = KarateReportPortalRunner
                 .path("classpath:feature")
                 .outputCucumberJson(true)

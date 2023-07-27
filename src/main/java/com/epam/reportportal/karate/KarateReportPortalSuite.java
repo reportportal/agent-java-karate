@@ -180,13 +180,14 @@ public class KarateReportPortalSuite extends Suite {
 
     }
 
+    @Override
     public void run() {
         try {
             if (this.backupReportDir) {
                 this.backupReportDirIfExists();
             }
 
-            this.hooks.forEach((h) -> h.beforeSuite(this));
+            this.hooks.forEach(h -> h.beforeSuite(this));
             int index = 0;
 
             for (FeatureCall feature : this.features) {
@@ -195,10 +196,12 @@ public class KarateReportPortalSuite extends Suite {
                 CompletableFuture<Boolean> future = new CompletableFuture<>();
                 this.futures.add(future);
                 int finalIndex = index;
+
                 fr.setNext(() -> {
                     this.onFeatureDone(fr.result, finalIndex);
                     future.complete(Boolean.TRUE);
                 });
+
                 this.pendingTasks.submit(fr);
             }
 
@@ -227,19 +230,22 @@ public class KarateReportPortalSuite extends Suite {
                 this.jobManager.server.stop();
             }
 
-            this.hooks.forEach((h) -> h.afterSuite(this));
+            this.hooks.forEach(h -> h.afterSuite(this));
         }
 
     }
 
+    @Override
     public void abort() {
         this.abort.set(true);
     }
 
+    @Override
     public boolean isAborted() {
         return this.abort.get();
     }
 
+    @Override
     public void saveFeatureResults(FeatureResult fr) {
         File file = ReportUtils.saveKarateJson(this.reportDir, fr, null);
         synchronized (this.featureResultFiles) {
@@ -261,12 +267,13 @@ public class KarateReportPortalSuite extends Suite {
         fr.printStats();
     }
 
+
     private void onFeatureDone(FeatureResult fr, int index) {
         reporter.startFeature(fr);
         if (fr.getScenarioCount() > 0) {
             try {
                 this.saveFeatureResults(fr);
-
+                reporter.finishFeature(fr);
                 String status = fr.isFailed() ? "fail" : "pass";
                 logger.info("<<{}>> feature {} of {} ({} remaining) {}", status, index, this.featuresFound, this.getFeaturesRemaining() - 1L, fr.getFeature());
             } catch (Throwable var4) {
@@ -284,17 +291,20 @@ public class KarateReportPortalSuite extends Suite {
             this.saveProgressJson();
             this.progressFileLock.unlock();
         }
-        reporter.finishFeature(fr);
+        //reporter.finishFeature(fr);
     }
 
+    @Override
     public Stream<FeatureResult> getFeatureResults() {
-        return this.featureResultFiles.stream().sorted().map((file) -> FeatureResult.fromKarateJson(this.workingDir, Json.of(FileUtils.toString(file)).asMap()));
+        return this.featureResultFiles.stream().sorted().map(file -> FeatureResult.fromKarateJson(this.workingDir, Json.of(FileUtils.toString(file)).asMap()));
     }
 
+    @Override
     public Stream<ScenarioResult> getScenarioResults() {
-        return this.getFeatureResults().flatMap((fr) -> fr.getScenarioResults().stream());
+        return this.getFeatureResults().flatMap(fr -> fr.getScenarioResults().stream());
     }
 
+    @Override
     public ScenarioResult retryScenario(Scenario scenario) {
         FeatureRuntime fr = FeatureRuntime.of(this, new FeatureCall(scenario.getFeature()));
         ScenarioRuntime runtime = new ScenarioRuntime(fr, scenario);
@@ -302,6 +312,7 @@ public class KarateReportPortalSuite extends Suite {
         return runtime.result;
     }
 
+    @Override
     public Results updateResults(ScenarioResult sr) {
         Scenario scenario = sr.getScenario();
         File file = new File(this.reportDir + File.separator + scenario.getFeature().getKarateJsonFileName());
@@ -346,11 +357,11 @@ public class KarateReportPortalSuite extends Suite {
                 logger.warn("failed to backup existing dir: {}", file);
             }
         }
-
     }
 
+    @Override
     public long getFeaturesRemaining() {
-        return this.futures.stream().filter((f) -> !f.isDone()).count();
+        return this.futures.stream().filter(f -> !f.isDone()).count();
     }
 
     private void saveProgressJson() {
