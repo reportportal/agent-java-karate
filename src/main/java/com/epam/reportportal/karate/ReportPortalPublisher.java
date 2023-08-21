@@ -10,13 +10,16 @@ import com.epam.ta.reportportal.ws.model.launch.StartLaunchRQ;
 import com.epam.ta.reportportal.ws.model.log.SaveLogRQ;
 import com.intuit.karate.core.*;
 import io.reactivex.Maybe;
+import org.apache.commons.lang3.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Calendar;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
@@ -37,6 +40,7 @@ public class ReportPortalPublisher {
     private final Supplier<Launch> launch;
     private final ConcurrentHashMap<String, Maybe<String>> featureIdMap;
     private final ConcurrentHashMap<String, Maybe<String>> scenarioIdMap;
+    private final ConcurrentHashMap<Maybe<String>, AtomicLong> stepStartTimeMap;
     private Maybe<String> stepId;
 
     public ReportPortalPublisher() {
@@ -47,6 +51,7 @@ public class ReportPortalPublisher {
         this.launch = launch;
         this.featureIdMap = new ConcurrentHashMap<>();
         this.scenarioIdMap = new ConcurrentHashMap<>();
+        this.stepStartTimeMap = new ConcurrentHashMap<>();
     }
 
     private static Supplier<Launch> createLaunchSupplier() {
@@ -109,7 +114,14 @@ public class ReportPortalPublisher {
         for (ScenarioResult scenarioResult : featureResult.getScenarioResults()) {
             startScenario(scenarioResult, featureResult);
             List<StepResult> stepResults = scenarioResult.getStepResults();
-            sendStepResults(stepResults);
+
+            for (StepResult stepResult : stepResults) {
+                startStep(stepResult, scenarioResult);
+                sendStepResults(stepResult);
+                finishStep(stepResult);
+            }
+
+            stepStartTimeMap.clear();
             finishScenario(scenarioResult);
         }
 
@@ -141,13 +153,24 @@ public class ReportPortalPublisher {
         launch.get().finishTestItem(removedScenarioId, rq);
     }
 
-    private void startStep(StepResult stepResult) {
+    private void startStep(StepResult stepResult, ScenarioResult scenarioResult) {
         StartTestItemRQ rq = new StartTestItemRQ();
         rq.setName(stepResult.getStep().getPrefix() + " " + stepResult.getStep().getText());
-        rq.setStartTime(Calendar.getInstance().getTime());
+        Date startTime;
+
+        try {
+            startTime = getStepStartTime(stepResult);
+        } catch (NotImplementedException e) {
+            LOGGER.warn(e.getMessage());
+            LOGGER.info("Step startTime from Karate is not provided. Applying workaround...");
+            startTime = getStepStartTime(stepStartTimeMap, stepId);
+        }
+
+        rq.setStartTime(startTime);
         rq.setType("STEP");
         rq.setHasStats(false);
-        stepId = launch.get().getStepReporter().startNestedStep(rq);
+        stepId = launch.get().startTestItem(scenarioIdMap.get(scenarioResult.getScenario().getName()), rq);
+        stepStartTimeMap.put(stepId, new AtomicLong(rq.getStartTime().getTime()));
     }
 
     private void finishStep(StepResult stepResult) {
@@ -159,28 +182,22 @@ public class ReportPortalPublisher {
         FinishTestItemRQ rq = new FinishTestItemRQ();
         rq.setEndTime(Calendar.getInstance().getTime());
         rq.setStatus(getStepStatus(stepResult.getResult().getStatus()));
-        launch.get().getStepReporter().finishNestedStep(rq);
-        stepId = null;
+        launch.get().finishTestItem(stepId, rq);
     }
 
-    private void sendStepResults(List<StepResult> stepResults) {
-        for (StepResult stepResult : stepResults) {
-            startStep(stepResult);
-            Result result = stepResult.getResult();
-            String logLevel = getLogLevel(result.getStatus());
-            Step step = stepResult.getStep();
+    private void sendStepResults(StepResult stepResult) {
+        Result result = stepResult.getResult();
+        String logLevel = getLogLevel(result.getStatus());
+        Step step = stepResult.getStep();
 
-            if (step.getDocString() != null) {
-                sendLog("\n-----------------DOC_STRING-----------------\n" + step.getDocString(), logLevel);
-            }
+        if (step.getDocString() != null) {
+            sendLog("\n-----------------DOC_STRING-----------------\n" + step.getDocString(), logLevel);
+        }
 
-            if (stepResult.getStepLog() != null
-                    && !stepResult.getStepLog().isEmpty()
-                    && !stepResult.getStepLog().equals(" ")) {
-                sendLog(stepResult.getStepLog(), logLevel);
-            }
-
-            finishStep(stepResult);
+        if (stepResult.getStepLog() != null
+                && !stepResult.getStepLog().isEmpty()
+                && !stepResult.getStepLog().equals(" ")) {
+            sendLog(stepResult.getStepLog(), logLevel);
         }
     }
 
@@ -226,5 +243,39 @@ public class ReportPortalPublisher {
             default:
                 return INFO_LOG_LEVEL;
         }
+    }
+
+    /**
+     * Get step start time to keep the steps order
+     * in case previous step startTime == current step startTime or previous step startTime > current step startTime.
+     * @param stepStartTimeMap  ConcurrentHashMap of steps within a scenario.
+     * @param stepId step ID.
+     * @return step new startTime in Date format.
+     */
+    private Date getStepStartTime(ConcurrentHashMap<Maybe<String>, AtomicLong> stepStartTimeMap, Maybe<String> stepId) {
+        long currentStepStartTime = Calendar.getInstance().getTime().getTime();
+
+        if (!stepStartTimeMap.keySet().isEmpty()) {
+            long lastStepStartTime = stepStartTimeMap.get(stepId).get();
+
+            if (lastStepStartTime >= currentStepStartTime) {
+                currentStepStartTime += (lastStepStartTime - currentStepStartTime) + 1;
+            }
+        }
+
+        return new Date(currentStepStartTime);
+    }
+
+    /**
+     * Get step start time from Karate
+     * IMPORTANT: Implement getting step startTime from Karate v1.4.1. E.g. return new Date(stepResult.getStartTime());
+     * Will be fixed in <a href="https://github.com/karatelabs/karate/issues/2383">Karate 1.4.1</a>
+     * @param stepResult StepResult object
+     * @return step startTime provided by Karate in Date format.
+     */
+
+    @SuppressWarnings("unused")
+    private Date getStepStartTime(StepResult stepResult) {
+        throw new NotImplementedException("TODO: Implement getting step startTime from Karate v1.4.1. E.g. return new Date(stepResult.getStartTime());");
     }
 }
