@@ -19,7 +19,6 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
@@ -40,7 +39,7 @@ public class ReportPortalPublisher {
     private final Supplier<Launch> launch;
     private final ConcurrentHashMap<String, Maybe<String>> featureIdMap;
     private final ConcurrentHashMap<String, Maybe<String>> scenarioIdMap;
-    private final ConcurrentHashMap<Maybe<String>, AtomicLong> stepStartTimeMap;
+    private final ConcurrentHashMap<Maybe<String>, Long> stepStartTimeMap;
     private Maybe<String> stepId;
 
     public ReportPortalPublisher() {
@@ -161,8 +160,6 @@ public class ReportPortalPublisher {
         try {
             startTime = getStepStartTime(stepResult);
         } catch (NotImplementedException e) {
-            LOGGER.warn(e.getMessage());
-            LOGGER.info("Step startTime from Karate is not provided. Applying workaround...");
             startTime = getStepStartTime(stepStartTimeMap, stepId);
         }
 
@@ -170,7 +167,7 @@ public class ReportPortalPublisher {
         rq.setType("STEP");
         rq.setHasStats(false);
         stepId = launch.get().startTestItem(scenarioIdMap.get(scenarioResult.getScenario().getName()), rq);
-        stepStartTimeMap.put(stepId, new AtomicLong(rq.getStartTime().getTime()));
+        stepStartTimeMap.put(stepId, rq.getStartTime().getTime());
     }
 
     private void finishStep(StepResult stepResult) {
@@ -252,11 +249,11 @@ public class ReportPortalPublisher {
      * @param stepId step ID.
      * @return step new startTime in Date format.
      */
-    private Date getStepStartTime(ConcurrentHashMap<Maybe<String>, AtomicLong> stepStartTimeMap, Maybe<String> stepId) {
+    private Date getStepStartTime(ConcurrentHashMap<Maybe<String>, Long> stepStartTimeMap, Maybe<String> stepId) {
         long currentStepStartTime = Calendar.getInstance().getTime().getTime();
 
         if (!stepStartTimeMap.keySet().isEmpty()) {
-            long lastStepStartTime = stepStartTimeMap.get(stepId).get();
+            long lastStepStartTime = stepStartTimeMap.get(stepId);
 
             if (lastStepStartTime >= currentStepStartTime) {
                 currentStepStartTime += (lastStepStartTime - currentStepStartTime) + 1;
