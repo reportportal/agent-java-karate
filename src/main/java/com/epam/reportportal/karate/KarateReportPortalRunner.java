@@ -258,12 +258,6 @@ public class KarateReportPortalRunner {
         }
 
         @Override
-        protected T forTempUse() {
-            this.forTempUse = true;
-            return (T) this;
-        }
-
-        @Override
         public T configDir(String dir) {
             this.configDir = dir;
             return (T) this;
@@ -491,7 +485,7 @@ public class KarateReportPortalRunner {
         @Override
         public Results jobManager(JobConfig value) {
             this.jobConfig = value;
-            KarateReportPortalSuite suite = new KarateReportPortalSuite(this, reporter);
+            KarateReportPortalSuite suite = new KarateReportPortalSuite(this);
             suite.run();
             return suite.buildResults();
         }
@@ -500,7 +494,7 @@ public class KarateReportPortalRunner {
         public Results parallel(int threadCount) {
             reporter.startLaunch();
             this.threads(threadCount);
-            KarateReportPortalSuite suite = new KarateReportPortalSuite(this, reporter);
+            KarateReportPortalSuite suite = new KarateReportPortalSuite(this);
             suite.run();
             Results results = suite.buildResults();
             reporter.finishLaunch();

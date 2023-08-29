@@ -10,7 +10,6 @@ import com.epam.ta.reportportal.ws.model.launch.StartLaunchRQ;
 import com.epam.ta.reportportal.ws.model.log.SaveLogRQ;
 import com.intuit.karate.core.*;
 import io.reactivex.Maybe;
-import org.apache.commons.lang3.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -155,14 +154,7 @@ public class ReportPortalPublisher {
     private void startStep(StepResult stepResult, ScenarioResult scenarioResult) {
         StartTestItemRQ rq = new StartTestItemRQ();
         rq.setName(stepResult.getStep().getPrefix() + " " + stepResult.getStep().getText());
-        Date startTime;
-
-        try {
-            startTime = getStepStartTime(stepResult);
-        } catch (NotImplementedException e) {
-            startTime = getStepStartTime(stepStartTimeMap, stepId);
-        }
-
+        Date startTime = getStepStartTime(stepStartTimeMap, stepId);
         rq.setStartTime(startTime);
         rq.setType("STEP");
         rq.setHasStats(false);
@@ -261,18 +253,5 @@ public class ReportPortalPublisher {
         }
 
         return new Date(currentStepStartTime);
-    }
-
-    /**
-     * Get step start time from Karate
-     * IMPORTANT: Implement getting step startTime from Karate v1.4.1. E.g. return new Date(stepResult.getStartTime());
-     * Will be fixed in <a href="https://github.com/karatelabs/karate/issues/2383">Karate 1.4.1</a>
-     * @param stepResult StepResult object
-     * @return step startTime provided by Karate in Date format.
-     */
-
-    @SuppressWarnings("unused")
-    private Date getStepStartTime(StepResult stepResult) {
-        throw new NotImplementedException("TODO: Implement getting step startTime from Karate v1.4.1. E.g. return new Date(stepResult.getStartTime());");
     }
 }
