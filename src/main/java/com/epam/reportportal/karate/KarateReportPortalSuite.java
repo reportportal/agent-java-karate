@@ -77,18 +77,18 @@ public class KarateReportPortalSuite extends Suite {
     }
 
     @SuppressWarnings("unused")
-    public static KarateReportPortalSuite forTempUse(HttpClientFactory hcf, ReportPortalPublisher reporter) {
-        return new KarateReportPortalSuite(KarateReportPortalRunner.builder().clientFactory(hcf).forTempUse(), reporter);
+    public static KarateReportPortalSuite forTempUse(HttpClientFactory hcf) {
+        return new KarateReportPortalSuite(KarateReportPortalRunner.builder().clientFactory(hcf).forTempUse());
     }
 
     @SuppressWarnings("unused")
     public KarateReportPortalSuite(ReportPortalPublisher reporter) {
-        this(KarateReportPortalRunner.builder(), reporter);
+        this(KarateReportPortalRunner.builder());
     }
 
-    public KarateReportPortalSuite(KarateReportPortalRunner.Builder<?> rb, ReportPortalPublisher reporter) {
+    public KarateReportPortalSuite(KarateReportPortalRunner.Builder<?> rb) {
         this.abort = new AtomicBoolean(false);
-        this.reporter = reporter;
+        this.reporter = rb.reporter;
         if (rb.forTempUse) {
             this.dryRun = false;
             this.debugMode = false;
@@ -266,7 +266,6 @@ public class KarateReportPortalSuite extends Suite {
 
         fr.printStats();
     }
-
 
     private void onFeatureDone(FeatureResult fr, int index) {
         reporter.startFeature(fr);
