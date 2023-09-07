@@ -8,7 +8,6 @@ import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.intuit.karate.core.FeatureResult;
 import io.reactivex.Maybe;
-import lombok.SneakyThrows;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,8 +54,7 @@ public class ReportPortalPublisherTest {
 
     @SuppressWarnings("unchecked")
     @Test
-    @SneakyThrows
-    public void shouldFinishFeature() {
+    public void shouldFinishFeature() throws NoSuchFieldException {
         FeatureResult featureResult = mock(FeatureResult.class);
         when(featureResult.getCallNameForReport()).thenReturn("featureName");
         ConcurrentHashMap<String, Maybe<String>> featureIdMap = new ConcurrentHashMap<>();
