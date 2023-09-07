@@ -44,7 +44,6 @@ dependencies {
     annotationProcessor "org.projectlombok:lombok:${project.lombok_version}"
     testCompileOnly "org.projectlombok:lombok:${project.lombok_version}"
     testAnnotationProcessor "org.projectlombok:lombok:${project.lombok_version}"
-
 }
 
 tasks.withType(Test) {
