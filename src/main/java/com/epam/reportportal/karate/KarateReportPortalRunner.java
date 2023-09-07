@@ -3,6 +3,7 @@ package com.epam.reportportal.karate;
 
 import com.intuit.karate.*;
 import com.intuit.karate.core.*;
+
 import java.util.*;
 import java.util.stream.Collectors;
 
