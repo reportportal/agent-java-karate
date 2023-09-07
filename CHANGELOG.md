@@ -1,6 +1,16 @@
 # Changelog
 
 ## [Unreleased]
+- Take items' startTime and endTime from Karate.
+
+## [1.0.6]
+### Changed
+- Refactored and cleaned up code
+### Removed
+- lombok dependency
+### Fixed
+- Parallel executions
+
 
 ## [1.0.5]
 ### Added
