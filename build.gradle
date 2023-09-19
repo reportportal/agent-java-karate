@@ -1,0 +1,83 @@
+/*
+ * Copyright 2023 EPAM Systems
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+apply plugin: 'java-library'
+apply plugin: 'maven-publish'
+
+// Blocking issue for gradle version >=7.0:https://github.com/reportportal/gradle-scripts/issues/37
+//apply from: "${project.scripts_url}/${project.scripts_branch}/release-commons.gradle"
+//apply from: "${project.scripts_url}/${project.scripts_branch}/build-quality.gradle"
+//apply from: "${project.scripts_url}/${project.scripts_branch}/signing.gradle"
+
+
+sourceCompatibility = JavaVersion.VERSION_11
+targetCompatibility = JavaVersion.VERSION_11
+compileJava.options.encoding = 'UTF-8'
+compileTestJava.options.encoding = 'UTF-8'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    api "com.epam.reportportal:client-java:${project.reportportal_client_java_version}"
+    api "com.epam.reportportal:logger-java-logback:${project.reportportal_logback_version}"
+    api "com.intuit.karate:karate-core:${project.karate_version}"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:${project.junit_version}"
+    testImplementation "org.junit.jupiter:junit-jupiter-engine:${project.junit_version}"
+    testImplementation "org.mockito:mockito-core:${project.mockito_version}"
+    testImplementation "org.mockito:mockito-junit-jupiter:${project.mockito_version}"
+}
+
+tasks.withType(Test) {
+    jvmArgs += ['--add-opens', 'java.base/java.lang=ALL-UNNAMED',
+                '--add-opens', 'java.base/java.lang.reflect=ALL-UNNAMED',
+                '--add-opens', 'java.base/java.util=ALL-UNNAMED',
+                '--add-opens', 'java.base/java.util.concurrent=ALL-UNNAMED']
+}
+
+test {
+    outputs.upToDateWhen { return false }
+    maxParallelForks(5)
+    useJUnitPlatform()
+    doFirst {
+        def weaver = configurations.testRuntimeClasspath.find { it.name.contains("aspectjweaver") }
+        jvmArgs += "-javaagent:$weaver"
+    }
+    environment "AGENT_NO_ANALYTICS", "1"
+    testLogging {
+        events "failed"
+        exceptionFormat "full"
+    }
+}
+
+wrapper {
+    gradleVersion = "${project.gradle_version}"
+}
+
+processResources {
+    filesMatching('agent.properties') {
+        expand(project.properties)
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+}
