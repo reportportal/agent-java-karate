@@ -15,16 +15,24 @@
  */
 
 apply plugin: 'java-library'
-apply plugin: 'maven-publish'
 
-// Blocking issue for gradle version >=7.0:https://github.com/reportportal/gradle-scripts/issues/37
-//apply from: "${project.scripts_url}/${project.scripts_branch}/release-commons.gradle"
-//apply from: "${project.scripts_url}/${project.scripts_branch}/build-quality.gradle"
-//apply from: "${project.scripts_url}/${project.scripts_branch}/signing.gradle"
+apply from: 'build-quality.gradle'
+apply from: "${project.scripts_url}/${project.scripts_branch}/release-commons.gradle"
+apply from: "${project.scripts_url}/${project.scripts_branch}/signing.gradle"
+apply from: "${project.scripts_url}/${project.scripts_branch}/jacoco.gradle"
 
+project.ext.limits = [
+        'instruction': 70,
+        'branch'     : 53,
+        'line'       : 75,
+        'complexity' : 60,
+        'method'     : 65,
+        'class'      : 83
+]
 
 sourceCompatibility = JavaVersion.VERSION_11
 targetCompatibility = JavaVersion.VERSION_11
+
 compileJava.options.encoding = 'UTF-8'
 compileTestJava.options.encoding = 'UTF-8'
 
@@ -42,13 +50,6 @@ dependencies {
     testImplementation "org.mockito:mockito-junit-jupiter:${project.mockito_version}"
 }
 
-tasks.withType(Test) {
-    jvmArgs += ['--add-opens', 'java.base/java.lang=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.lang.reflect=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.util=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.util.concurrent=ALL-UNNAMED']
-}
-
 test {
     outputs.upToDateWhen { return false }
     maxParallelForks(5)
@@ -56,6 +57,10 @@ test {
     doFirst {
         def weaver = configurations.testRuntimeClasspath.find { it.name.contains("aspectjweaver") }
         jvmArgs += "-javaagent:$weaver"
+        jvmArgs += ['--add-opens', 'java.base/java.lang=ALL-UNNAMED',
+                    '--add-opens', 'java.base/java.lang.reflect=ALL-UNNAMED',
+                    '--add-opens', 'java.base/java.util=ALL-UNNAMED',
+                    '--add-opens', 'java.base/java.util.concurrent=ALL-UNNAMED']
     }
     environment "AGENT_NO_ANALYTICS", "1"
     testLogging {
@@ -74,10 +79,4 @@ processResources {
     }
 }
 
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            from components.java
-        }
-    }
-}
+build.dependsOn jacocoTestReport
