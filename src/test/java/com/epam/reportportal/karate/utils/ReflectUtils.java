@@ -1,4 +1,4 @@
-package com.epam.reportportal.utils;
+package com.epam.reportportal.karate.utils;
 
 import java.lang.reflect.Field;
 

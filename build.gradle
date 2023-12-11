@@ -48,6 +48,7 @@ dependencies {
     testImplementation "org.junit.jupiter:junit-jupiter-engine:${project.junit_version}"
     testImplementation "org.mockito:mockito-core:${project.mockito_version}"
     testImplementation "org.mockito:mockito-junit-jupiter:${project.mockito_version}"
+    testImplementation 'org.hamcrest:hamcrest-core:2.2'
 }
 
 test {

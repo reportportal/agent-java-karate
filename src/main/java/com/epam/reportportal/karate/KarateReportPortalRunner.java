@@ -7,7 +7,7 @@ import com.intuit.karate.core.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class KarateReportPortalRunner extends Suite {
+public class KarateReportPortalRunner {
 
     public static <T extends Builder<T>> Builder<T> path(String... paths) {
         Builder<T> builder = new Builder<>();
