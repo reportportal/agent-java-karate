@@ -26,6 +26,7 @@ hs_err_pid*
 .gradle/
 build/
 test-output/
+target/
 
 # IntelliJ Idea files
 .idea/

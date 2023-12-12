@@ -1,35 +1,42 @@
-
 package com.epam.reportportal.karate;
 
-import com.intuit.karate.*;
-import com.intuit.karate.core.*;
-
-import java.util.*;
-import java.util.stream.Collectors;
+import com.epam.reportportal.service.ReportPortal;
+import com.intuit.karate.Results;
+import com.intuit.karate.Runner;
 
 public class KarateReportPortalRunner {
 
-    public static <T extends Builder<T>> Builder<T> path(String... paths) {
-        Builder<T> builder = new Builder<>();
-        return builder.path(paths);
-    }
+	public static <T extends Builder<T>> Builder<T> path(String... paths) {
+		Builder<T> builder = new Builder<>();
+		return builder.path(paths);
+	}
 
-    public static class Builder<T extends Builder<T>> extends Runner.Builder<T> {
-        ReportPortalPublisher reporter = new ReportPortalPublisher();
+	public static class Builder<T extends Builder<T>> extends Runner.Builder<T> {
+		private ReportPortal rp;
 
-        public Builder() {
-            super();
-        }
+		public Builder() {
+			super();
+		}
 
-        @Override
-        public Results parallel(int threadCount) {
-            reporter.startLaunch();
-            Results results = super.parallel(threadCount);
-            List<FeatureResult> featureResults = results.getFeatureResults().collect(Collectors.toList());
-            featureResults.forEach(f -> reporter.startFeature(f));
-            featureResults.forEach(f -> reporter.finishFeature(f));
-            reporter.finishLaunch();
-            return results;
-        }
-    }
+		public Builder<T> withReportPortal(ReportPortal reportPortal) {
+			rp = reportPortal;
+			return this;
+		}
+
+		@Override
+		public Results parallel(int threadCount) {
+			if (rp == null) {
+				rp = ReportPortal.builder().build();
+			}
+			ReportPortalPublisher reporter = new ReportPortalPublisher(rp);
+			reporter.startLaunch();
+			Results results = super.parallel(threadCount);
+			results.getFeatureResults().forEach(f -> {
+				reporter.startFeature(f);
+				reporter.finishFeature(f);
+			});
+			reporter.finishLaunch();
+			return results;
+		}
+	}
 }

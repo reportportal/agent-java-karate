@@ -1,4 +1,5 @@
 Feature: Quote generator
+
   @To_run
   Scenario: Fetch random quote 1
     Given url 'http://jsonplaceholder.typicode.com/posts'

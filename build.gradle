@@ -46,6 +46,7 @@ dependencies {
     implementation 'org.slf4j:slf4j-api:2.0.7'
 
     testImplementation 'com.epam.reportportal:logger-java-logback:5.1.6'
+    testImplementation 'com.epam.reportportal:agent-java-test-utils:0.0.2'
     testImplementation "org.junit.jupiter:junit-jupiter-api:${project.junit_version}"
     testImplementation "org.junit.jupiter:junit-jupiter-engine:${project.junit_version}"
     testImplementation "org.mockito:mockito-core:${project.mockito_version}"
