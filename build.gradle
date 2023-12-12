@@ -56,7 +56,6 @@ dependencies {
 
 test {
     outputs.upToDateWhen { return false }
-    maxParallelForks(5)
     useJUnitPlatform()
     doFirst {
         def weaver = configurations.testRuntimeClasspath.find { it.name.contains("aspectjweaver") }
