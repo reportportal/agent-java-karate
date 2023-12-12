@@ -26,7 +26,7 @@ public class ScenarioCodeRefTest {
 	private final String scenarioId = CommonUtils.namedId("scenario_");
 	private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_")).limit(3).collect(Collectors.toList());
 
-	private static final String SIMPLE_CODE_REFERENCE = "feature/simple.feature/[SCENARIO:Verify response code]";
+	private static final String SIMPLE_CODE_REFERENCE = "feature/simple.feature/[SCENARIO:Verify math]";
 
 	private final ReportPortalClient client = mock(ReportPortalClient.class);
 	private final ReportPortal rp = ReportPortal.create(client, standardParameters(), testExecutor());

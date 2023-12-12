@@ -2,6 +2,7 @@ package com.epam.reportportal.karate;
 
 import com.epam.reportportal.karate.enums.ItemLogLevelEnum;
 import com.epam.reportportal.karate.enums.ItemStatusEnum;
+import com.epam.reportportal.listeners.ItemType;
 import com.epam.reportportal.listeners.ListenerParameters;
 import com.epam.reportportal.service.Launch;
 import com.epam.reportportal.service.ReportPortal;
@@ -28,6 +29,8 @@ import static com.google.common.base.Strings.isNullOrEmpty;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 public class ReportPortalPublisher {
+	public static final String SCENARIO_CODE_REFERENCE_PATTERN = "%s/[SCENARIO:%s]";
+
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalPublisher.class);
 	private final ConcurrentHashMap<String, Maybe<String>> featureIdMap = new ConcurrentHashMap<>();
 	private final ConcurrentHashMap<String, Maybe<String>> scenarioIdMap = new ConcurrentHashMap<>();
@@ -91,6 +94,7 @@ public class ReportPortalPublisher {
 	 * Starts launch instance
 	 */
 	public void startLaunch() {
+		//noinspection ReactiveStreamsUnusedPublisher
 		launch.get().start();
 	}
 
@@ -101,10 +105,19 @@ public class ReportPortalPublisher {
 		FinishExecutionRQ rq = new FinishExecutionRQ();
 		rq.setEndTime(Calendar.getInstance().getTime());
 		ListenerParameters parameters = launch.get().getParameters();
-		LOGGER.info("LAUNCH URL: {}/ui/#{}/launches/all/{}", parameters.getBaseUrl(), parameters.getProjectName(),
+		LOGGER.info("Launch URL: {}/ui/#{}/launches/all/{}", parameters.getBaseUrl(), parameters.getProjectName(),
 				System.getProperty("rp.launch.id"));
 		launch.get().finish(rq);
 		Runtime.getRuntime().removeShutdownHook(shutDownHook);
+	}
+
+	protected String getCodeRef(Scenario scenario) {
+		if(scenario.getExampleIndex() < 0) {
+			return String.format(SCENARIO_CODE_REFERENCE_PATTERN, scenario.getFeature().getResource().getRelativePath(),
+					scenario.getName());
+		} else {
+			return null;
+		}
 	}
 
 	/**
@@ -115,13 +128,12 @@ public class ReportPortalPublisher {
 	 * @param type      item's type (e.g. feature, scenario, step, etc.)
 	 * @return request to ReportPortal
 	 */
-	protected StartTestItemRQ buildStartTestItemRq(@Nonnull String name,
-	                                               @Nonnull Date startTime,
-	                                               @Nonnull String type) {
+	protected StartTestItemRQ buildStartTestItemRq(@Nonnull String name, @Nonnull Date startTime,
+	                                               @Nonnull ItemType type) {
 		StartTestItemRQ rq = new StartTestItemRQ();
 		rq.setName(name);
 		rq.setStartTime(startTime);
-		rq.setType(type);
+		rq.setType(type.name());
 		return rq;
 	}
 
@@ -135,12 +147,24 @@ public class ReportPortalPublisher {
 	 * @return request to ReportPortal
 	 */
 	@SuppressWarnings("SameParameterValue")
-	protected StartTestItemRQ buildStartTestItemRq(@Nonnull String name,
-	                                               @Nonnull Date startTime,
-	                                               @Nonnull String type,
-	                                               boolean hasStats) {
+	protected StartTestItemRQ buildStartTestItemRq(@Nonnull String name, @Nonnull Date startTime,
+	                                               @Nonnull ItemType type, boolean hasStats) {
 		StartTestItemRQ rq = buildStartTestItemRq(name, startTime, type);
 		rq.setHasStats(hasStats);
+		return rq;
+	}
+
+	/**
+	 * Build ReportPortal request for start Scenario event
+	 *
+	 * @param scenarioResult Karate's ScenarioResult instance
+	 * @return request to ReportPortal
+	 */
+	protected StartTestItemRQ buildStartScenarioRq(@Nonnull ScenarioResult scenarioResult) {
+		StartTestItemRQ rq = buildStartTestItemRq(scenarioResult.getScenario().getName(),
+				Calendar.getInstance().getTime(),
+				ItemType.STEP);
+		rq.setCodeRef(getCodeRef(scenarioResult.getScenario()));
 		return rq;
 	}
 
@@ -167,7 +191,7 @@ public class ReportPortalPublisher {
 	public void startFeature(FeatureResult featureResult) {
 		StartTestItemRQ rq = buildStartTestItemRq(String.valueOf(featureResult.toCucumberJson().get("name")),
 				Calendar.getInstance().getTime(),
-				"STORY");
+				ItemType.STORY);
 		Maybe<String> featureId = launch.get().startTestItem(rq);
 		featureIdMap.put(featureResult.getCallNameForReport(), featureId);
 	}
@@ -198,6 +222,7 @@ public class ReportPortalPublisher {
 
 		FinishTestItemRQ rq = buildFinishTestItemRq(Calendar.getInstance().getTime(),
 				featureResult.isFailed() ? ItemStatusEnum.FAILED.toString() : ItemStatusEnum.PASSED.toString());
+		//noinspection ReactiveStreamsUnusedPublisher
 		launch.get().finishTestItem(featureIdMap.remove(featureResult.getCallNameForReport()), rq);
 	}
 
@@ -208,9 +233,8 @@ public class ReportPortalPublisher {
 	 * @param featureResult  feature result
 	 */
 	public void startScenario(ScenarioResult scenarioResult, FeatureResult featureResult) {
-		StartTestItemRQ rq = buildStartTestItemRq(scenarioResult.getScenario().getName(),
-				Calendar.getInstance().getTime(),
-				"STEP");
+		StartTestItemRQ rq = buildStartScenarioRq(scenarioResult);
+
 		Maybe<String> scenarioId = launch.get().startTestItem(featureIdMap.get(featureResult.getCallNameForReport()), rq);
 		scenarioIdMap.put(scenarioResult.getScenario().getName(), scenarioId);
 	}
@@ -228,6 +252,7 @@ public class ReportPortalPublisher {
 		FinishTestItemRQ rq = buildFinishTestItemRq(Calendar.getInstance().getTime(),
 				scenarioResult.getFailureMessageForDisplay() == null ? ItemStatusEnum.PASSED.toString() : ItemStatusEnum.FAILED.toString());
 		Maybe<String> removedScenarioId = scenarioIdMap.remove(scenarioResult.getScenario().getName());
+		//noinspection ReactiveStreamsUnusedPublisher
 		launch.get().finishTestItem(removedScenarioId, rq);
 	}
 
@@ -239,7 +264,7 @@ public class ReportPortalPublisher {
 	 */
 	public void startStep(StepResult stepResult, ScenarioResult scenarioResult) {
 		String stepName = stepResult.getStep().getPrefix() + " " + stepResult.getStep().getText();
-		StartTestItemRQ rq = buildStartTestItemRq(stepName, getStepStartTime(stepStartTimeMap, stepId), "STEP", false);
+		StartTestItemRQ rq = buildStartTestItemRq(stepName, getStepStartTime(stepStartTimeMap, stepId), ItemType.STEP, false);
 		stepId = launch.get().startTestItem(scenarioIdMap.get(scenarioResult.getScenario().getName()), rq);
 		stepStartTimeMap.put(stepId, rq.getStartTime().getTime());
 	}
@@ -257,6 +282,7 @@ public class ReportPortalPublisher {
 
 		FinishTestItemRQ rq = buildFinishTestItemRq(Calendar.getInstance().getTime(),
 				getStepStatus(stepResult.getResult().getStatus()));
+		//noinspection ReactiveStreamsUnusedPublisher
 		launch.get().finishTestItem(stepId, rq);
 	}
 
