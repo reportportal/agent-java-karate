@@ -11,7 +11,7 @@ class KarateTest {
 	void testParallel() {
 		Results results = KarateReportPortalRunner
 				.path("classpath:feature")
-				.outputCucumberJson(true)
+				.outputCucumberJson(false)
 				.tags("~@ignore", "@To_run")
 				.parallel(2);
 		assertEquals(0, results.getFailCount());
