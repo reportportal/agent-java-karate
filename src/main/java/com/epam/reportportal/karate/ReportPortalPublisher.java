@@ -30,6 +30,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 public class ReportPortalPublisher {
 	public static final String SCENARIO_CODE_REFERENCE_PATTERN = "%s/[SCENARIO:%s]";
+	public static final String EXAMPLE_CODE_REFERENCE_PATTERN = "%s/[EXAMPLE:%s%s]";
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalPublisher.class);
 	private final ConcurrentHashMap<String, Maybe<String>> featureIdMap = new ConcurrentHashMap<>();
@@ -116,7 +117,8 @@ public class ReportPortalPublisher {
 			return String.format(SCENARIO_CODE_REFERENCE_PATTERN, scenario.getFeature().getResource().getRelativePath(),
 					scenario.getName());
 		} else {
-			return null;
+			return String.format(EXAMPLE_CODE_REFERENCE_PATTERN, scenario.getFeature().getResource().getRelativePath(),
+					scenario.getName(), KarateUtils.formatExampleKey(scenario.getExampleData()));
 		}
 	}
 

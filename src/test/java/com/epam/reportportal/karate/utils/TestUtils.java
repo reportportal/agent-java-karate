@@ -60,51 +60,51 @@ public class TestUtils {
 	}
 
 	public static void mockLaunch(@Nonnull final ReportPortalClient client, @Nullable final String launchUuid,
-	                              @Nullable final String storyUuid, @Nonnull String testClassUuid,
+	                              @Nullable final String featureUuid, @Nonnull String scenarioUuid,
 	                              @Nonnull String stepUuid) {
-		mockLaunch(client, launchUuid, storyUuid, testClassUuid, Collections.singleton(stepUuid));
+		mockLaunch(client, launchUuid, featureUuid, scenarioUuid, Collections.singleton(stepUuid));
 	}
 
 	public static void mockLaunch(@Nonnull final ReportPortalClient client, @Nullable final String launchUuid,
-	                              @Nullable final String storyUuid, @Nonnull String testClassUuid,
+	                              @Nullable final String featureUuid, @Nonnull String scenarioUuid,
 	                              @Nonnull Collection<String> stepList) {
-		mockLaunch(client, launchUuid, storyUuid, Collections.singletonList(Pair.of(testClassUuid, stepList)));
+		mockLaunch(client, launchUuid, featureUuid, Collections.singletonList(Pair.of(scenarioUuid, stepList)));
 	}
 
 	public static <T extends Collection<String>> void mockLaunch(
 			@Nonnull final ReportPortalClient client, @Nullable final String launchUuid,
-			@Nullable final String storyUuid, @Nonnull final Collection<Pair<String, T>> testSteps) {
+			@Nullable final String featureUuid, @Nonnull final Collection<Pair<String, T>> scenarioSteps) {
 		String launch = ofNullable(launchUuid).orElse(CommonUtils.namedId("launch_"));
 		when(client.startLaunch(any())).thenReturn(Maybe.just(new StartLaunchRS(launch, 1L)));
 		when(client.finishLaunch(eq(launch), any())).thenReturn(Maybe.just(new OperationCompletionRS()));
 
-		mockFeature(client, storyUuid, testSteps);
+		mockFeature(client, featureUuid, scenarioSteps);
 	}
 
 	public static <T extends Collection<String>> void mockFeature(
-			@Nonnull final ReportPortalClient client, @Nullable final String storyUuid,
-			@Nonnull final Collection<Pair<String, T>> testSteps) {
-		String rootItemId = ofNullable(storyUuid).orElseGet(() -> CommonUtils.namedId(ROOT_SUITE_PREFIX));
-		mockFeatures(client, Collections.singletonList(Pair.of(rootItemId, testSteps)));
+			@Nonnull final ReportPortalClient client, @Nullable final String featureUuid,
+			@Nonnull final Collection<Pair<String, T>> scenarioSteps) {
+		String rootItemId = ofNullable(featureUuid).orElseGet(() -> CommonUtils.namedId(ROOT_SUITE_PREFIX));
+		mockFeatures(client, Collections.singletonList(Pair.of(rootItemId, scenarioSteps)));
 	}
 
 	@SuppressWarnings("unchecked")
 	public static <T extends Collection<String>> void mockFeatures(
 			@Nonnull final ReportPortalClient client,
-			@Nonnull final List<Pair<String, Collection<Pair<String, T>>>> stories) {
-		if (stories.isEmpty()) {
+			@Nonnull final List<Pair<String, Collection<Pair<String, T>>>> features) {
+		if (features.isEmpty()) {
 			return;
 		}
-		String firstStory = stories.get(0).getKey();
-		Maybe<ItemCreatedRS> first = Maybe.just(new ItemCreatedRS(firstStory, firstStory));
-		Maybe<ItemCreatedRS>[] other = (Maybe<ItemCreatedRS>[]) stories.subList(1, stories.size())
+		String firstFeature = features.get(0).getKey();
+		Maybe<ItemCreatedRS> first = Maybe.just(new ItemCreatedRS(firstFeature, firstFeature));
+		Maybe<ItemCreatedRS>[] other = (Maybe<ItemCreatedRS>[]) features.subList(1, features.size())
 				.stream()
 				.map(Pair::getKey)
 				.map(s -> Maybe.just(new ItemCreatedRS(s, s)))
 				.toArray(Maybe[]::new);
 		when(client.startTestItem(any())).thenReturn(first, other);
 
-		stories.forEach(i -> {
+		features.forEach(i -> {
 			Maybe<OperationCompletionRS> rootFinishMaybe = Maybe.just(new OperationCompletionRS());
 			when(client.finishTestItem(same(i.getKey()), any())).thenReturn(rootFinishMaybe);
 			mockScenario(client, i.getKey(), i.getValue());
@@ -113,28 +113,28 @@ public class TestUtils {
 
 	@SuppressWarnings("unchecked")
 	public static <T extends Collection<String>> void mockScenario(
-			@Nonnull final ReportPortalClient client, @Nonnull final String storyUuid,
-			@Nonnull final Collection<Pair<String, T>> testSteps) {
-		List<Maybe<ItemCreatedRS>> testResponses = testSteps.stream()
+			@Nonnull final ReportPortalClient client, @Nonnull final String featureUuid,
+			@Nonnull final Collection<Pair<String, T>> scenarioSteps) {
+		List<Maybe<ItemCreatedRS>> testResponses = scenarioSteps.stream()
 				.map(Pair::getKey)
 				.map(uuid -> Maybe.just(new ItemCreatedRS(uuid, uuid)))
 				.collect(Collectors.toList());
 
 		Maybe<ItemCreatedRS> first = testResponses.get(0);
 		Maybe<ItemCreatedRS>[] other = testResponses.subList(1, testResponses.size()).toArray(new Maybe[0]);
-		when(client.startTestItem(same(storyUuid), any())).thenReturn(first, other);
+		when(client.startTestItem(same(featureUuid), any())).thenReturn(first, other);
 
-		testSteps.forEach(test -> {
-			String testClassUuid = test.getKey();
+		scenarioSteps.forEach(test -> {
+			String scenarioUuid = test.getKey();
 			List<Maybe<ItemCreatedRS>> stepResponses = test.getValue()
 					.stream()
 					.map(uuid -> Maybe.just(new ItemCreatedRS(uuid, uuid)))
 					.collect(Collectors.toList());
-			when(client.finishTestItem(same(testClassUuid), any())).thenReturn(Maybe.just(new OperationCompletionRS()));
+			when(client.finishTestItem(same(scenarioUuid), any())).thenReturn(Maybe.just(new OperationCompletionRS()));
 			if (!stepResponses.isEmpty()) {
 				Maybe<ItemCreatedRS> myFirst = stepResponses.get(0);
 				Maybe<ItemCreatedRS>[] myOther = stepResponses.subList(1, stepResponses.size()).toArray(new Maybe[0]);
-				when(client.startTestItem(same(testClassUuid), any())).thenReturn(myFirst, myOther);
+				when(client.startTestItem(same(scenarioUuid), any())).thenReturn(myFirst, myOther);
 				new HashSet<>(test.getValue()).forEach(testMethodUuid -> when(
 						client.finishTestItem(same(testMethodUuid),
 								any()
