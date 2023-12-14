@@ -42,6 +42,7 @@ public class KarateUtils {
 	public static String formatExampleKey(@Nonnull final Map<String, Object> example) {
 		return example.entrySet()
 				.stream()
+				.sorted(Map.Entry.comparingByKey())
 				.map(e -> e.getKey() + KEY_VALUE_SEPARATOR + e.getValue().toString())
 				.collect(Collectors.joining(PARAMETER_ITEMS_DELIMITER, PARAMETER_ITEMS_START, PARAMETER_ITEMS_END));
 	}
