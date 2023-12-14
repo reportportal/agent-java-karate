@@ -31,9 +31,12 @@ public class ExamplesCodeRefTest {
 					.limit(2).collect(Collectors.toList())))
 			.collect(Collectors.toList());
 
-	private static final String EXAMPLE_CODE_REFERENCE_PATTERN = "feature/examples.feature/[EXAMPLE:Verify different maths[%s]]";
-	private static final String FIRST_EXAMPLE_CODE_REFERENCE = String.format(EXAMPLE_CODE_REFERENCE_PATTERN, "vara:2;varb:2;result:4");
-	private static final String SECOND_EXAMPLE_CODE_REFERENCE = String.format(EXAMPLE_CODE_REFERENCE_PATTERN, "vara:1;varb:2;result:3");
+	private static final String EXAMPLE_CODE_REFERENCE_PATTERN =
+			"feature/examples.feature/[EXAMPLE:Verify different maths[%s]]";
+	private static final String FIRST_EXAMPLE_CODE_REFERENCE =
+			String.format(EXAMPLE_CODE_REFERENCE_PATTERN, "vara:2;varb:2;result:4");
+	private static final String SECOND_EXAMPLE_CODE_REFERENCE =
+			String.format(EXAMPLE_CODE_REFERENCE_PATTERN, "vara:1;varb:2;result:3");
 
 	private final ReportPortalClient client = mock(ReportPortalClient.class);
 	private final ReportPortal rp = ReportPortal.create(client, standardParameters(), testExecutor());

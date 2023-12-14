@@ -24,7 +24,8 @@ import static org.mockito.Mockito.*;
 public class ScenarioCodeRefTest {
 	private final String featureId = CommonUtils.namedId("feature_");
 	private final String scenarioId = CommonUtils.namedId("scenario_");
-	private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_")).limit(3).collect(Collectors.toList());
+	private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_"))
+			.limit(3).collect(Collectors.toList());
 
 	private static final String SIMPLE_CODE_REFERENCE = "feature/simple.feature/[SCENARIO:Verify math]";
 
