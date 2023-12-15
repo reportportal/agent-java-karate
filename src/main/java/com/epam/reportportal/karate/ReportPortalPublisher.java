@@ -6,7 +6,9 @@ import com.epam.reportportal.listeners.ItemType;
 import com.epam.reportportal.listeners.ListenerParameters;
 import com.epam.reportportal.service.Launch;
 import com.epam.reportportal.service.ReportPortal;
+import com.epam.reportportal.service.item.TestCaseIdEntry;
 import com.epam.reportportal.utils.MemoizingSupplier;
+import com.epam.reportportal.utils.TestCaseIdUtils;
 import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
@@ -18,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashSet;
@@ -26,6 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
+import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 public class ReportPortalPublisher {
@@ -112,14 +116,32 @@ public class ReportPortalPublisher {
 		Runtime.getRuntime().removeShutdownHook(shutDownHook);
 	}
 
-	protected String getCodeRef(Scenario scenario) {
-		if(scenario.getExampleIndex() < 0) {
+	/**
+	 * Returns code reference for feature files by URI and Scenario reference
+	 *
+	 * @param scenario Karate's Scenario object instance
+	 * @return a code reference
+	 */
+	@Nonnull
+	protected String getCodeRef(@Nonnull Scenario scenario) {
+		if (scenario.getExampleIndex() < 0) {
 			return String.format(SCENARIO_CODE_REFERENCE_PATTERN, scenario.getFeature().getResource().getRelativePath(),
 					scenario.getName());
 		} else {
 			return String.format(EXAMPLE_CODE_REFERENCE_PATTERN, scenario.getFeature().getResource().getRelativePath(),
 					scenario.getName(), KarateUtils.formatExampleKey(scenario.getExampleData()));
 		}
+	}
+
+	/**
+	 * Return a Test Case ID for a Scenario in a Feature file
+	 *
+	 * @param scenario Karate's Scenario object instance
+	 * @return Test Case ID entity or null if it's not possible to calculate
+	 */
+	@Nullable
+	protected TestCaseIdEntry getTestCaseId(@Nonnull Scenario scenario) {
+		return TestCaseIdUtils.getTestCaseId(getCodeRef(scenario), null);
 	}
 
 	/**
@@ -166,7 +188,9 @@ public class ReportPortalPublisher {
 		StartTestItemRQ rq = buildStartTestItemRq(scenarioResult.getScenario().getName(),
 				Calendar.getInstance().getTime(),
 				ItemType.STEP);
-		rq.setCodeRef(getCodeRef(scenarioResult.getScenario()));
+		Scenario scenario = scenarioResult.getScenario();
+		rq.setCodeRef(getCodeRef(scenario));
+		rq.setTestCaseId(ofNullable(getTestCaseId(scenario)).map(TestCaseIdEntry::getId).orElse(null));
 		return rq;
 	}
 
