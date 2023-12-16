@@ -6,6 +6,7 @@ import com.epam.reportportal.service.Launch;
 import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
+import com.intuit.karate.core.Feature;
 import com.intuit.karate.core.FeatureResult;
 import io.reactivex.Maybe;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,6 +47,8 @@ public class ReportPortalPublisherTest {
 	@Test
 	public void shouldStartFeature() {
 		FeatureResult featureResult = mock(FeatureResult.class);
+		Feature feature = mock(Feature.class);
+		when(featureResult.getFeature()).thenReturn(feature);
 		when(featureResult.getCallNameForReport()).thenReturn("featureName");
 		when(launchMock.startTestItem(any(StartTestItemRQ.class))).thenReturn(mock(Maybe.class));
 		reportPortalPublisher.startFeature(featureResult);
