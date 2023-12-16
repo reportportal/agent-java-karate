@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 EPAM Systems
+ * Copyright 2023 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,9 +22,9 @@ import java.util.stream.Collectors;
 /**
  * Set of useful utils related to Karate -&gt; ReportPortal integration
  */
-public class KarateUtils {
+public class ReportPortalUtils {
 
-	private KarateUtils() {
+	private ReportPortalUtils() {
 		throw new AssertionError("No instances should exist for the class!");
 	}
 

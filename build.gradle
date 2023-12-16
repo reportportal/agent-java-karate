@@ -41,7 +41,7 @@ repositories {
 }
 
 dependencies {
-    api 'com.epam.reportportal:client-java:5.1.24'
+    api 'com.epam.reportportal:client-java:5.1.25'
     api "com.intuit.karate:karate-core:${project.karate_version}"
     implementation 'org.slf4j:slf4j-api:2.0.7'
 

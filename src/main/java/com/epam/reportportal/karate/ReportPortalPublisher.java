@@ -1,3 +1,19 @@
+/*
+ *  Copyright 2023 EPAM Systems
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  https://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package com.epam.reportportal.karate;
 
 import com.epam.reportportal.karate.enums.ItemLogLevelEnum;
@@ -7,11 +23,13 @@ import com.epam.reportportal.listeners.ListenerParameters;
 import com.epam.reportportal.service.Launch;
 import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.item.TestCaseIdEntry;
+import com.epam.reportportal.utils.AttributeParser;
 import com.epam.reportportal.utils.MemoizingSupplier;
 import com.epam.reportportal.utils.TestCaseIdUtils;
 import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
+import com.epam.ta.reportportal.ws.model.attribute.ItemAttributesRQ;
 import com.epam.ta.reportportal.ws.model.launch.StartLaunchRQ;
 import com.epam.ta.reportportal.ws.model.log.SaveLogRQ;
 import com.intuit.karate.core.*;
@@ -21,12 +39,11 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static java.util.Optional.ofNullable;
@@ -129,7 +146,7 @@ public class ReportPortalPublisher {
 					scenario.getName());
 		} else {
 			return String.format(EXAMPLE_CODE_REFERENCE_PATTERN, scenario.getFeature().getResource().getRelativePath(),
-					scenario.getName(), KarateUtils.formatExampleKey(scenario.getExampleData()));
+					scenario.getName(), ReportPortalUtils.formatExampleKey(scenario.getExampleData()));
 		}
 	}
 
@@ -152,6 +169,7 @@ public class ReportPortalPublisher {
 	 * @param type      item's type (e.g. feature, scenario, step, etc.)
 	 * @return request to ReportPortal
 	 */
+	@Nonnull
 	protected StartTestItemRQ buildStartTestItemRq(@Nonnull String name, @Nonnull Date startTime,
 	                                               @Nonnull ItemType type) {
 		StartTestItemRQ rq = new StartTestItemRQ();
@@ -170,7 +188,6 @@ public class ReportPortalPublisher {
 	 * @param hasStats  enables nested items
 	 * @return request to ReportPortal
 	 */
-	@SuppressWarnings("SameParameterValue")
 	protected StartTestItemRQ buildStartTestItemRq(@Nonnull String name, @Nonnull Date startTime,
 	                                               @Nonnull ItemType type, boolean hasStats) {
 		StartTestItemRQ rq = buildStartTestItemRq(name, startTime, type);
@@ -178,10 +195,37 @@ public class ReportPortalPublisher {
 		return rq;
 	}
 
+	@Nullable
+	private Set<ItemAttributesRQ> toAttributes(@Nullable List<Tag> tags) {
+		Set<ItemAttributesRQ> attributes = ofNullable(tags).orElse(Collections.emptyList()).stream().flatMap(tag -> {
+			if (tag.getValues().isEmpty()) {
+				return Stream.of(new ItemAttributesRQ(null, tag.getName()));
+			}
+			return AttributeParser.createItemAttributes(tag.getName(), tag.getValues().toArray(new String[0])).stream();
+		}).collect(Collectors.toSet());
+		return attributes.isEmpty() ? null : attributes;
+	}
+
+	/**
+	 * Build ReportPortal request for start Feature event.
+	 *
+	 * @param featureResult Karate's FeatureResult object instance
+	 * @return request to ReportPortal
+	 */
+	@Nonnull
+	protected StartTestItemRQ buildStartFeatureRq(@Nonnull FeatureResult featureResult) {
+		StartTestItemRQ rq = buildStartTestItemRq(String.valueOf(featureResult.toCucumberJson().get("name")),
+				Calendar.getInstance().getTime(),
+				ItemType.STORY);
+		Feature feature = featureResult.getFeature();
+		rq.setAttributes(toAttributes(feature.getTags()));
+		return rq;
+	}
+
 	/**
 	 * Build ReportPortal request for start Scenario event
 	 *
-	 * @param scenarioResult Karate's ScenarioResult instance
+	 * @param scenarioResult Karate's ScenarioResult object instance
 	 * @return request to ReportPortal
 	 */
 	protected StartTestItemRQ buildStartScenarioRq(@Nonnull ScenarioResult scenarioResult) {
@@ -191,6 +235,7 @@ public class ReportPortalPublisher {
 		Scenario scenario = scenarioResult.getScenario();
 		rq.setCodeRef(getCodeRef(scenario));
 		rq.setTestCaseId(ofNullable(getTestCaseId(scenario)).map(TestCaseIdEntry::getId).orElse(null));
+		rq.setAttributes(toAttributes(scenario.getTags()));
 		return rq;
 	}
 
@@ -210,14 +255,12 @@ public class ReportPortalPublisher {
 	}
 
 	/**
-	 * Start sending feature data to ReportPortal
+	 * Start sending feature data to ReportPortal.
 	 *
 	 * @param featureResult feature result
 	 */
-	public void startFeature(FeatureResult featureResult) {
-		StartTestItemRQ rq = buildStartTestItemRq(String.valueOf(featureResult.toCucumberJson().get("name")),
-				Calendar.getInstance().getTime(),
-				ItemType.STORY);
+	public void startFeature(@Nonnull FeatureResult featureResult) {
+		StartTestItemRQ rq = buildStartFeatureRq(featureResult);
 		Maybe<String> featureId = launch.get().startTestItem(rq);
 		featureIdMap.put(featureResult.getCallNameForReport(), featureId);
 	}
