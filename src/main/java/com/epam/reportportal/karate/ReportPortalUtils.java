@@ -24,14 +24,17 @@ import java.util.stream.Collectors;
  */
 public class ReportPortalUtils {
 
-	private ReportPortalUtils() {
-		throw new AssertionError("No instances should exist for the class!");
-	}
-
 	private static final String PARAMETER_ITEMS_START = "[";
 	private static final String PARAMETER_ITEMS_END = "]";
 	private static final String PARAMETER_ITEMS_DELIMITER = ";";
 	private static final String KEY_VALUE_SEPARATOR = ":";
+
+	public static final String AGENT_PROPERTIES_FILE = "agent.properties";
+	public static final String SKIPPED_ISSUE_KEY = "skippedIssue";
+
+	private ReportPortalUtils() {
+		throw new AssertionError("No instances should exist for the class!");
+	}
 
 	/**
 	 * Create a String from a parameter Map to be used as a test key and title

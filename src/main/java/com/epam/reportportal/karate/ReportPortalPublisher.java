@@ -26,6 +26,7 @@ import com.epam.reportportal.service.item.TestCaseIdEntry;
 import com.epam.reportportal.utils.AttributeParser;
 import com.epam.reportportal.utils.MemoizingSupplier;
 import com.epam.reportportal.utils.TestCaseIdUtils;
+import com.epam.reportportal.utils.properties.SystemAttributesExtractor;
 import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
@@ -45,6 +46,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.epam.reportportal.karate.ReportPortalUtils.AGENT_PROPERTIES_FILE;
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
@@ -91,6 +93,15 @@ public class ReportPortalPublisher {
 		if (isNotBlank(parameters.getRerunOf())) {
 			rq.setRerunOf(parameters.getRerunOf());
 		}
+		if (null != parameters.getSkippedAnIssue()) {
+			ItemAttributesRQ skippedIssueAttribute = new ItemAttributesRQ();
+			skippedIssueAttribute.setKey(ReportPortalUtils.SKIPPED_ISSUE_KEY);
+			skippedIssueAttribute.setValue(parameters.getSkippedAnIssue().toString());
+			skippedIssueAttribute.setSystem(true);
+			rq.getAttributes().add(skippedIssueAttribute);
+		}
+		rq.getAttributes().addAll(SystemAttributesExtractor.extract(AGENT_PROPERTIES_FILE,
+				ReportPortalUtils.class.getClassLoader()));
 		return rq;
 	}
 
