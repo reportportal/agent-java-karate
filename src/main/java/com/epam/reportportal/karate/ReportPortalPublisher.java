@@ -25,10 +25,12 @@ import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.item.TestCaseIdEntry;
 import com.epam.reportportal.utils.AttributeParser;
 import com.epam.reportportal.utils.MemoizingSupplier;
+import com.epam.reportportal.utils.ParameterUtils;
 import com.epam.reportportal.utils.TestCaseIdUtils;
 import com.epam.reportportal.utils.properties.SystemAttributesExtractor;
 import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
+import com.epam.ta.reportportal.ws.model.ParameterResource;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.epam.ta.reportportal.ws.model.attribute.ItemAttributesRQ;
 import com.epam.ta.reportportal.ws.model.launch.StartLaunchRQ;
@@ -41,7 +43,6 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -56,9 +57,9 @@ public class ReportPortalPublisher {
 	public static final String EXAMPLE_CODE_REFERENCE_PATTERN = "%s/[EXAMPLE:%s%s]";
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalPublisher.class);
-	private final ConcurrentHashMap<String, Maybe<String>> featureIdMap = new ConcurrentHashMap<>();
-	private final ConcurrentHashMap<String, Maybe<String>> scenarioIdMap = new ConcurrentHashMap<>();
-	private final ConcurrentHashMap<Maybe<String>, Long> stepStartTimeMap = new ConcurrentHashMap<>();
+	private final Map<String, Maybe<String>> featureIdMap = new HashMap<>();
+	private final Map<String, Maybe<String>> scenarioIdMap = new HashMap<>();
+	private final Map<Maybe<String>, Long> stepStartTimeMap = new HashMap<>();
 	private Maybe<String> stepId;
 
 	private final MemoizingSupplier<Launch> launch;
@@ -191,12 +192,12 @@ public class ReportPortalPublisher {
 	/**
 	 * Customize start step test item event/request
 	 *
-	 * @param name      item's name
-	 * @param startTime item's start time
+	 * @param step Karate's Step class instance
 	 * @return request to ReportPortal
 	 */
-	protected StartTestItemRQ buildStartStepRq(@Nonnull String name, @Nonnull Date startTime) {
-		StartTestItemRQ rq = buildStartTestItemRq(name, startTime, ItemType.STEP);
+	protected StartTestItemRQ buildStartStepRq(@Nonnull Step step) {
+		String stepName = step.getPrefix() + " " + step.getText();
+		StartTestItemRQ rq = buildStartTestItemRq(stepName, getStepStartTime(stepStartTimeMap, stepId), ItemType.STEP);
 		rq.setHasStats(false);
 		return rq;
 	}
@@ -228,6 +229,19 @@ public class ReportPortalPublisher {
 		return rq;
 	}
 
+	@Nullable
+	private List<ParameterResource> getParameters(@Nonnull Scenario scenario) {
+		if (scenario.getExampleIndex() < 0) {
+			return null;
+		}
+		return scenario.getExampleData().entrySet().stream().map(e -> {
+			ParameterResource parameterResource = new ParameterResource();
+			parameterResource.setKey(e.getKey());
+			parameterResource.setValue(ofNullable(e.getValue()).map(Object::toString).orElse(ParameterUtils.NULL_VALUE));
+			return parameterResource;
+		}).collect(Collectors.toList());
+	}
+
 	/**
 	 * Build ReportPortal request for start Scenario event
 	 *
@@ -242,6 +256,7 @@ public class ReportPortalPublisher {
 		rq.setCodeRef(getCodeRef(scenario));
 		rq.setTestCaseId(ofNullable(getTestCaseId(scenario)).map(TestCaseIdEntry::getId).orElse(null));
 		rq.setAttributes(toAttributes(scenario.getTags()));
+		rq.setParameters(getParameters(scenario));
 		return rq;
 	}
 
@@ -338,8 +353,7 @@ public class ReportPortalPublisher {
 	 * @param scenarioResult scenario result
 	 */
 	public void startStep(StepResult stepResult, ScenarioResult scenarioResult) {
-		String stepName = stepResult.getStep().getPrefix() + " " + stepResult.getStep().getText();
-		StartTestItemRQ rq = buildStartStepRq(stepName, getStepStartTime(stepStartTimeMap, stepId));
+		StartTestItemRQ rq = buildStartStepRq(stepResult.getStep());
 		stepId = launch.get().startTestItem(scenarioIdMap.get(scenarioResult.getScenario().getName()), rq);
 		stepStartTimeMap.put(stepId, rq.getStartTime().getTime());
 	}
@@ -441,7 +455,7 @@ public class ReportPortalPublisher {
 	 * @param stepId           step ID.
 	 * @return step new startTime in Date format.
 	 */
-	private Date getStepStartTime(ConcurrentHashMap<Maybe<String>, Long> stepStartTimeMap, Maybe<String> stepId) {
+	private Date getStepStartTime(Map<Maybe<String>, Long> stepStartTimeMap, Maybe<String> stepId) {
 		long currentStepStartTime = Calendar.getInstance().getTime().getTime();
 
 		if (!stepStartTimeMap.keySet().isEmpty()) {
