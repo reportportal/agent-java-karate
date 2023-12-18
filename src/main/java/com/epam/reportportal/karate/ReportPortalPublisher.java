@@ -88,7 +88,6 @@ public class ReportPortalPublisher {
 		if (!isNullOrEmpty(parameters.getDescription())) {
 			rq.setDescription(parameters.getDescription());
 		}
-		rq.setStartTime(Calendar.getInstance().getTime());
 		rq.setRerun(parameters.isRerun());
 		if (isNotBlank(parameters.getRerunOf())) {
 			rq.setRerunOf(parameters.getRerunOf());
@@ -109,7 +108,6 @@ public class ReportPortalPublisher {
 		launch = new MemoizingSupplier<>(() -> {
 			ListenerParameters params = reportPortal.getParameters();
 			StartLaunchRQ rq = buildStartLaunchRq(params);
-			rq.setStartTime(Calendar.getInstance().getTime());
 			Launch newLaunch = reportPortal.newLaunch(rq);
 			shutDownHook = getShutdownHook(() -> newLaunch);
 			Runtime.getRuntime().addShutdownHook(shutDownHook);
@@ -191,18 +189,15 @@ public class ReportPortalPublisher {
 	}
 
 	/**
-	 * Customize start test item event/request
+	 * Customize start step test item event/request
 	 *
 	 * @param name      item's name
 	 * @param startTime item's start time
-	 * @param type      item's type (e.g. feature, scenario, step, etc.)
-	 * @param hasStats  enables nested items
 	 * @return request to ReportPortal
 	 */
-	protected StartTestItemRQ buildStartTestItemRq(@Nonnull String name, @Nonnull Date startTime,
-	                                               @Nonnull ItemType type, boolean hasStats) {
-		StartTestItemRQ rq = buildStartTestItemRq(name, startTime, type);
-		rq.setHasStats(hasStats);
+	protected StartTestItemRQ buildStartStepRq(@Nonnull String name, @Nonnull Date startTime) {
+		StartTestItemRQ rq = buildStartTestItemRq(name, startTime, ItemType.STEP);
+		rq.setHasStats(false);
 		return rq;
 	}
 
@@ -344,7 +339,7 @@ public class ReportPortalPublisher {
 	 */
 	public void startStep(StepResult stepResult, ScenarioResult scenarioResult) {
 		String stepName = stepResult.getStep().getPrefix() + " " + stepResult.getStep().getText();
-		StartTestItemRQ rq = buildStartTestItemRq(stepName, getStepStartTime(stepStartTimeMap, stepId), ItemType.STEP, false);
+		StartTestItemRQ rq = buildStartStepRq(stepName, getStepStartTime(stepStartTimeMap, stepId));
 		stepId = launch.get().startTestItem(scenarioIdMap.get(scenarioResult.getScenario().getName()), rq);
 		stepStartTimeMap.put(stepId, rq.getStartTime().getTime());
 	}
