@@ -37,11 +37,12 @@ compileJava.options.encoding = 'UTF-8'
 compileTestJava.options.encoding = 'UTF-8'
 
 repositories {
+    mavenLocal()
     mavenCentral()
 }
 
 dependencies {
-    api 'com.epam.reportportal:client-java:5.1.25'
+    api 'com.epam.reportportal:client-java:5.1.26'
     api "com.intuit.karate:karate-core:${project.karate_version}"
     implementation 'org.slf4j:slf4j-api:2.0.7'
 

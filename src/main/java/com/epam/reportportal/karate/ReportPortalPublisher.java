@@ -20,6 +20,7 @@ import com.epam.reportportal.karate.enums.ItemLogLevelEnum;
 import com.epam.reportportal.karate.enums.ItemStatusEnum;
 import com.epam.reportportal.listeners.ItemType;
 import com.epam.reportportal.listeners.ListenerParameters;
+import com.epam.reportportal.listeners.LogLevel;
 import com.epam.reportportal.service.Launch;
 import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.item.TestCaseIdEntry;
@@ -44,6 +45,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -55,6 +57,8 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 public class ReportPortalPublisher {
 	public static final String SCENARIO_CODE_REFERENCE_PATTERN = "%s/[SCENARIO:%s]";
 	public static final String EXAMPLE_CODE_REFERENCE_PATTERN = "%s/[EXAMPLE:%s%s]";
+	public static final String VARIABLE_PATTERN =
+			"(?:(?<=#\\()%1$s(?=\\)))|(?:(?<=[\\s=+-/*<>(]|^)%1$s(?=[\\s=+-/*<>)]|(?:\\r?\\n)|$))";
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalPublisher.class);
 	private final Map<String, Maybe<String>> featureIdMap = new HashMap<>();
@@ -151,12 +155,12 @@ public class ReportPortalPublisher {
 	 */
 	@Nonnull
 	protected String getCodeRef(@Nonnull Scenario scenario) {
-		if (scenario.getExampleIndex() < 0) {
-			return String.format(SCENARIO_CODE_REFERENCE_PATTERN, scenario.getFeature().getResource().getRelativePath(),
-					scenario.getName());
-		} else {
+		if (scenario.isOutlineExample()) {
 			return String.format(EXAMPLE_CODE_REFERENCE_PATTERN, scenario.getFeature().getResource().getRelativePath(),
 					scenario.getName(), ReportPortalUtils.formatExampleKey(scenario.getExampleData()));
+		} else {
+			return String.format(SCENARIO_CODE_REFERENCE_PATTERN, scenario.getFeature().getResource().getRelativePath(),
+					scenario.getName());
 		}
 	}
 
@@ -192,13 +196,30 @@ public class ReportPortalPublisher {
 	/**
 	 * Customize start step test item event/request
 	 *
-	 * @param step Karate's Step class instance
+	 * @param step     Karate's Step class instance
+	 * @param scenario Karate's Scenario class instance
 	 * @return request to ReportPortal
 	 */
-	protected StartTestItemRQ buildStartStepRq(@Nonnull Step step) {
+	protected StartTestItemRQ buildStartStepRq(@Nonnull Step step, Scenario scenario) {
 		String stepName = step.getPrefix() + " " + step.getText();
 		StartTestItemRQ rq = buildStartTestItemRq(stepName, getStepStartTime(stepStartTimeMap, stepId), ItemType.STEP);
 		rq.setHasStats(false);
+		if (step.isOutline()) {
+			List<ParameterResource> parameters = scenario
+					.getExampleData()
+					.entrySet()
+					.stream()
+					.filter(e -> Pattern.compile(String.format(VARIABLE_PATTERN, e.getKey())).matcher(step.getText()).find())
+					.map(e -> {
+						ParameterResource param = new ParameterResource();
+						param.setKey(e.getKey());
+						var value = ofNullable(e.getValue()).map(Object::toString).orElse(ParameterUtils.NULL_VALUE);
+						param.setValue(value);
+						return param;
+					})
+					.collect(Collectors.toList());
+			rq.setParameters(parameters);
+		}
 		return rq;
 	}
 
@@ -353,9 +374,19 @@ public class ReportPortalPublisher {
 	 * @param scenarioResult scenario result
 	 */
 	public void startStep(StepResult stepResult, ScenarioResult scenarioResult) {
-		StartTestItemRQ rq = buildStartStepRq(stepResult.getStep());
-		stepId = launch.get().startTestItem(scenarioIdMap.get(scenarioResult.getScenario().getName()), rq);
-		stepStartTimeMap.put(stepId, rq.getStartTime().getTime());
+		StartTestItemRQ stepRq = buildStartStepRq(stepResult.getStep(), scenarioResult.getScenario());
+		stepId = launch.get().startTestItem(scenarioIdMap.get(scenarioResult.getScenario().getName()), stepRq);
+		stepStartTimeMap.put(stepId, stepRq.getStartTime().getTime());
+		ofNullable(stepRq.getParameters())
+				.filter(params -> !params.isEmpty())
+				.ifPresent(params -> ReportPortal.emitLog(stepId, id -> {
+					SaveLogRQ logRq = new SaveLogRQ();
+					logRq.setLogTime(Calendar.getInstance().getTime());
+					logRq.setItemUuid(id);
+					logRq.setLevel(LogLevel.INFO.name());
+					logRq.setMessage("Parameters:\n\n" + ParameterUtils.formatParametersAsTable(params));
+					return logRq;
+				}));
 	}
 
 	/**
