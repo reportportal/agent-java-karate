@@ -5,17 +5,24 @@ import com.epam.reportportal.listeners.ListenerParameters;
 import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
+import com.epam.reportportal.utils.http.HttpRequestUtils;
 import com.epam.ta.reportportal.ws.model.BatchSaveOperatingRS;
+import com.epam.ta.reportportal.ws.model.Constants;
 import com.epam.ta.reportportal.ws.model.OperationCompletionRS;
 import com.epam.ta.reportportal.ws.model.item.ItemCreatedRS;
 import com.epam.ta.reportportal.ws.model.launch.StartLaunchRS;
+import com.epam.ta.reportportal.ws.model.log.SaveLogRQ;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.intuit.karate.Results;
 import io.reactivex.Maybe;
+import okhttp3.MultipartBody;
+import okio.Buffer;
 import org.apache.commons.lang3.tuple.Pair;
 import org.mockito.stubbing.Answer;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -168,5 +175,31 @@ public class TestUtils {
 		parentNestedPairs.forEach(p -> when(client.finishTestItem(same(p.getValue()),
 				any()
 		)).thenAnswer((Answer<Maybe<OperationCompletionRS>>) invocation -> Maybe.just(new OperationCompletionRS())));
+	}
+
+	public static List<SaveLogRQ> extractJsonParts(List<MultipartBody.Part> parts) {
+		return parts.stream()
+				.filter(p -> ofNullable(p.headers()).map(headers -> headers.get("Content-Disposition"))
+						.map(h -> h.contains(Constants.LOG_REQUEST_JSON_PART))
+						.orElse(false))
+				.map(MultipartBody.Part::body)
+				.map(b -> {
+					Buffer buf = new Buffer();
+					try {
+						b.writeTo(buf);
+					} catch (IOException ignore) {
+					}
+					return buf.readByteArray();
+				})
+				.map(b -> {
+					try {
+						return HttpRequestUtils.MAPPER.readValue(b, new TypeReference<>() {
+						});
+					} catch (IOException e) {
+						return Collections.<SaveLogRQ>emptyList();
+					}
+				})
+				.flatMap(Collection::stream)
+				.collect(Collectors.toList());
 	}
 }
