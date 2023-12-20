@@ -97,6 +97,6 @@ public class ExamplesStepParametersTest {
 		assertThat(logs.keySet(), hasSize(stepIdList.size()));
 		stepIdList.forEach(id -> assertThat(logs, hasKey(id)));
 		assertThat(logs.values().stream().map(SaveLogRQ::getMessage).collect(Collectors.toList()),
-				everyItem(startsWith("Parameters:")));
+				everyItem(startsWith("Parameters:\n\n")));
 	}
 }

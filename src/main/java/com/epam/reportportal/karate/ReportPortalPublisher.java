@@ -16,8 +16,7 @@
 
 package com.epam.reportportal.karate;
 
-import com.epam.reportportal.karate.enums.ItemLogLevelEnum;
-import com.epam.reportportal.karate.enums.ItemStatusEnum;
+import com.epam.reportportal.listeners.ItemStatus;
 import com.epam.reportportal.listeners.ItemType;
 import com.epam.reportportal.listeners.ListenerParameters;
 import com.epam.reportportal.listeners.LogLevel;
@@ -26,7 +25,6 @@ import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.item.TestCaseIdEntry;
 import com.epam.reportportal.utils.AttributeParser;
 import com.epam.reportportal.utils.MemoizingSupplier;
-import com.epam.reportportal.utils.ParameterUtils;
 import com.epam.reportportal.utils.TestCaseIdUtils;
 import com.epam.reportportal.utils.properties.SystemAttributesExtractor;
 import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
@@ -50,6 +48,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.epam.reportportal.karate.ReportPortalUtils.AGENT_PROPERTIES_FILE;
+import static com.epam.reportportal.utils.ParameterUtils.NULL_VALUE;
+import static com.epam.reportportal.utils.ParameterUtils.formatParametersAsTable;
+import static com.epam.reportportal.utils.markdown.MarkdownUtils.formatDataTable;
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
@@ -193,36 +194,6 @@ public class ReportPortalPublisher {
 		return rq;
 	}
 
-	/**
-	 * Customize start step test item event/request
-	 *
-	 * @param step     Karate's Step class instance
-	 * @param scenario Karate's Scenario class instance
-	 * @return request to ReportPortal
-	 */
-	protected StartTestItemRQ buildStartStepRq(@Nonnull Step step, Scenario scenario) {
-		String stepName = step.getPrefix() + " " + step.getText();
-		StartTestItemRQ rq = buildStartTestItemRq(stepName, getStepStartTime(stepStartTimeMap, stepId), ItemType.STEP);
-		rq.setHasStats(false);
-		if (step.isOutline()) {
-			List<ParameterResource> parameters = scenario
-					.getExampleData()
-					.entrySet()
-					.stream()
-					.filter(e -> Pattern.compile(String.format(VARIABLE_PATTERN, e.getKey())).matcher(step.getText()).find())
-					.map(e -> {
-						ParameterResource param = new ParameterResource();
-						param.setKey(e.getKey());
-						var value = ofNullable(e.getValue()).map(Object::toString).orElse(ParameterUtils.NULL_VALUE);
-						param.setValue(value);
-						return param;
-					})
-					.collect(Collectors.toList());
-			rq.setParameters(parameters);
-		}
-		return rq;
-	}
-
 	@Nullable
 	private Set<ItemAttributesRQ> toAttributes(@Nullable List<Tag> tags) {
 		Set<ItemAttributesRQ> attributes = ofNullable(tags).orElse(Collections.emptyList()).stream().flatMap(tag -> {
@@ -258,7 +229,7 @@ public class ReportPortalPublisher {
 		return scenario.getExampleData().entrySet().stream().map(e -> {
 			ParameterResource parameterResource = new ParameterResource();
 			parameterResource.setKey(e.getKey());
-			parameterResource.setValue(ofNullable(e.getValue()).map(Object::toString).orElse(ParameterUtils.NULL_VALUE));
+			parameterResource.setValue(ofNullable(e.getValue()).map(Object::toString).orElse(NULL_VALUE));
 			return parameterResource;
 		}).collect(Collectors.toList());
 	}
@@ -289,10 +260,10 @@ public class ReportPortalPublisher {
 	 * @return request to ReportPortal
 	 */
 	protected FinishTestItemRQ buildFinishTestItemRq(@Nonnull Date endTime,
-	                                                 @Nonnull String status) {
+	                                                 @Nonnull ItemStatus status) {
 		FinishTestItemRQ rq = new FinishTestItemRQ();
 		rq.setEndTime(endTime);
-		rq.setStatus(status);
+		rq.setStatus(status.name());
 		return rq;
 	}
 
@@ -332,7 +303,7 @@ public class ReportPortalPublisher {
 		}
 
 		FinishTestItemRQ rq = buildFinishTestItemRq(Calendar.getInstance().getTime(),
-				featureResult.isFailed() ? ItemStatusEnum.FAILED.toString() : ItemStatusEnum.PASSED.toString());
+				featureResult.isFailed() ? ItemStatus.FAILED : ItemStatus.PASSED);
 		//noinspection ReactiveStreamsUnusedPublisher
 		launch.get().finishTestItem(featureIdMap.remove(featureResult.getCallNameForReport()), rq);
 	}
@@ -361,10 +332,43 @@ public class ReportPortalPublisher {
 		}
 
 		FinishTestItemRQ rq = buildFinishTestItemRq(Calendar.getInstance().getTime(),
-				scenarioResult.getFailureMessageForDisplay() == null ? ItemStatusEnum.PASSED.toString() : ItemStatusEnum.FAILED.toString());
+				scenarioResult.getFailureMessageForDisplay() == null ? ItemStatus.PASSED : ItemStatus.FAILED);
 		Maybe<String> removedScenarioId = scenarioIdMap.remove(scenarioResult.getScenario().getName());
 		//noinspection ReactiveStreamsUnusedPublisher
 		launch.get().finishTestItem(removedScenarioId, rq);
+	}
+
+	/**
+	 * Customize start step test item event/request
+	 *
+	 * @param stepResult     Karate's StepResult class instance
+	 * @param scenarioResult Karate's ScenarioResult class instance
+	 * @return request to ReportPortal
+	 */
+	@Nonnull
+	protected StartTestItemRQ buildStartStepRq(@Nonnull StepResult stepResult, @Nonnull ScenarioResult scenarioResult) {
+		Step step = stepResult.getStep();
+		String stepName = step.getPrefix() + " " + step.getText();
+		StartTestItemRQ rq = buildStartTestItemRq(stepName, getStepStartTime(stepStartTimeMap, stepId), ItemType.STEP);
+		rq.setHasStats(false);
+		if (step.isOutline()) {
+			Scenario scenario = scenarioResult.getScenario();
+			List<ParameterResource> parameters = scenario
+					.getExampleData()
+					.entrySet()
+					.stream()
+					.filter(e -> Pattern.compile(String.format(VARIABLE_PATTERN, e.getKey())).matcher(step.getText()).find())
+					.map(e -> {
+						ParameterResource param = new ParameterResource();
+						param.setKey(e.getKey());
+						var value = ofNullable(e.getValue()).map(Object::toString).orElse(NULL_VALUE);
+						param.setValue(value);
+						return param;
+					})
+					.collect(Collectors.toList());
+			rq.setParameters(parameters);
+		}
+		return rq;
 	}
 
 	/**
@@ -374,19 +378,16 @@ public class ReportPortalPublisher {
 	 * @param scenarioResult scenario result
 	 */
 	public void startStep(StepResult stepResult, ScenarioResult scenarioResult) {
-		StartTestItemRQ stepRq = buildStartStepRq(stepResult.getStep(), scenarioResult.getScenario());
+		StartTestItemRQ stepRq = buildStartStepRq(stepResult, scenarioResult);
 		stepId = launch.get().startTestItem(scenarioIdMap.get(scenarioResult.getScenario().getName()), stepRq);
 		stepStartTimeMap.put(stepId, stepRq.getStartTime().getTime());
 		ofNullable(stepRq.getParameters())
 				.filter(params -> !params.isEmpty())
-				.ifPresent(params -> ReportPortal.emitLog(stepId, id -> {
-					SaveLogRQ logRq = new SaveLogRQ();
-					logRq.setLogTime(Calendar.getInstance().getTime());
-					logRq.setItemUuid(id);
-					logRq.setLevel(LogLevel.INFO.name());
-					logRq.setMessage("Parameters:\n\n" + ParameterUtils.formatParametersAsTable(params));
-					return logRq;
-				}));
+				.ifPresent(params ->
+						sendLog(stepId, "Parameters:\n\n" + formatParametersAsTable(params), LogLevel.INFO));
+		ofNullable(stepResult.getStep().getTable())
+				.ifPresent(table ->
+						sendLog(stepId, "Table:\n\n" + formatDataTable(table.getRows()), LogLevel.INFO));
 	}
 
 	/**
@@ -414,7 +415,7 @@ public class ReportPortalPublisher {
 	 */
 	public void sendStepResults(StepResult stepResult) {
 		Result result = stepResult.getResult();
-		String logLevel = getLogLevel(result.getStatus());
+		LogLevel logLevel = getLogLevel(result.getStatus());
 		Step step = stepResult.getStep();
 
 		if (step.getDocString() != null) {
@@ -434,47 +435,65 @@ public class ReportPortalPublisher {
 	 * @param message log message to send
 	 * @param level   log level
 	 */
-	public void sendLog(final String message, final String level) {
+	public void sendLog(final String message, LogLevel level) {
 		ReportPortal.emitLog(itemId -> {
 			SaveLogRQ rq = new SaveLogRQ();
 			rq.setMessage(message);
 			rq.setItemUuid(itemId);
-			rq.setLevel(level);
+			rq.setLevel(level.name());
 			rq.setLogTime(Calendar.getInstance().getTime());
 			return rq;
 		});
 	}
 
-	private String getStepStatus(String status) {
+	/**
+	 * Send step logs and/or execution results to ReportPortal
+	 *
+	 * @param itemId  item ID future
+	 * @param message log message to send
+	 * @param level   log level
+	 */
+	public void sendLog(Maybe<String> itemId, String message, LogLevel level) {
+		ReportPortal.emitLog(itemId, id -> {
+			SaveLogRQ rq = new SaveLogRQ();
+			rq.setMessage(message);
+			rq.setItemUuid(id);
+			rq.setLevel(level.name());
+			rq.setLogTime(Calendar.getInstance().getTime());
+			return rq;
+		});
+	}
+
+	private ItemStatus getStepStatus(String status) {
 		switch (status) {
 			case "failed":
-				return ItemStatusEnum.FAILED.toString();
+				return ItemStatus.FAILED;
 			case "passed":
-				return ItemStatusEnum.PASSED.toString();
+				return ItemStatus.PASSED;
 			case "skipped":
-				return ItemStatusEnum.SKIPPED.toString();
+				return ItemStatus.SKIPPED;
 			case "stopped":
-				return ItemStatusEnum.STOPPED.toString();
+				return ItemStatus.STOPPED;
 			case "interrupted":
-				return ItemStatusEnum.RESETED.toString();
+				return ItemStatus.INTERRUPTED;
 			case "cancelled":
-				return ItemStatusEnum.CANCELLED.toString();
+				return ItemStatus.CANCELLED;
 			default:
 				LOGGER.warn("Unknown step status received! Set it as SKIPPED");
-				return ItemStatusEnum.SKIPPED.toString();
+				return ItemStatus.SKIPPED;
 		}
 	}
 
-	private String getLogLevel(String status) {
+	private LogLevel getLogLevel(String status) {
 		switch (status) {
 			case "failed":
-				return ItemLogLevelEnum.ERROR.toString();
+				return LogLevel.ERROR;
 			case "stopped":
 			case "interrupted":
 			case "cancelled":
-				return ItemLogLevelEnum.WARN.toString();
+				return LogLevel.WARN;
 			default:
-				return ItemLogLevelEnum.INFO.toString();
+				return LogLevel.INFO;
 		}
 	}
 
