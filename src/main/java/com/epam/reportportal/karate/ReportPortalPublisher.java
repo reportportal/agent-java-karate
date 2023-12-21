@@ -56,7 +56,6 @@ import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 public class ReportPortalPublisher {
-	public static final String BACKGROUND_PREFIX = "BACKGROUND: ";
 	public static final String SCENARIO_CODE_REFERENCE_PATTERN = "%s/[SCENARIO:%s]";
 	public static final String EXAMPLE_CODE_REFERENCE_PATTERN = "%s/[EXAMPLE:%s%s]";
 	public static final String VARIABLE_PATTERN =
@@ -66,6 +65,7 @@ public class ReportPortalPublisher {
 	private final Map<String, Maybe<String>> featureIdMap = new HashMap<>();
 	private final Map<String, Maybe<String>> scenarioIdMap = new HashMap<>();
 	private final Map<Maybe<String>, Long> stepStartTimeMap = new HashMap<>();
+	private Maybe<String> backgroundId;
 	private Maybe<String> stepId;
 
 	private final MemoizingSupplier<Launch> launch;
@@ -307,6 +307,7 @@ public class ReportPortalPublisher {
 				featureResult.isFailed() ? ItemStatus.FAILED : ItemStatus.PASSED);
 		//noinspection ReactiveStreamsUnusedPublisher
 		launch.get().finishTestItem(featureIdMap.remove(featureResult.getCallNameForReport()), rq);
+		backgroundId = null;
 	}
 
 	/**
@@ -339,6 +340,14 @@ public class ReportPortalPublisher {
 		launch.get().finishTestItem(removedScenarioId, rq);
 	}
 
+	@Nonnull
+	@SuppressWarnings("unused")
+	protected StartTestItemRQ buildStartBackgroundRq(@Nonnull StepResult stepResult, @Nonnull ScenarioResult scenarioResult) {
+		StartTestItemRQ rq = buildStartTestItemRq(Background.KEYWORD, Calendar.getInstance().getTime(), ItemType.STEP);
+		rq.setHasStats(false);
+		return rq;
+	}
+
 	/**
 	 * Customize start step test item event/request
 	 *
@@ -350,9 +359,6 @@ public class ReportPortalPublisher {
 	protected StartTestItemRQ buildStartStepRq(@Nonnull StepResult stepResult, @Nonnull ScenarioResult scenarioResult) {
 		Step step = stepResult.getStep();
 		String stepName = step.getPrefix() + " " + step.getText();
-		if (step.isBackground()) {
-			stepName = BACKGROUND_PREFIX + stepName;
-		}
 		StartTestItemRQ rq = buildStartTestItemRq(stepName, getStepStartTime(stepStartTimeMap, stepId), ItemType.STEP);
 		rq.setHasStats(false);
 		if (step.isOutline()) {
@@ -382,8 +388,20 @@ public class ReportPortalPublisher {
 	 * @param scenarioResult scenario result
 	 */
 	public void startStep(StepResult stepResult, ScenarioResult scenarioResult) {
+		if (stepResult.getStep().isBackground()) {
+			backgroundId = ofNullable(backgroundId).orElseGet(() -> {
+				StartTestItemRQ backgroundRq = buildStartBackgroundRq(stepResult, scenarioResult);
+				return launch.get().startTestItem(scenarioIdMap.get(scenarioResult.getScenario().getName()), backgroundRq);
+			});
+		} else {
+			backgroundId = null;
+		}
 		StartTestItemRQ stepRq = buildStartStepRq(stepResult, scenarioResult);
-		stepId = launch.get().startTestItem(scenarioIdMap.get(scenarioResult.getScenario().getName()), stepRq);
+		stepId = launch.get()
+				.startTestItem(
+						backgroundId != null ? backgroundId : scenarioIdMap.get(scenarioResult.getScenario().getName()),
+						stepRq
+				);
 		stepStartTimeMap.put(stepId, stepRq.getStartTime().getTime());
 		ofNullable(stepRq.getParameters())
 				.filter(params -> !params.isEmpty())
