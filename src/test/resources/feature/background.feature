@@ -4,5 +4,5 @@ Feature: the test to show item description reporting
     Given def four = 4
 
   Scenario: Verify math
-    When def acualFour = 2 * 2
-    Then assert acualFour == four
+    When def actualFour = 2 * 2
+    Then assert actualFour == four
