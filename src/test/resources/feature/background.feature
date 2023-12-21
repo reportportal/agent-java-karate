@@ -1,4 +1,4 @@
-Feature: the test to show item description reporting
+Feature: test background reporting
 
   Background: Set variable
     Given def four = 4
