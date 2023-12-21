@@ -64,5 +64,6 @@ public class TableParametersTest {
 				.collect(Collectors.toList());
 		assertThat(logs, hasSize(1));
 		assertThat(logs.get(0).getMessage(), startsWith("Table:\n\n"));
+		assertThat(logs.get(0).getItemUuid(), startsWith("step_"));
 	}
 }
