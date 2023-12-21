@@ -307,7 +307,6 @@ public class ReportPortalPublisher {
 				featureResult.isFailed() ? ItemStatus.FAILED : ItemStatus.PASSED);
 		//noinspection ReactiveStreamsUnusedPublisher
 		launch.get().finishTestItem(featureIdMap.remove(featureResult.getCallNameForReport()), rq);
-		backgroundId = null;
 	}
 
 	/**
@@ -338,6 +337,7 @@ public class ReportPortalPublisher {
 		Maybe<String> removedScenarioId = scenarioIdMap.remove(scenarioResult.getScenario().getName());
 		//noinspection ReactiveStreamsUnusedPublisher
 		launch.get().finishTestItem(removedScenarioId, rq);
+		backgroundId = null;
 	}
 
 	@Nonnull

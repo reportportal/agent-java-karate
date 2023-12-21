@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -23,13 +24,15 @@ import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.*;
 
-public class BackgroundTest {
+public class BackgroundTwoStepsTest {
 	private final String featureId = CommonUtils.namedId("feature_");
 	private final String scenarioId = CommonUtils.namedId("scenario_");
 	private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_"))
-			.limit(3).collect(Collectors.toList());
-	private final List<Pair<String, String>> nestedStepIds = stepIds.stream()
-			.map(id -> Pair.of(id, CommonUtils.namedId("nested_step_"))).collect(Collectors.toList());
+			.limit(2).collect(Collectors.toList());
+	private final List<Pair<String, String>> nestedStepIds = Stream.concat(
+			stepIds.stream().map(id -> Pair.of(id, CommonUtils.namedId("nested_step_"))),
+			stepIds.stream().map(id -> Pair.of(id, CommonUtils.namedId("nested_step_")))).collect(Collectors.toList()
+	);
 
 	private final ReportPortalClient client = mock(ReportPortalClient.class);
 	private final ReportPortal rp = ReportPortal.create(client, standardParameters(), testExecutor());
@@ -43,21 +46,21 @@ public class BackgroundTest {
 
 	@Test
 	public void test_background_steps() {
-		var results = TestUtils.runAsReport(rp, "classpath:feature/background.feature");
+		var results = TestUtils.runAsReport(rp, "classpath:feature/background_two_steps.feature");
 		assertThat(results.getFailCount(), equalTo(0));
 
 		ArgumentCaptor<StartTestItemRQ> captor = ArgumentCaptor.forClass(StartTestItemRQ.class);
 		verify(client).startTestItem(captor.capture());
 		verify(client, times(1)).startTestItem(same(featureId), captor.capture());
 		ArgumentCaptor<StartTestItemRQ> stepCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
-		verify(client, times(3)).startTestItem(same(scenarioId), stepCaptor.capture());
+		verify(client, times(2)).startTestItem(same(scenarioId), stepCaptor.capture());
 		ArgumentCaptor<StartTestItemRQ> nestedStepCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
-		verify(client).startTestItem(startsWith("step_"), nestedStepCaptor.capture());
+		verify(client, times(2)).startTestItem(startsWith("step_"), nestedStepCaptor.capture());
 
 		List<StartTestItemRQ> items = captor.getAllValues();
 		assertThat(items, hasSize(2));
 		List<StartTestItemRQ> steps = stepCaptor.getAllValues();
-		assertThat(steps, hasSize(3));
+		assertThat(steps, hasSize(2));
 
 		List<StartTestItemRQ> backgroundSteps = steps.stream()
 				.filter(s -> s.getName().startsWith(Background.KEYWORD)).collect(Collectors.toList());
@@ -69,9 +72,10 @@ public class BackgroundTest {
 		assertThat(backgroundStep.getType(), equalTo(ItemType.STEP.name()));
 
 		List<StartTestItemRQ> nestedSteps = nestedStepCaptor.getAllValues();
-		assertThat(nestedSteps, hasSize(1));
-		StartTestItemRQ nestedStep = nestedSteps.get(0);
-		assertThat(nestedStep.getName(), equalTo("Given def four = 4"));
-		assertThat(nestedStep.isHasStats(), equalTo(Boolean.FALSE));
+		assertThat(nestedSteps, hasSize(2));
+		nestedSteps.forEach(step -> assertThat(step.isHasStats(), equalTo(Boolean.FALSE)));
+		Set<String> nestedStepNames = nestedSteps.stream().map(StartTestItemRQ::getName).collect(Collectors.toSet());
+
+		assertThat(nestedStepNames, allOf(hasItem("Given def vara = 2"), hasItem("And def varb = 2")));
 	}
 }
