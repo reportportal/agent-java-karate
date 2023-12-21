@@ -56,12 +56,13 @@ public class TableParametersTest {
 		List<StartTestItemRQ> items = captor.getAllValues();
 		assertThat(items, hasSize(2));
 
-		Map<String, SaveLogRQ> logs = logCaptor
+		List<SaveLogRQ> logs = logCaptor
 				.getAllValues().
 				stream()
 				.flatMap(rq -> extractJsonParts((List<MultipartBody.Part>) rq).stream())
 				.filter(rq -> LogLevel.INFO.name().equals(rq.getLevel()))
-				.collect(Collectors.toMap(SaveLogRQ::getItemUuid, v -> v));
-		assertThat(logs.get(stepIds.get(2)).getMessage(), startsWith("Table:\n\n"));
+				.collect(Collectors.toList());
+		assertThat(logs, hasSize(1));
+		assertThat(logs.get(0).getMessage(), startsWith("Table:\n\n"));
 	}
 }
