@@ -56,6 +56,7 @@ import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 public class ReportPortalPublisher {
+	public static final String BACKGROUND_PREFIX = "BACKGROUND: ";
 	public static final String SCENARIO_CODE_REFERENCE_PATTERN = "%s/[SCENARIO:%s]";
 	public static final String EXAMPLE_CODE_REFERENCE_PATTERN = "%s/[EXAMPLE:%s%s]";
 	public static final String VARIABLE_PATTERN =
@@ -349,6 +350,9 @@ public class ReportPortalPublisher {
 	protected StartTestItemRQ buildStartStepRq(@Nonnull StepResult stepResult, @Nonnull ScenarioResult scenarioResult) {
 		Step step = stepResult.getStep();
 		String stepName = step.getPrefix() + " " + step.getText();
+		if (step.isBackground()) {
+			stepName = BACKGROUND_PREFIX + stepName;
+		}
 		StartTestItemRQ rq = buildStartTestItemRq(stepName, getStepStartTime(stepStartTimeMap, stepId), ItemType.STEP);
 		rq.setHasStats(false);
 		if (step.isOutline()) {
