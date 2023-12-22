@@ -91,7 +91,7 @@ public class ReportPortalPublisher {
 		rq.setStartTime(Calendar.getInstance().getTime());
 		rq.setMode(parameters.getLaunchRunningMode());
 		rq.setAttributes(new HashSet<>(parameters.getAttributes()));
-		if (!isNotBlank(parameters.getDescription())) {
+		if (isNotBlank(parameters.getDescription())) {
 			rq.setDescription(parameters.getDescription());
 		}
 		rq.setRerun(parameters.isRerun());
