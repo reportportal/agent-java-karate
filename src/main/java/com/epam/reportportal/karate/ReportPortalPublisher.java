@@ -51,7 +51,6 @@ import static com.epam.reportportal.karate.ReportPortalUtils.AGENT_PROPERTIES_FI
 import static com.epam.reportportal.utils.ParameterUtils.NULL_VALUE;
 import static com.epam.reportportal.utils.ParameterUtils.formatParametersAsTable;
 import static com.epam.reportportal.utils.markdown.MarkdownUtils.formatDataTable;
-import static com.google.common.base.Strings.isNullOrEmpty;
 import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
@@ -92,7 +91,7 @@ public class ReportPortalPublisher {
 		rq.setStartTime(Calendar.getInstance().getTime());
 		rq.setMode(parameters.getLaunchRunningMode());
 		rq.setAttributes(new HashSet<>(parameters.getAttributes()));
-		if (!isNullOrEmpty(parameters.getDescription())) {
+		if (!isNotBlank(parameters.getDescription())) {
 			rq.setDescription(parameters.getDescription());
 		}
 		rq.setRerun(parameters.isRerun());
