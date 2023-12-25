@@ -1,7 +1,6 @@
-package com.epam.reportportal.karate.background;
+package com.epam.reportportal.karate.description;
 
 import com.epam.reportportal.karate.utils.TestUtils;
-import com.epam.reportportal.listeners.ItemType;
 import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
@@ -18,12 +17,12 @@ import java.util.stream.Stream;
 
 import static com.epam.reportportal.karate.utils.TestUtils.*;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.same;
-import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.*;
 
-public class BackgroundTest {
+public class SimpleDescriptionTest {
 	private final String featureId = CommonUtils.namedId("feature_");
 	private final String scenarioId = CommonUtils.namedId("scenario_");
 	private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_"))
@@ -42,36 +41,28 @@ public class BackgroundTest {
 	}
 
 	@Test
-	public void test_background_steps() {
-		var results = TestUtils.runAsReport(rp, "classpath:feature/background.feature");
+	public void test_description_for_all_possible_items() {
+		var results = TestUtils.runAsReport(rp, "classpath:feature/description.feature");
 		assertThat(results.getFailCount(), equalTo(0));
 
-		ArgumentCaptor<StartTestItemRQ> captor = ArgumentCaptor.forClass(StartTestItemRQ.class);
-		verify(client).startTestItem(captor.capture());
-		verify(client).startTestItem(same(featureId), captor.capture());
+		ArgumentCaptor<StartTestItemRQ> featureCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
+		verify(client).startTestItem(featureCaptor.capture());
+		ArgumentCaptor<StartTestItemRQ> scenarioCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
+		verify(client).startTestItem(same(featureId), scenarioCaptor.capture());
 		ArgumentCaptor<StartTestItemRQ> stepCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
 		verify(client, times(3)).startTestItem(same(scenarioId), stepCaptor.capture());
-		ArgumentCaptor<StartTestItemRQ> nestedStepCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
-		verify(client).startTestItem(startsWith("step_"), nestedStepCaptor.capture());
 
-		List<StartTestItemRQ> items = captor.getAllValues();
-		assertThat(items, hasSize(2));
-		List<StartTestItemRQ> steps = stepCaptor.getAllValues();
-		assertThat(steps, hasSize(3));
+		StartTestItemRQ featureStart = featureCaptor.getValue();
+		assertThat(featureStart.getDescription(), endsWith("feature/description.feature\n\n---\n\nThis is my Feature description."));
 
-		List<StartTestItemRQ> backgroundSteps = steps.stream()
+		StartTestItemRQ scenarioStart = scenarioCaptor.getValue();
+		assertThat(scenarioStart.getDescription(), equalTo("This is my Scenario description."));
+
+		List<StartTestItemRQ> backgroundSteps = stepCaptor.getAllValues().stream()
 				.filter(s -> s.getName().startsWith(Background.KEYWORD)).collect(Collectors.toList());
 		assertThat(backgroundSteps, hasSize(1));
 		StartTestItemRQ backgroundStep = backgroundSteps.get(0);
-		assertThat(backgroundStep.getName(), equalTo(Background.KEYWORD)); // No name for Background in Karate
-		assertThat(backgroundStep.isHasStats(), equalTo(Boolean.FALSE));
-		assertThat(backgroundStep.getStartTime(), notNullValue());
-		assertThat(backgroundStep.getType(), equalTo(ItemType.STEP.name()));
-
-		List<StartTestItemRQ> nestedSteps = nestedStepCaptor.getAllValues();
-		assertThat(nestedSteps, hasSize(1));
-		StartTestItemRQ nestedStep = nestedSteps.get(0);
-		assertThat(nestedStep.getName(), equalTo("Given def four = 4"));
-		assertThat(nestedStep.isHasStats(), equalTo(Boolean.FALSE));
+		assertThat("No support of Background description in Karate yet. But this is a part of Gherkin standard.",
+				backgroundStep.getDescription(), nullValue());
 	}
 }

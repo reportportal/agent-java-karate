@@ -79,7 +79,7 @@ public class BackgroundExamplesTest {
 				.filter(s -> s.getName().startsWith(Background.KEYWORD)).collect(Collectors.toList());
 		assertThat(secondBackgroundSteps, hasSize(1));
 
-		Stream.concat(firstBackgroundSteps.stream(), secondBackgroundSteps.stream()).forEach(backgroundStep ->{
+		Stream.concat(firstBackgroundSteps.stream(), secondBackgroundSteps.stream()).forEach(backgroundStep -> {
 			assertThat(backgroundStep.getName(), equalTo(Background.KEYWORD)); // No name for Background in Karate
 			assertThat(backgroundStep.isHasStats(), equalTo(Boolean.FALSE));
 			assertThat(backgroundStep.getStartTime(), notNullValue());

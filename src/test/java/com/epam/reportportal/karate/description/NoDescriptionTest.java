@@ -1,7 +1,6 @@
-package com.epam.reportportal.karate.coderef;
+package com.epam.reportportal.karate.description;
 
 import com.epam.reportportal.karate.utils.TestUtils;
-import com.epam.reportportal.listeners.ItemType;
 import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
@@ -16,17 +15,16 @@ import java.util.stream.Stream;
 
 import static com.epam.reportportal.karate.utils.TestUtils.*;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.*;
 
-public class ScenarioCodeRefTest {
+public class NoDescriptionTest {
 	private final String featureId = CommonUtils.namedId("feature_");
 	private final String scenarioId = CommonUtils.namedId("scenario_");
 	private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_"))
 			.limit(3).collect(Collectors.toList());
-
-	private static final String SIMPLE_CODE_REFERENCE = "feature/simple.feature/[SCENARIO:Verify math]";
 
 	private final ReportPortalClient client = mock(ReportPortalClient.class);
 	private final ReportPortal rp = ReportPortal.create(client, standardParameters(), testExecutor());
@@ -38,7 +36,7 @@ public class ScenarioCodeRefTest {
 	}
 
 	@Test
-	public void test_scenario_code_reference() {
+	public void test_description_for_all_possible_items() {
 		var results = TestUtils.runAsReport(rp, "classpath:feature/simple.feature");
 		assertThat(results.getFailCount(), equalTo(0));
 
@@ -49,17 +47,12 @@ public class ScenarioCodeRefTest {
 		ArgumentCaptor<StartTestItemRQ> stepCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
 		verify(client, times(3)).startTestItem(same(scenarioId), stepCaptor.capture());
 
-		StartTestItemRQ featureRq = featureCaptor.getValue();
-		StartTestItemRQ scenarioRq = scenarioCaptor.getValue();
+		StartTestItemRQ featureStart = featureCaptor.getValue();
+		assertThat(featureStart.getDescription(), endsWith("feature/simple.feature"));
 
-		assertThat(featureRq.getType(), allOf(notNullValue(), equalTo(ItemType.STORY.name())));
+		StartTestItemRQ scenarioStart = scenarioCaptor.getValue();
+		assertThat(scenarioStart.getDescription(), nullValue());
 
-		assertThat(scenarioRq.getType(), allOf(notNullValue(), equalTo(ItemType.STEP.name())));
-		assertThat(scenarioRq.getCodeRef(), allOf(notNullValue(), equalTo(SIMPLE_CODE_REFERENCE)));
-
-		stepCaptor.getAllValues().forEach(step -> {
-			assertThat(step.getType(), allOf(notNullValue(), equalTo(ItemType.STEP.name())));
-			assertThat(step.isHasStats(), equalTo(Boolean.FALSE));
-		});
+		stepCaptor.getAllValues().forEach(step -> assertThat(step.getDescription(), nullValue()));
 	}
 }

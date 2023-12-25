@@ -32,7 +32,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.epam.reportportal.karate.utils.TestUtils.*;
-import static com.epam.reportportal.karate.utils.TestUtils.mockBatchLogging;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.mockito.Mockito.mock;

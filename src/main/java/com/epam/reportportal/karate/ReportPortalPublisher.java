@@ -59,6 +59,7 @@ public class ReportPortalPublisher {
 	public static final String EXAMPLE_CODE_REFERENCE_PATTERN = "%s/[EXAMPLE:%s%s]";
 	public static final String VARIABLE_PATTERN =
 			"(?:(?<=#\\()%1$s(?=\\)))|(?:(?<=[\\s=+-/*<>(]|^)%1$s(?=[\\s=+-/*<>)]|(?:\\r?\\n)|$))";
+	public static final String MARKDOWN_DELIMITER_PATTERN = "%s\n\n---\n\n%s";
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalPublisher.class);
 	private final Map<String, Maybe<String>> featureIdMap = new HashMap<>();
@@ -213,43 +214,28 @@ public class ReportPortalPublisher {
 	 */
 	@Nonnull
 	protected StartTestItemRQ buildStartFeatureRq(@Nonnull FeatureResult featureResult) {
-		StartTestItemRQ rq = buildStartTestItemRq(String.valueOf(featureResult.toCucumberJson().get("name")),
-				Calendar.getInstance().getTime(),
-				ItemType.STORY);
 		Feature feature = featureResult.getFeature();
+		StartTestItemRQ rq = buildStartTestItemRq(feature.getName(), Calendar.getInstance().getTime(), ItemType.STORY);
 		rq.setAttributes(toAttributes(feature.getTags()));
-		return rq;
-	}
-
-	@Nullable
-	private List<ParameterResource> getParameters(@Nonnull Scenario scenario) {
-		if (scenario.getExampleIndex() < 0) {
-			return null;
+		String featurePath = feature.getResource().getUri().toString();
+		String description = feature.getDescription();
+		if (isNotBlank(description)) {
+			rq.setDescription(String.format(MARKDOWN_DELIMITER_PATTERN, featurePath, description));
+		} else {
+			rq.setDescription(featurePath);
 		}
-		return scenario.getExampleData().entrySet().stream().map(e -> {
-			ParameterResource parameterResource = new ParameterResource();
-			parameterResource.setKey(e.getKey());
-			parameterResource.setValue(ofNullable(e.getValue()).map(Object::toString).orElse(NULL_VALUE));
-			return parameterResource;
-		}).collect(Collectors.toList());
+		return rq;
 	}
 
 	/**
-	 * Build ReportPortal request for start Scenario event
+	 * Start sending feature data to ReportPortal.
 	 *
-	 * @param scenarioResult Karate's ScenarioResult object instance
-	 * @return request to ReportPortal
+	 * @param featureResult feature result
 	 */
-	protected StartTestItemRQ buildStartScenarioRq(@Nonnull ScenarioResult scenarioResult) {
-		StartTestItemRQ rq = buildStartTestItemRq(scenarioResult.getScenario().getName(),
-				Calendar.getInstance().getTime(),
-				ItemType.STEP);
-		Scenario scenario = scenarioResult.getScenario();
-		rq.setCodeRef(getCodeRef(scenario));
-		rq.setTestCaseId(ofNullable(getTestCaseId(scenario)).map(TestCaseIdEntry::getId).orElse(null));
-		rq.setAttributes(toAttributes(scenario.getTags()));
-		rq.setParameters(getParameters(scenario));
-		return rq;
+	public void startFeature(@Nonnull FeatureResult featureResult) {
+		StartTestItemRQ rq = buildStartFeatureRq(featureResult);
+		Maybe<String> featureId = launch.get().startTestItem(rq);
+		featureIdMap.put(featureResult.getCallNameForReport(), featureId);
 	}
 
 	/**
@@ -265,17 +251,6 @@ public class ReportPortalPublisher {
 		rq.setEndTime(endTime);
 		rq.setStatus(status.name());
 		return rq;
-	}
-
-	/**
-	 * Start sending feature data to ReportPortal.
-	 *
-	 * @param featureResult feature result
-	 */
-	public void startFeature(@Nonnull FeatureResult featureResult) {
-		StartTestItemRQ rq = buildStartFeatureRq(featureResult);
-		Maybe<String> featureId = launch.get().startTestItem(rq);
-		featureIdMap.put(featureResult.getCallNameForReport(), featureId);
 	}
 
 	/**
@@ -306,6 +281,41 @@ public class ReportPortalPublisher {
 				featureResult.isFailed() ? ItemStatus.FAILED : ItemStatus.PASSED);
 		//noinspection ReactiveStreamsUnusedPublisher
 		launch.get().finishTestItem(featureIdMap.remove(featureResult.getCallNameForReport()), rq);
+	}
+
+	@Nullable
+	private List<ParameterResource> getParameters(@Nonnull Scenario scenario) {
+		if (scenario.getExampleIndex() < 0) {
+			return null;
+		}
+		return scenario.getExampleData().entrySet().stream().map(e -> {
+			ParameterResource parameterResource = new ParameterResource();
+			parameterResource.setKey(e.getKey());
+			parameterResource.setValue(ofNullable(e.getValue()).map(Object::toString).orElse(NULL_VALUE));
+			return parameterResource;
+		}).collect(Collectors.toList());
+	}
+
+	/**
+	 * Build ReportPortal request for start Scenario event
+	 *
+	 * @param scenarioResult Karate's ScenarioResult object instance
+	 * @return request to ReportPortal
+	 */
+	protected StartTestItemRQ buildStartScenarioRq(@Nonnull ScenarioResult scenarioResult) {
+		StartTestItemRQ rq = buildStartTestItemRq(scenarioResult.getScenario().getName(),
+				Calendar.getInstance().getTime(),
+				ItemType.STEP);
+		Scenario scenario = scenarioResult.getScenario();
+		rq.setCodeRef(getCodeRef(scenario));
+		rq.setTestCaseId(ofNullable(getTestCaseId(scenario)).map(TestCaseIdEntry::getId).orElse(null));
+		rq.setAttributes(toAttributes(scenario.getTags()));
+		rq.setParameters(getParameters(scenario));
+		String description = scenario.getDescription();
+		if (isNotBlank(description)) {
+			rq.setDescription(description);
+		}
+		return rq;
 	}
 
 	/**
