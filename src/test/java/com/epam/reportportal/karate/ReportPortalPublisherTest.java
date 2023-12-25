@@ -8,6 +8,7 @@ import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.intuit.karate.core.Feature;
 import com.intuit.karate.core.FeatureResult;
+import com.intuit.karate.resource.Resource;
 import io.reactivex.Maybe;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.mockito.Mockito.*;
@@ -45,11 +48,14 @@ public class ReportPortalPublisherTest {
 
 	@SuppressWarnings("unchecked")
 	@Test
-	public void shouldStartFeature() {
+	public void shouldStartFeature() throws URISyntaxException {
 		FeatureResult featureResult = mock(FeatureResult.class);
 		Feature feature = mock(Feature.class);
+		Resource resource = mock(Resource.class);
 		when(featureResult.getFeature()).thenReturn(feature);
 		when(featureResult.getCallNameForReport()).thenReturn("featureName");
+		when(feature.getResource()).thenReturn(resource);
+		when(resource.getUri()).thenReturn(new URI("file:///feature/simple.feature"));
 		when(launchMock.startTestItem(any(StartTestItemRQ.class))).thenReturn(mock(Maybe.class));
 		reportPortalPublisher.startFeature(featureResult);
 		verify(launchMock, times(1)).startTestItem(any(StartTestItemRQ.class));
