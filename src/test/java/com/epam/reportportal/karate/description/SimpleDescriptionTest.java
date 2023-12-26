@@ -30,6 +30,8 @@ public class SimpleDescriptionTest {
 	private final List<Pair<String, String>> nestedStepIds = stepIds.stream()
 			.map(id -> Pair.of(id, CommonUtils.namedId("nested_step_"))).collect(Collectors.toList());
 
+	public static final String SCENARIO_DESCRIPTION = "This is my Scenario description.";
+
 	private final ReportPortalClient client = mock(ReportPortalClient.class);
 	private final ReportPortal rp = ReportPortal.create(client, standardParameters(), testExecutor());
 
@@ -56,7 +58,7 @@ public class SimpleDescriptionTest {
 		assertThat(featureStart.getDescription(), endsWith("feature/description.feature\n\n---\n\nThis is my Feature description."));
 
 		StartTestItemRQ scenarioStart = scenarioCaptor.getValue();
-		assertThat(scenarioStart.getDescription(), equalTo("This is my Scenario description."));
+		assertThat(scenarioStart.getDescription(), equalTo(SCENARIO_DESCRIPTION));
 
 		List<StartTestItemRQ> backgroundSteps = stepCaptor.getAllValues().stream()
 				.filter(s -> s.getName().startsWith(Background.KEYWORD)).collect(Collectors.toList());

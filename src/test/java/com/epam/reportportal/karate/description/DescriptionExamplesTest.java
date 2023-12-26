@@ -33,11 +33,11 @@ public class DescriptionExamplesTest {
 	public static final String FIRST_EXAMPLE_DESCRIPTION = String.format(
 			ReportPortalPublisher.MARKDOWN_DELIMITER_PATTERN,
 			NoDescriptionExamplesTest.FIRST_EXAMPLE_DESCRIPTION,
-			"This is my Scenario description.");
+			SimpleDescriptionTest.SCENARIO_DESCRIPTION);
 	public static final String SECOND_EXAMPLE_DESCRIPTION = String.format(
 			ReportPortalPublisher.MARKDOWN_DELIMITER_PATTERN,
 			NoDescriptionExamplesTest.SECOND_EXAMPLE_DESCRIPTION,
-			"This is my Scenario description.");
+			SimpleDescriptionTest.SCENARIO_DESCRIPTION);
 
 	private final ReportPortalClient client = mock(ReportPortalClient.class);
 	private final ReportPortal rp = ReportPortal.create(client, standardParameters(), testExecutor());
