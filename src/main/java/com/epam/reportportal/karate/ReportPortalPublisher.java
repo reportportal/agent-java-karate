@@ -25,6 +25,7 @@ import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.item.TestCaseIdEntry;
 import com.epam.reportportal.utils.AttributeParser;
 import com.epam.reportportal.utils.MemoizingSupplier;
+import com.epam.reportportal.utils.ParameterUtils;
 import com.epam.reportportal.utils.TestCaseIdUtils;
 import com.epam.reportportal.utils.properties.SystemAttributesExtractor;
 import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
@@ -60,6 +61,7 @@ public class ReportPortalPublisher {
 	public static final String VARIABLE_PATTERN =
 			"(?:(?<=#\\()%1$s(?=\\)))|(?:(?<=[\\s=+-/*<>(]|^)%1$s(?=[\\s=+-/*<>)]|(?:\\r?\\n)|$))";
 	public static final String MARKDOWN_DELIMITER_PATTERN = "%s\n\n---\n\n%s";
+	public static final String PARAMETERS_PATTERN = "Parameters:\n\n%s";
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalPublisher.class);
 	private final Map<String, Maybe<String>> featureIdMap = new HashMap<>();
@@ -310,10 +312,24 @@ public class ReportPortalPublisher {
 		rq.setCodeRef(getCodeRef(scenario));
 		rq.setTestCaseId(ofNullable(getTestCaseId(scenario)).map(TestCaseIdEntry::getId).orElse(null));
 		rq.setAttributes(toAttributes(scenario.getTags()));
-		rq.setParameters(getParameters(scenario));
+		List<ParameterResource> parameters = getParameters(scenario);
+		boolean hasParameters = ofNullable(parameters).filter(p -> !p.isEmpty()).isPresent();
+		if (hasParameters) {
+			rq.setParameters(parameters);
+		}
+
 		String description = scenario.getDescription();
 		if (isNotBlank(description)) {
-			rq.setDescription(description);
+			if (hasParameters) {
+				rq.setDescription(
+						String.format(MARKDOWN_DELIMITER_PATTERN,
+								String.format(PARAMETERS_PATTERN, ParameterUtils.formatParametersAsTable(parameters)),
+								description));
+			} else {
+				rq.setDescription(description);
+			}
+		} else if (hasParameters) {
+			rq.setDescription(String.format(PARAMETERS_PATTERN, ParameterUtils.formatParametersAsTable(parameters)));
 		}
 		return rq;
 	}
@@ -376,7 +392,8 @@ public class ReportPortalPublisher {
 					.getExampleData()
 					.entrySet()
 					.stream()
-					.filter(e -> Pattern.compile(String.format(VARIABLE_PATTERN, e.getKey())).matcher(step.getText()).find())
+					.filter(e -> Pattern.compile(String.format(VARIABLE_PATTERN, e.getKey()))
+							.matcher(step.getText()).find())
 					.map(e -> {
 						ParameterResource param = new ParameterResource();
 						param.setKey(e.getKey());
@@ -400,7 +417,8 @@ public class ReportPortalPublisher {
 		if (stepResult.getStep().isBackground()) {
 			backgroundId = ofNullable(backgroundId).orElseGet(() -> {
 				StartTestItemRQ backgroundRq = buildStartBackgroundRq(stepResult, scenarioResult);
-				return launch.get().startTestItem(scenarioIdMap.get(scenarioResult.getScenario().getName()), backgroundRq);
+				return launch.get().startTestItem(scenarioIdMap.get(scenarioResult.getScenario().getName()),
+						backgroundRq);
 			});
 		} else {
 			backgroundId = null;
@@ -415,7 +433,8 @@ public class ReportPortalPublisher {
 		ofNullable(stepRq.getParameters())
 				.filter(params -> !params.isEmpty())
 				.ifPresent(params ->
-						sendLog(stepId, "Parameters:\n\n" + formatParametersAsTable(params), LogLevel.INFO));
+						sendLog(stepId, String.format(PARAMETERS_PATTERN, formatParametersAsTable(params)),
+								LogLevel.INFO));
 		ofNullable(stepResult.getStep().getTable())
 				.ifPresent(table ->
 						sendLog(stepId, "Table:\n\n" + formatDataTable(table.getRows()), LogLevel.INFO));
