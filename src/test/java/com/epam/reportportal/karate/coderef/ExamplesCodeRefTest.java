@@ -13,7 +13,6 @@ import org.mockito.ArgumentCaptor;
 
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static com.epam.reportportal.karate.utils.TestUtils.*;
@@ -52,32 +51,31 @@ public class ExamplesCodeRefTest {
 		var results = TestUtils.runAsReport(rp, "classpath:feature/examples.feature");
 		assertThat(results.getFailCount(), equalTo(0));
 
-		ArgumentCaptor<StartTestItemRQ> captor = ArgumentCaptor.forClass(StartTestItemRQ.class);
-		verify(client, times(1)).startTestItem(captor.capture());
-		verify(client, times(2)).startTestItem(same(featureId), captor.capture());
-		verify(client, times(2)).startTestItem(same(exampleIds.get(0)), captor.capture());
-		verify(client, times(2)).startTestItem(same(exampleIds.get(1)), captor.capture());
+		ArgumentCaptor<StartTestItemRQ> featureCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
+		verify(client, times(1)).startTestItem(featureCaptor.capture());
+		ArgumentCaptor<StartTestItemRQ> scenarioCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
+		verify(client, times(2)).startTestItem(same(featureId), scenarioCaptor.capture());
+		ArgumentCaptor<StartTestItemRQ> firstStepCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
+		verify(client, times(2)).startTestItem(same(exampleIds.get(0)), firstStepCaptor.capture());
+		ArgumentCaptor<StartTestItemRQ> secondStepCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
+		verify(client, times(2)).startTestItem(same(exampleIds.get(1)), secondStepCaptor.capture());
 
-		List<StartTestItemRQ> items = captor.getAllValues();
-		assertThat(items, hasSize(7));
-
-		StartTestItemRQ featureRq = items.get(0);
-
+		StartTestItemRQ featureRq = featureCaptor.getValue();
 		assertThat(featureRq.getType(), allOf(notNullValue(), equalTo(ItemType.STORY.name())));
 
-		StartTestItemRQ firstScenarioRq = items.get(1);
+		List<StartTestItemRQ> scenarios = scenarioCaptor.getAllValues();
+		StartTestItemRQ firstScenarioRq = scenarios.get(0);
 		assertThat(firstScenarioRq.getType(), allOf(notNullValue(), equalTo(ItemType.STEP.name())));
 		assertThat(firstScenarioRq.getCodeRef(), allOf(notNullValue(), equalTo(FIRST_EXAMPLE_CODE_REFERENCE)));
 
-		StartTestItemRQ secondScenarioRq = items.get(2);
+		StartTestItemRQ secondScenarioRq = scenarios.get(1);
 		assertThat(secondScenarioRq.getType(), allOf(notNullValue(), equalTo(ItemType.STEP.name())));
 		assertThat(secondScenarioRq.getCodeRef(), allOf(notNullValue(), equalTo(SECOND_EXAMPLE_CODE_REFERENCE)));
 
-		List<StartTestItemRQ> stepRqs = items.subList(3, items.size());
-		IntStream.range(0, stepRqs.size()).forEach(i -> {
-			StartTestItemRQ step = stepRqs.get(i);
-			assertThat(step.getType(), allOf(notNullValue(), equalTo(ItemType.STEP.name())));
-			assertThat(step.isHasStats(), equalTo(Boolean.FALSE));
-		});
+		Stream.concat(firstStepCaptor.getAllValues().stream(), secondStepCaptor.getAllValues().stream())
+				.forEach(step -> {
+					assertThat(step.getType(), allOf(notNullValue(), equalTo(ItemType.STEP.name())));
+					assertThat(step.isHasStats(), equalTo(Boolean.FALSE));
+				});
 	}
 }
