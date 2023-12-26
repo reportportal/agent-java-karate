@@ -1,10 +1,10 @@
 package com.epam.reportportal.karate.description;
 
+import com.epam.reportportal.karate.ReportPortalPublisher;
 import com.epam.reportportal.karate.utils.TestUtils;
 import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
-import com.epam.reportportal.utils.markdown.MarkdownUtils;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,7 +21,7 @@ import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.*;
 
-public class NoDescriptionExamplesTest {
+public class DescriptionExamplesTest {
 	private final String featureId = CommonUtils.namedId("feature_");
 	private final List<String> exampleIds = Stream.generate(() -> CommonUtils.namedId("example_")).limit(2)
 			.collect(Collectors.toList());
@@ -30,17 +30,14 @@ public class NoDescriptionExamplesTest {
 					.limit(2).collect(Collectors.toList())))
 			.collect(Collectors.toList());
 
-	private static final String EXAMPLE_PARAMETERS_DESCRIPTION_PATTERN =
-			"Parameters:\n\n"
-					+ MarkdownUtils.TABLE_INDENT
-					+ "| vara | varb | result |\n"
-					+ MarkdownUtils.TABLE_INDENT
-					+ "|------|------|--------|\n"
-					+ MarkdownUtils.TABLE_INDENT;
-	public static final String FIRST_EXAMPLE_DESCRIPTION = EXAMPLE_PARAMETERS_DESCRIPTION_PATTERN
-			+ "|  2   |  2   |   4    |";
-	public static final String SECOND_EXAMPLE_DESCRIPTION = EXAMPLE_PARAMETERS_DESCRIPTION_PATTERN
-			+ "|  1   |  2   |   3    |";
+	public static final String FIRST_EXAMPLE_DESCRIPTION = String.format(
+			ReportPortalPublisher.MARKDOWN_DELIMITER_PATTERN,
+			NoDescriptionExamplesTest.FIRST_EXAMPLE_DESCRIPTION,
+			"This is my Scenario description.");
+	public static final String SECOND_EXAMPLE_DESCRIPTION = String.format(
+			ReportPortalPublisher.MARKDOWN_DELIMITER_PATTERN,
+			NoDescriptionExamplesTest.SECOND_EXAMPLE_DESCRIPTION,
+			"This is my Scenario description.");
 
 	private final ReportPortalClient client = mock(ReportPortalClient.class);
 	private final ReportPortal rp = ReportPortal.create(client, standardParameters(), testExecutor());
@@ -52,8 +49,8 @@ public class NoDescriptionExamplesTest {
 	}
 
 	@Test
-	public void test_examples_no_description() {
-		var results = TestUtils.runAsReport(rp, "classpath:feature/examples.feature");
+	public void test_examples_description() {
+		var results = TestUtils.runAsReport(rp, "classpath:feature/description_examples.feature");
 		assertThat(results.getFailCount(), equalTo(0));
 
 		ArgumentCaptor<StartTestItemRQ> featureCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
