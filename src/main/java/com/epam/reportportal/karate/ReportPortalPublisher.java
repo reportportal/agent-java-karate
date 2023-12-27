@@ -61,6 +61,7 @@ public class ReportPortalPublisher {
 	public static final String VARIABLE_PATTERN =
 			"(?:(?<=#\\()%1$s(?=\\)))|(?:(?<=[\\s=+-/*<>(]|^)%1$s(?=[\\s=+-/*<>)]|(?:\\r?\\n)|$))";
 	public static final String MARKDOWN_DELIMITER_PATTERN = "%s\n\n---\n\n%s";
+	public static final String MARKDOWN_CODE_PATTERN = "```\n%s\n```";
 	public static final String PARAMETERS_PATTERN = "Parameters:\n\n%s";
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalPublisher.class);
@@ -457,43 +458,33 @@ public class ReportPortalPublisher {
 		launch.get().finishTestItem(stepId, rq);
 	}
 
-
 	/**
 	 * Send step execution results to ReportPortal
 	 *
 	 * @param stepResult step execution results
 	 */
 	public void sendStepResults(StepResult stepResult) {
-		Result result = stepResult.getResult();
-		LogLevel logLevel = getLogLevel(result.getStatus());
 		Step step = stepResult.getStep();
-
-		if (step.getDocString() != null) {
-			sendLog("\n-----------------DOC_STRING-----------------\n" + step.getDocString(), logLevel);
+		String docString = step.getDocString();
+		if (isNotBlank(docString)) {
+			sendLog(stepId, "Docstring: \n\n" + String.format(MARKDOWN_CODE_PATTERN, step.getDocString()),
+					LogLevel.INFO);
 		}
 
-		if (stepResult.getStepLog() != null
-				&& !stepResult.getStepLog().isEmpty()
-				&& !stepResult.getStepLog().equals(" ")) {
-			sendLog(stepResult.getStepLog(), logLevel);
+		Result result = stepResult.getResult();
+		String stepLog = stepResult.getStepLog();
+		if (isNotBlank(stepLog)) {
+			sendLog(stepId, stepLog, LogLevel.INFO);
 		}
-	}
+		if (result.isFailed()) {
+			String fullErrorMessage = step.getPrefix() + " " + step.getText();
+			String errorMessage = result.getErrorMessage();
+			if (isNotBlank(errorMessage)) {
+				fullErrorMessage = fullErrorMessage + "\n" + errorMessage;
 
-	/**
-	 * Send step logs and/or execution results to ReportPortal
-	 *
-	 * @param message log message to send
-	 * @param level   log level
-	 */
-	public void sendLog(final String message, LogLevel level) {
-		ReportPortal.emitLog(itemId -> {
-			SaveLogRQ rq = new SaveLogRQ();
-			rq.setMessage(message);
-			rq.setItemUuid(itemId);
-			rq.setLevel(level.name());
-			rq.setLogTime(Calendar.getInstance().getTime());
-			return rq;
-		});
+			}
+			sendLog(stepId, fullErrorMessage, LogLevel.ERROR);
+		}
 	}
 
 	/**
@@ -531,19 +522,6 @@ public class ReportPortalPublisher {
 			default:
 				LOGGER.warn("Unknown step status received! Set it as SKIPPED");
 				return ItemStatus.SKIPPED;
-		}
-	}
-
-	private LogLevel getLogLevel(String status) {
-		switch (status) {
-			case "failed":
-				return LogLevel.ERROR;
-			case "stopped":
-			case "interrupted":
-			case "cancelled":
-				return LogLevel.WARN;
-			default:
-				return LogLevel.INFO;
 		}
 	}
 
