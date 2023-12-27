@@ -1,6 +1,7 @@
 package com.epam.reportportal.karate.utils;
 
 import com.epam.reportportal.karate.KarateReportPortalRunner;
+import com.epam.reportportal.karate.ReportPortalHook;
 import com.epam.reportportal.listeners.ListenerParameters;
 import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
@@ -14,6 +15,7 @@ import com.epam.ta.reportportal.ws.model.launch.StartLaunchRS;
 import com.epam.ta.reportportal.ws.model.log.SaveLogRQ;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.intuit.karate.Results;
+import com.intuit.karate.Runner;
 import io.reactivex.Maybe;
 import okhttp3.MultipartBody;
 import okio.Buffer;
@@ -51,6 +53,14 @@ public class TestUtils {
 		return KarateReportPortalRunner
 				.path(paths)
 				.withReportPortal(reportPortal)
+				.outputCucumberJson(false)
+				.parallel(1);
+	}
+
+	public static Results runAsHook(ReportPortal reportPortal, String... paths) {
+		return Runner
+				.path(paths)
+				.hook(new ReportPortalHook(reportPortal))
 				.outputCucumberJson(false)
 				.parallel(1);
 	}
