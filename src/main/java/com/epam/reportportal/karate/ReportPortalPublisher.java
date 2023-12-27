@@ -467,7 +467,7 @@ public class ReportPortalPublisher {
 		Step step = stepResult.getStep();
 		String docString = step.getDocString();
 		if (isNotBlank(docString)) {
-			sendLog(stepId, "Docstring: \n\n" + String.format(MARKDOWN_CODE_PATTERN, step.getDocString()),
+			sendLog(stepId, "Docstring:\n\n" + String.format(MARKDOWN_CODE_PATTERN, step.getDocString()),
 					LogLevel.INFO);
 		}
 
