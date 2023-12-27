@@ -11,7 +11,6 @@ import org.mockito.ArgumentCaptor;
 
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static com.epam.reportportal.karate.utils.TestUtils.*;
@@ -26,6 +25,9 @@ public class SimpleItemNameTest {
 	private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_"))
 			.limit(3).collect(Collectors.toList());
 
+	private static final String[] STEP_NAMES = new String[]{"Given def four = 4", "When def actualFour = 2 * 2",
+			"Then assert actualFour == four"};
+
 	private final ReportPortalClient client = mock(ReportPortalClient.class);
 	private final ReportPortal rp = ReportPortal.create(client, standardParameters(), testExecutor());
 
@@ -36,7 +38,7 @@ public class SimpleItemNameTest {
 	}
 
 	@Test
-	public void test_scenario_code_reference() {
+	public void test_item_names_simple() {
 		var results = TestUtils.runAsReport(rp, "classpath:feature/simple.feature");
 		assertThat(results.getFailCount(), equalTo(0));
 
@@ -54,12 +56,8 @@ public class SimpleItemNameTest {
 
 		assertThat(scenarioRq.getName(), allOf(notNullValue(), equalTo("Verify math")));
 
-		List<StartTestItemRQ> stepRqs = stepCaptor.getAllValues();
-		String[] stepNames = new String[]{"Given def four = 4", "When def actualFour = 2 * 2",
-				"Then assert actualFour == four"};
-		IntStream.range(0, stepRqs.size()).forEach(i -> {
-			StartTestItemRQ step = stepRqs.get(i);
-			assertThat(step.getName(), allOf(notNullValue(), equalTo(stepNames[i])));
-		});
+		List<String> stepNames = stepCaptor.getAllValues().stream().map(StartTestItemRQ::getName)
+				.collect(Collectors.toList());
+		assertThat(stepNames, containsInAnyOrder(STEP_NAMES));
 	}
 }
