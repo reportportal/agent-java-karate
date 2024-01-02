@@ -260,7 +260,7 @@ public class ReportPortalUtils {
 	 */
 	@Nullable
 	public static List<ParameterResource> getParameters(@Nonnull Scenario scenario) {
-		if (scenario.isOutlineExample()) {
+		if (!scenario.isOutlineExample()) {
 			return null;
 		}
 		return scenario.getExampleData().entrySet().stream().map(e -> {
