@@ -1,6 +1,6 @@
 package com.epam.reportportal.karate.description;
 
-import com.epam.reportportal.karate.ReportPortalPublisher;
+import com.epam.reportportal.karate.ReportPortalUtils;
 import com.epam.reportportal.karate.utils.TestUtils;
 import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
@@ -31,11 +31,11 @@ public class DescriptionExamplesTest {
 			.collect(Collectors.toList());
 
 	public static final String FIRST_EXAMPLE_DESCRIPTION = String.format(
-			ReportPortalPublisher.MARKDOWN_DELIMITER_PATTERN,
+			ReportPortalUtils.MARKDOWN_DELIMITER_PATTERN,
 			NoDescriptionExamplesTest.FIRST_EXAMPLE_DESCRIPTION,
 			SimpleDescriptionTest.SCENARIO_DESCRIPTION);
 	public static final String SECOND_EXAMPLE_DESCRIPTION = String.format(
-			ReportPortalPublisher.MARKDOWN_DELIMITER_PATTERN,
+			ReportPortalUtils.MARKDOWN_DELIMITER_PATTERN,
 			NoDescriptionExamplesTest.SECOND_EXAMPLE_DESCRIPTION,
 			SimpleDescriptionTest.SCENARIO_DESCRIPTION);
 
