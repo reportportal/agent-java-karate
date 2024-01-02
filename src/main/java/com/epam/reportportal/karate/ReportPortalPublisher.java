@@ -247,8 +247,8 @@ public class ReportPortalPublisher {
 	/**
 	 * Start sending Background data to ReportPortal.
 	 *
-	 * @param stepResult     step result
-	 * @param scenarioResult scenario result
+	 * @param stepResult     Karate's StepResult object instance
+	 * @param scenarioResult Karate's ScenarioResult object instance
 	 */
 	public void startBackground(@Nonnull StepResult stepResult, @Nonnull ScenarioResult scenarioResult) {
 		backgroundId = ofNullable(backgroundId).orElseGet(() -> {
@@ -261,6 +261,7 @@ public class ReportPortalPublisher {
 	/**
 	 * Build ReportPortal request for finish Background event.
 	 *
+	 * @param stepResult     Karate's StepResult object instance
 	 * @param scenarioResult Karate's ScenarioResult object instance
 	 * @return request to ReportPortal
 	 */
