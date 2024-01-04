@@ -18,7 +18,6 @@ package com.epam.reportportal.karate;
 import com.epam.reportportal.listeners.ItemStatus;
 import com.epam.reportportal.listeners.ItemType;
 import com.epam.reportportal.listeners.ListenerParameters;
-import com.epam.reportportal.service.Launch;
 import com.epam.reportportal.service.item.TestCaseIdEntry;
 import com.epam.reportportal.utils.AttributeParser;
 import com.epam.reportportal.utils.ParameterUtils;
@@ -37,7 +36,6 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
-import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -90,28 +88,24 @@ public class ReportPortalUtils {
 	 * Create a launch finish hook which will be called on JVM shutdown. Prevents from long unfinished launches for
 	 * interrupted tests.
 	 *
-	 * @param launch Launch object provider
+	 * @param actions Shutdown actions to perform
 	 * @return a Thread which executes Launch finish and exits
 	 */
 	@Nonnull
-	public static Thread createShutdownHook(@Nonnull Supplier<Launch> launch) {
-		return new Thread(() -> {
-			FinishExecutionRQ rq = new FinishExecutionRQ();
-			rq.setEndTime(Calendar.getInstance().getTime());
-			launch.get().finish(rq);
-		});
+	public static Thread createShutdownHook(@Nonnull Runnable actions) {
+		return new Thread(actions);
 	}
 
 	/**
 	 * Create and register a launch finish hook which will be called on JVM shutdown. Prevents from long unfinished
 	 * launches for interrupted tests.
 	 *
-	 * @param launch Launch object provider
+	 * @param actions Shutdown actions to perform
 	 * @return a Thread which executes Launch finish and exits
 	 */
 	@Nonnull
-	public static Thread registerShutdownHook(@Nonnull Supplier<Launch> launch) {
-		Thread shutDownHook = createShutdownHook(launch);
+	public static Thread registerShutdownHook(@Nonnull Runnable actions) {
+		Thread shutDownHook = createShutdownHook(actions);
 		Runtime.getRuntime().addShutdownHook(shutDownHook);
 		return shutDownHook;
 	}
@@ -253,6 +247,22 @@ public class ReportPortalUtils {
 	}
 
 	/**
+	 * Transform Map of parameters to ReportPortal parameter list.
+	 *
+	 * @param args argument Map
+	 * @return parameters
+	 */
+	@Nonnull
+	public static List<ParameterResource> getParameters(@Nonnull Map<String, Object> args) {
+		return args.entrySet().stream().map(e -> {
+			ParameterResource parameterResource = new ParameterResource();
+			parameterResource.setKey(e.getKey());
+			parameterResource.setValue(ofNullable(e.getValue()).map(Object::toString).orElse(NULL_VALUE));
+			return parameterResource;
+		}).collect(Collectors.toList());
+	}
+
+	/**
 	 * Extract and transform ScenarioOutline parameters to ReportPortal parameter list.
 	 *
 	 * @param scenario Karate's Scenario object instance
@@ -263,12 +273,7 @@ public class ReportPortalUtils {
 		if (!scenario.isOutlineExample()) {
 			return null;
 		}
-		return scenario.getExampleData().entrySet().stream().map(e -> {
-			ParameterResource parameterResource = new ParameterResource();
-			parameterResource.setKey(e.getKey());
-			parameterResource.setValue(ofNullable(e.getValue()).map(Object::toString).orElse(NULL_VALUE));
-			return parameterResource;
-		}).collect(Collectors.toList());
+		return getParameters(scenario.getExampleData());
 	}
 
 	/**

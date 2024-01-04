@@ -72,14 +72,14 @@ public class ReportPortalPublisher {
 			ListenerParameters params = reportPortal.getParameters();
 			StartLaunchRQ rq = buildStartLaunchRq(params);
 			Launch newLaunch = reportPortal.newLaunch(rq);
-			shutDownHook = registerShutdownHook(() -> newLaunch);
+			shutDownHook = registerShutdownHook(this::finishLaunch);
 			return newLaunch;
 		});
 	}
 
 	public ReportPortalPublisher(Supplier<Launch> launchSupplier) {
 		launch = new MemoizingSupplier<>(launchSupplier);
-		shutDownHook = registerShutdownHook(launch);
+		shutDownHook = registerShutdownHook(this::finishLaunch);
 	}
 
 	/**
@@ -111,7 +111,9 @@ public class ReportPortalPublisher {
 		LOGGER.info("Launch URL: {}/ui/#{}/launches/all/{}", parameters.getBaseUrl(), parameters.getProjectName(),
 				System.getProperty("rp.launch.id"));
 		launchObject.finish(rq);
-		unregisterShutdownHook(shutDownHook);
+		if (Thread.currentThread() != shutDownHook) {
+			unregisterShutdownHook(shutDownHook);
+		}
 	}
 
 	/**
@@ -122,7 +124,18 @@ public class ReportPortalPublisher {
 	 */
 	@Nonnull
 	protected StartTestItemRQ buildStartFeatureRq(@Nonnull FeatureResult featureResult) {
-		return ReportPortalUtils.buildStartFeatureRq(featureResult.getFeature());
+		StartTestItemRQ rq = ReportPortalUtils.buildStartFeatureRq(featureResult.getFeature());
+		ofNullable(featureResult.getCallArg()).filter(args -> !args.isEmpty()).ifPresent(args -> {
+			// TODO: cover with tests
+			String parameters = String.format(PARAMETERS_PATTERN, formatParametersAsTable(getParameters(args)));
+			String description = rq.getDescription();
+			if (isNotBlank(description)) {
+				rq.setDescription(String.format(MARKDOWN_DELIMITER_PATTERN, parameters, description));
+			} else {
+				rq.setDescription(parameters);
+			}
+		});
+		return rq;
 	}
 
 	/**
