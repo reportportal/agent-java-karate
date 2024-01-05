@@ -356,6 +356,36 @@ public class ReportPortalHook implements RuntimeHook {
 	}
 
 	/**
+	 * Send Step execution results to ReportPortal.
+	 *
+	 * @param stepResult step execution results
+	 * @param sr Karate's ScenarioRuntime object instance
+	 */
+	public void sendStepResults(StepResult stepResult, ScenarioRuntime sr) {
+		Maybe<String> stepId = stepIdMap.get(sr.scenario.getUniqueId());
+		Step step = stepResult.getStep();
+		String docString = step.getDocString();
+		if (isNotBlank(docString)) {
+			sendLog(stepId, "Docstring:\n\n" + asMarkdownCode(step.getDocString()), LogLevel.INFO);
+		}
+
+		Result result = stepResult.getResult();
+		String stepLog = stepResult.getStepLog();
+		if (isNotBlank(stepLog)) {
+			sendLog(stepId, stepLog, LogLevel.INFO);
+		}
+		if (result.isFailed()) {
+			String fullErrorMessage = step.getPrefix() + " " + step.getText();
+			String errorMessage = result.getErrorMessage();
+			if (isNotBlank(errorMessage)) {
+				fullErrorMessage = fullErrorMessage + "\n" + errorMessage;
+
+			}
+			sendLog(stepId, fullErrorMessage, LogLevel.ERROR);
+		}
+	}
+
+	/**
 	 * Build ReportPortal request for finish Step event.
 	 *
 	 * @param stepResult     Karate's StepResult class instance
@@ -370,6 +400,7 @@ public class ReportPortalHook implements RuntimeHook {
 
 	@Override
 	public void afterStep(StepResult stepResult, ScenarioRuntime sr) {
+		sendStepResults(stepResult, sr);
 		Maybe<String> stepId = stepIdMap.get(sr.scenario.getUniqueId());
 		if (stepId == null) {
 			LOGGER.error("ERROR: Trying to finish unspecified step.");
@@ -383,11 +414,13 @@ public class ReportPortalHook implements RuntimeHook {
 
 	@Override
 	public void beforeHttpCall(HttpRequest request, ScenarioRuntime sr) {
+		// TODO: Implement better HTTP request logging later
 		RuntimeHook.super.beforeHttpCall(request, sr);
 	}
 
 	@Override
 	public void afterHttpCall(HttpRequest request, Response response, ScenarioRuntime sr) {
+		// TODO: Implement better HTTP response logging later
 		RuntimeHook.super.afterHttpCall(request, response, sr);
 	}
 

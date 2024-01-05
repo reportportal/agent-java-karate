@@ -54,6 +54,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 public class ReportPortalUtils {
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalUtils.class);
 
+	public static final String MARKDOWN_CODE_PATTERN = "```\n%s\n```";
 	public static final String PARAMETERS_PATTERN = "Parameters:\n\n%s";
 	private static final String PARAMETER_ITEMS_START = "[";
 	private static final String PARAMETER_ITEMS_END = "]";
@@ -416,5 +417,15 @@ public class ReportPortalUtils {
 			rq.setLogTime(Calendar.getInstance().getTime());
 			return rq;
 		});
+	}
+
+	/**
+	 * Builds markdown representation of some code or script to be logged to ReportPortal
+	 *
+	 * @param code   Code or Script
+	 * @return Message to be sent to ReportPortal
+	 */
+	public static String asMarkdownCode(String code) {
+		return String.format(MARKDOWN_CODE_PATTERN, code);
 	}
 }

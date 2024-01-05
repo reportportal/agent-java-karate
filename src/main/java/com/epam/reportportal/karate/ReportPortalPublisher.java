@@ -43,8 +43,6 @@ import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 public class ReportPortalPublisher {
-	public static final String MARKDOWN_CODE_PATTERN = "```\n%s\n```";
-
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalPublisher.class);
 	private final Map<String, Maybe<String>> featureIdMap = new HashMap<>();
 	private final Map<String, Maybe<String>> scenarioIdMap = new HashMap<>();
@@ -394,6 +392,17 @@ public class ReportPortalPublisher {
 	}
 
 	/**
+	 * Send Step logs to ReportPortal.
+	 *
+	 * @param itemId  item ID future
+	 * @param message log message to send
+	 * @param level   log level
+	 */
+	protected void sendLog(Maybe<String> itemId, String message, LogLevel level) {
+		ReportPortalUtils.sendLog(itemId, message, level);
+	}
+
+	/**
 	 * Send Step execution results to ReportPortal.
 	 *
 	 * @param stepResult step execution results
@@ -402,8 +411,7 @@ public class ReportPortalPublisher {
 		Step step = stepResult.getStep();
 		String docString = step.getDocString();
 		if (isNotBlank(docString)) {
-			sendLog(stepId, "Docstring:\n\n" + String.format(MARKDOWN_CODE_PATTERN, step.getDocString()),
-					LogLevel.INFO);
+			sendLog(stepId, "Docstring:\n\n" + asMarkdownCode(step.getDocString()), LogLevel.INFO);
 		}
 
 		Result result = stepResult.getResult();
@@ -420,16 +428,5 @@ public class ReportPortalPublisher {
 			}
 			sendLog(stepId, fullErrorMessage, LogLevel.ERROR);
 		}
-	}
-
-	/**
-	 * Send Step logs to ReportPortal.
-	 *
-	 * @param itemId  item ID future
-	 * @param message log message to send
-	 * @param level   log level
-	 */
-	protected void sendLog(Maybe<String> itemId, String message, LogLevel level) {
-		ReportPortalUtils.sendLog(itemId, message, level);
 	}
 }
