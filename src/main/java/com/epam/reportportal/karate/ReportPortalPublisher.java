@@ -26,7 +26,6 @@ import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.epam.ta.reportportal.ws.model.launch.StartLaunchRQ;
-import com.epam.ta.reportportal.ws.model.log.SaveLogRQ;
 import com.intuit.karate.core.*;
 import io.reactivex.Maybe;
 import org.slf4j.Logger;
@@ -431,13 +430,6 @@ public class ReportPortalPublisher {
 	 * @param level   log level
 	 */
 	protected void sendLog(Maybe<String> itemId, String message, LogLevel level) {
-		ReportPortal.emitLog(itemId, id -> {
-			SaveLogRQ rq = new SaveLogRQ();
-			rq.setMessage(message);
-			rq.setItemUuid(id);
-			rq.setLevel(level.name());
-			rq.setLogTime(Calendar.getInstance().getTime());
-			return rq;
-		});
+		ReportPortalUtils.sendLog(itemId, message, level);
 	}
 }

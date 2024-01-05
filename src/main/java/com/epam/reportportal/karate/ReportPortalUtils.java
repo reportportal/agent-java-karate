@@ -18,6 +18,8 @@ package com.epam.reportportal.karate;
 import com.epam.reportportal.listeners.ItemStatus;
 import com.epam.reportportal.listeners.ItemType;
 import com.epam.reportportal.listeners.ListenerParameters;
+import com.epam.reportportal.listeners.LogLevel;
+import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.item.TestCaseIdEntry;
 import com.epam.reportportal.utils.AttributeParser;
 import com.epam.reportportal.utils.ParameterUtils;
@@ -29,7 +31,9 @@ import com.epam.ta.reportportal.ws.model.ParameterResource;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.epam.ta.reportportal.ws.model.attribute.ItemAttributesRQ;
 import com.epam.ta.reportportal.ws.model.launch.StartLaunchRQ;
+import com.epam.ta.reportportal.ws.model.log.SaveLogRQ;
 import com.intuit.karate.core.*;
+import io.reactivex.Maybe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -394,5 +398,23 @@ public class ReportPortalUtils {
 				LOGGER.warn("Unknown step status received! Set it as SKIPPED");
 				return ItemStatus.SKIPPED;
 		}
+	}
+
+	/**
+	 * Send Step logs to ReportPortal.
+	 *
+	 * @param itemId  item ID future
+	 * @param message log message to send
+	 * @param level   log level
+	 */
+	public static void sendLog(Maybe<String> itemId, String message, LogLevel level) {
+		ReportPortal.emitLog(itemId, id -> {
+			SaveLogRQ rq = new SaveLogRQ();
+			rq.setMessage(message);
+			rq.setItemUuid(id);
+			rq.setLevel(level.name());
+			rq.setLogTime(Calendar.getInstance().getTime());
+			return rq;
+		});
 	}
 }

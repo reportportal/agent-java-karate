@@ -18,6 +18,7 @@ package com.epam.reportportal.karate;
 
 import com.epam.reportportal.listeners.ItemStatus;
 import com.epam.reportportal.listeners.ListenerParameters;
+import com.epam.reportportal.listeners.LogLevel;
 import com.epam.reportportal.service.Launch;
 import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.utils.MemoizingSupplier;
@@ -35,13 +36,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 import static com.epam.reportportal.karate.ReportPortalUtils.*;
 import static com.epam.reportportal.utils.ParameterUtils.formatParametersAsTable;
+import static com.epam.reportportal.utils.markdown.MarkdownUtils.formatDataTable;
 import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
@@ -49,6 +53,10 @@ public class ReportPortalHook implements RuntimeHook {
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalHook.class);
 
 	private final Map<String, Maybe<String>> featureIdMap = new ConcurrentHashMap<>();
+	private final Map<String, Maybe<String>> scenarioIdMap = new ConcurrentHashMap<>();
+	private final Map<String, Maybe<String>> backgroundIdMap = new ConcurrentHashMap<>();
+	private final Map<String, Maybe<String>> stepIdMap = new ConcurrentHashMap<>();
+	private final Map<Maybe<String>, Date> stepStartTimeMap = new ConcurrentHashMap<>();
 
 	protected final MemoizingSupplier<Launch> launch;
 
@@ -168,24 +176,209 @@ public class ReportPortalHook implements RuntimeHook {
 		launch.get().finishTestItem(featureId, rq);
 	}
 
+	/**
+	 * Build ReportPortal request for start Scenario event.
+	 *
+	 * @param sr Karate's ScenarioRuntime object instance
+	 * @return request to ReportPortal
+	 */
+	@Nonnull
+	protected StartTestItemRQ buildStartScenarioRq(@Nonnull ScenarioRuntime sr) {
+		return ReportPortalUtils.buildStartScenarioRq(sr.scenario);
+	}
+
 	@Override
 	public boolean beforeScenario(ScenarioRuntime sr) {
-		return RuntimeHook.super.beforeScenario(sr);
+		StartTestItemRQ rq = buildStartScenarioRq(sr);
+
+		Maybe<String> scenarioId = launch.get()
+				.startTestItem(featureIdMap.get(sr.featureRuntime.featureCall.feature.getNameForReport()), rq);
+		scenarioIdMap.put(sr.scenario.getUniqueId(), scenarioId);
+		return true;
+	}
+
+	/**
+	 * Build ReportPortal request for finish Scenario event.
+	 *
+	 * @param sr Karate's ScenarioRuntime object instance
+	 * @return request to ReportPortal
+	 */
+	@Nonnull
+	protected FinishTestItemRQ buildFinishScenarioRq(@Nonnull ScenarioRuntime sr) {
+		return buildFinishTestItemRq(Calendar.getInstance().getTime(),
+				sr.result.getFailureMessageForDisplay() == null ? ItemStatus.PASSED : ItemStatus.FAILED);
+	}
+
+	/**
+	 * Build ReportPortal request for start Background event.
+	 *
+	 * @param step           Karate's Step object instance
+	 * @param sr Karate's ScenarioRuntime object instance
+	 * @return request to ReportPortal
+	 */
+	@Nonnull
+	@SuppressWarnings("unused")
+	protected StartTestItemRQ buildStartBackgroundRq(@Nonnull Step step, @Nonnull ScenarioRuntime sr) {
+		return ReportPortalUtils.buildStartBackgroundRq(step, sr.scenario);
+	}
+
+	/**
+	 * Start sending Background data to ReportPortal.
+	 *
+	 * @param step           Karate's Step object instance
+	 * @param sr Karate's ScenarioRuntime object instance
+	 */
+	public Maybe<String> startBackground(@Nonnull Step step, @Nonnull ScenarioRuntime sr) {
+		return backgroundIdMap.computeIfAbsent(sr.scenario.getUniqueId(), k-> {
+			StartTestItemRQ backgroundRq = buildStartBackgroundRq(step, sr);
+			return launch.get().startTestItem(scenarioIdMap.get(sr.scenario.getUniqueId()),
+					backgroundRq);
+		});
+	}
+
+	/**
+	 * Build ReportPortal request for finish Background event.
+	 *
+	 * @param step           Karate's Step object instance
+	 * @param sr Karate's ScenarioRuntime object instance
+	 * @return request to ReportPortal
+	 */
+	@Nonnull
+	@SuppressWarnings("unused")
+	protected FinishTestItemRQ buildFinishBackgroundRq(@Nullable Step step, @Nonnull ScenarioRuntime sr) {
+		return buildFinishTestItemRq(Calendar.getInstance().getTime(), null);
+
+	}
+
+	/**
+	 * Finish sending Scenario data to ReportPortal.
+	 *
+	 * @param step           Karate's Step object instance
+	 * @param sr Karate's ScenarioRuntime object instance
+	 */
+	public void finishBackground(@Nullable Step step, @Nonnull ScenarioRuntime sr) {
+		Maybe<String> backgroundId = backgroundIdMap.remove(sr.scenario.getUniqueId());
+		if (backgroundId != null) {
+			FinishTestItemRQ finishRq = buildFinishBackgroundRq(step, sr);
+			//noinspection ReactiveStreamsUnusedPublisher
+			launch.get().finishTestItem(backgroundId, finishRq);
+		}
 	}
 
 	@Override
 	public void afterScenario(ScenarioRuntime sr) {
-		RuntimeHook.super.afterScenario(sr);
+		Maybe<String> scenarioId = featureIdMap.remove(sr.scenario.getUniqueId());
+		if (scenarioId == null) {
+			LOGGER.error("ERROR: Trying to finish unspecified scenario.");
+		}
+
+		FinishTestItemRQ rq = buildFinishScenarioRq(sr);
+		//noinspection ReactiveStreamsUnusedPublisher
+		launch.get().finishTestItem(scenarioId, rq);
+		finishBackground(null, sr);
+	}
+
+	/**
+	 * Get step start time. To keep the steps order in case previous step startTime == current step startTime or
+	 * previous step startTime > current step startTime.
+	 *
+	 * @param stepId step ID.
+	 * @return step new startTime in Date format.
+	 */
+	@Nonnull
+	private Date getStepStartTime(@Nullable Maybe<String> stepId) {
+		Date currentStepStartTime = Calendar.getInstance().getTime();
+		if (stepId == null || stepStartTimeMap.isEmpty()) {
+			return currentStepStartTime;
+		}
+		Date lastStepStartTime = stepStartTimeMap.get(stepId);
+		if (lastStepStartTime.compareTo(currentStepStartTime) >= 0) {
+			currentStepStartTime.setTime(lastStepStartTime.getTime() + 1);
+		}
+		return currentStepStartTime;
+	}
+
+	/**
+	 * Customize start Step test item event/request.
+	 *
+	 * @param step           Karate's Step object instance
+	 * @param sr Karate's ScenarioRuntime object instance
+	 * @return request to ReportPortal
+	 */
+	@Nonnull
+	protected StartTestItemRQ buildStartStepRq(@Nonnull Step step, @Nonnull ScenarioRuntime sr) {
+		StartTestItemRQ rq = ReportPortalUtils.buildStartStepRq(step, sr.scenario);
+		Maybe<String> stepId = stepIdMap.get(sr.scenario.getUniqueId());
+		Date startTime = getStepStartTime(stepId);
+		rq.setStartTime(startTime);
+		return rq;
+	}
+
+	/**
+	 * Send Step logs to ReportPortal.
+	 *
+	 * @param itemId  item ID future
+	 * @param message log message to send
+	 * @param level   log level
+	 */
+	protected void sendLog(Maybe<String> itemId, String message, LogLevel level) {
+		ReportPortalUtils.sendLog(itemId, message, level);
 	}
 
 	@Override
 	public boolean beforeStep(Step step, ScenarioRuntime sr) {
-		return RuntimeHook.super.beforeStep(step, sr);
+		boolean background = step.isBackground();
+		Maybe<String> backgroundId = null;
+		if (background) {
+			backgroundId = startBackground(step, sr);
+		} else {
+			finishBackground(step, sr);
+		}
+		StartTestItemRQ stepRq = buildStartStepRq(step, sr);
+
+		String scenarioId = sr.scenario.getUniqueId();
+		Maybe<String> stepId = launch.get()
+				.startTestItem(
+						background ? backgroundId : scenarioIdMap.get(scenarioId),
+						stepRq
+				);
+		stepStartTimeMap.put(stepId, stepRq.getStartTime());
+		stepIdMap.put(scenarioId, stepId);
+		ofNullable(stepRq.getParameters())
+				.filter(params -> !params.isEmpty())
+				.ifPresent(params ->
+						sendLog(stepId, String.format(PARAMETERS_PATTERN, formatParametersAsTable(params)),
+								LogLevel.INFO));
+		ofNullable(step.getTable())
+				.ifPresent(table ->
+						sendLog(stepId, "Table:\n\n" + formatDataTable(table.getRows()), LogLevel.INFO));
+		return true;
+	}
+
+	/**
+	 * Build ReportPortal request for finish Step event.
+	 *
+	 * @param stepResult     Karate's StepResult class instance
+	 * @param sr Karate's ScenarioRuntime object instance
+	 * @return request to ReportPortal
+	 */
+	@Nonnull
+	@SuppressWarnings("unused")
+	protected FinishTestItemRQ buildFinishStepRq(@Nonnull StepResult stepResult, @Nonnull ScenarioRuntime sr) {
+		return buildFinishTestItemRq(Calendar.getInstance().getTime(), getStepStatus(stepResult.getResult().getStatus()));
 	}
 
 	@Override
-	public void afterStep(StepResult result, ScenarioRuntime sr) {
-		RuntimeHook.super.afterStep(result, sr);
+	public void afterStep(StepResult stepResult, ScenarioRuntime sr) {
+		Maybe<String> stepId = stepIdMap.get(sr.scenario.getUniqueId());
+		if (stepId == null) {
+			LOGGER.error("ERROR: Trying to finish unspecified step.");
+			return;
+		}
+
+		FinishTestItemRQ rq = buildFinishStepRq(stepResult, sr);
+		//noinspection ReactiveStreamsUnusedPublisher
+		launch.get().finishTestItem(stepId, rq);
 	}
 
 	@Override
