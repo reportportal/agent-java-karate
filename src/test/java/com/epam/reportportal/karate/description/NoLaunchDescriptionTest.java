@@ -22,8 +22,10 @@ import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.launch.StartLaunchRQ;
+import com.intuit.karate.Results;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 
@@ -40,6 +42,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 public class NoLaunchDescriptionTest {
+	private static final String TEST_FEATURE = "classpath:feature/simple.feature";
 	private final String featureId = CommonUtils.namedId("feature_");
 	private final String scenarioId = CommonUtils.namedId("scenario_");
 	private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_"))
@@ -53,21 +56,27 @@ public class NoLaunchDescriptionTest {
 		mockBatchLogging(client);
 	}
 
-	public static List<String> dataValues() {
-		return Arrays.asList(
+	public static List<Arguments> dataValues() {
+		List<Object> descriptions = Arrays.asList(
 				null,
 				"",
 				"   "
 		);
+		return Arrays.asList(Arguments.of(true, descriptions), Arguments.of(false, descriptions));
 	}
 
 	@ParameterizedTest
 	@MethodSource("dataValues")
-	public void verify_start_launch_request_contains_no_launch_description(String description) {
+	public void verify_start_launch_request_contains_no_launch_description(boolean report, String description) {
 		ListenerParameters parameters = standardParameters();
 		parameters.setDescription(description);
 		ReportPortal rp = ReportPortal.create(client, parameters, testExecutor());
-		var results = TestUtils.runAsReport(rp, "classpath:feature/simple.feature");
+		Results results;
+		if (report) {
+			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+		} else {
+			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+		}
 		assertThat(results.getFailCount(), equalTo(0));
 
 		ArgumentCaptor<StartLaunchRQ> startCaptor = ArgumentCaptor.forClass(StartLaunchRQ.class);

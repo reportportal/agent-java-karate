@@ -6,10 +6,12 @@ import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
+import com.intuit.karate.Results;
 import com.intuit.karate.core.Background;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
 import java.util.List;
@@ -25,6 +27,7 @@ import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.*;
 
 public class BackgroundTwoStepsTest {
+	private static final String TEST_FEATURE = "classpath:feature/background_two_steps.feature";
 	private final String featureId = CommonUtils.namedId("feature_");
 	private final String scenarioId = CommonUtils.namedId("scenario_");
 	private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_"))
@@ -44,9 +47,15 @@ public class BackgroundTwoStepsTest {
 		mockBatchLogging(client);
 	}
 
-	@Test
-	public void test_background_steps() {
-		var results = TestUtils.runAsReport(rp, "classpath:feature/background_two_steps.feature");
+	@ParameterizedTest
+	@ValueSource(booleans = {true, false})
+	public void test_background_steps(boolean report) {
+		Results results;
+		if (report) {
+			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+		} else {
+			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+		}
 		assertThat(results.getFailCount(), equalTo(0));
 
 		ArgumentCaptor<StartTestItemRQ> captor = ArgumentCaptor.forClass(StartTestItemRQ.class);
