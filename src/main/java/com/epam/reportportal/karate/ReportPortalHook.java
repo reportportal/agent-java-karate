@@ -145,8 +145,7 @@ public class ReportPortalHook implements RuntimeHook {
 
 	@Override
 	public boolean beforeFeature(FeatureRuntime fr) {
-		StartTestItemRQ rq = buildStartFeatureRq(fr);
-		Maybe<String> featureId = launch.get().startTestItem(rq);
+		Maybe<String> featureId = launch.get().startTestItem(buildStartFeatureRq(fr));
 		Feature feature = fr.featureCall.feature;
 		featureIdMap.put(feature.getNameForReport(), featureId);
 		return true;
@@ -267,7 +266,7 @@ public class ReportPortalHook implements RuntimeHook {
 
 	@Override
 	public void afterScenario(ScenarioRuntime sr) {
-		Maybe<String> scenarioId = featureIdMap.remove(sr.scenario.getUniqueId());
+		Maybe<String> scenarioId = scenarioIdMap.remove(sr.scenario.getUniqueId());
 		if (scenarioId == null) {
 			LOGGER.error("ERROR: Trying to finish unspecified scenario.");
 		}
@@ -352,6 +351,10 @@ public class ReportPortalHook implements RuntimeHook {
 		ofNullable(step.getTable())
 				.ifPresent(table ->
 						sendLog(stepId, "Table:\n\n" + formatDataTable(table.getRows()), LogLevel.INFO));
+		String docString = step.getDocString();
+		if (isNotBlank(docString)) {
+			sendLog(stepId, "Docstring:\n\n" + asMarkdownCode(step.getDocString()), LogLevel.INFO);
+		}
 		return true;
 	}
 
@@ -364,22 +367,12 @@ public class ReportPortalHook implements RuntimeHook {
 	public void sendStepResults(StepResult stepResult, ScenarioRuntime sr) {
 		Maybe<String> stepId = stepIdMap.get(sr.scenario.getUniqueId());
 		Step step = stepResult.getStep();
-		String docString = step.getDocString();
-		if (isNotBlank(docString)) {
-			sendLog(stepId, "Docstring:\n\n" + asMarkdownCode(step.getDocString()), LogLevel.INFO);
-		}
-
 		Result result = stepResult.getResult();
-		String stepLog = stepResult.getStepLog();
-		if (isNotBlank(stepLog)) {
-			sendLog(stepId, stepLog, LogLevel.INFO);
-		}
 		if (result.isFailed()) {
 			String fullErrorMessage = step.getPrefix() + " " + step.getText();
 			String errorMessage = result.getErrorMessage();
 			if (isNotBlank(errorMessage)) {
 				fullErrorMessage = fullErrorMessage + "\n" + errorMessage;
-
 			}
 			sendLog(stepId, fullErrorMessage, LogLevel.ERROR);
 		}

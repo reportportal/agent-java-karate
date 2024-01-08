@@ -339,7 +339,8 @@ public class ReportPortalPublisher {
 	 * @param scenarioResult scenario result
 	 */
 	public void startStep(StepResult stepResult, ScenarioResult scenarioResult) {
-		if (stepResult.getStep().isBackground()) {
+		Step step = stepResult.getStep();
+		if (step.isBackground()) {
 			startBackground(stepResult, scenarioResult);
 		} else {
 			finishBackground(stepResult, scenarioResult);
@@ -356,9 +357,13 @@ public class ReportPortalPublisher {
 				.ifPresent(params ->
 						sendLog(stepId, String.format(PARAMETERS_PATTERN, formatParametersAsTable(params)),
 								LogLevel.INFO));
-		ofNullable(stepResult.getStep().getTable())
+		ofNullable(step.getTable())
 				.ifPresent(table ->
 						sendLog(stepId, "Table:\n\n" + formatDataTable(table.getRows()), LogLevel.INFO));
+		String docString = step.getDocString();
+		if (isNotBlank(docString)) {
+			sendLog(stepId, "Docstring:\n\n" + asMarkdownCode(step.getDocString()), LogLevel.INFO);
+		}
 	}
 
 	/**
@@ -409,15 +414,10 @@ public class ReportPortalPublisher {
 	 */
 	public void sendStepResults(StepResult stepResult) {
 		Step step = stepResult.getStep();
-		String docString = step.getDocString();
-		if (isNotBlank(docString)) {
-			sendLog(stepId, "Docstring:\n\n" + asMarkdownCode(step.getDocString()), LogLevel.INFO);
-		}
-
 		Result result = stepResult.getResult();
 		String stepLog = stepResult.getStepLog();
 		if (isNotBlank(stepLog)) {
-			sendLog(stepId, stepLog, LogLevel.INFO);
+			sendLog(stepId, stepLog, LogLevel.DEBUG);
 		}
 		if (result.isFailed()) {
 			String fullErrorMessage = step.getPrefix() + " " + step.getText();

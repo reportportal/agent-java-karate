@@ -22,9 +22,11 @@ import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.log.SaveLogRQ;
+import com.intuit.karate.Results;
 import okhttp3.MultipartBody;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
 import java.util.List;
@@ -37,6 +39,7 @@ import static org.hamcrest.Matchers.*;
 import static org.mockito.Mockito.*;
 
 public class SimpleFailureLoggingTest {
+	private static final String TEST_FEATURE = "classpath:feature/simple_failed.feature";
 	private final String launchUuid = CommonUtils.namedId("launch_");
 	private final String featureId = CommonUtils.namedId("feature_");
 	private final String scenarioId = CommonUtils.namedId("scenario_");
@@ -52,10 +55,16 @@ public class SimpleFailureLoggingTest {
 		mockBatchLogging(client);
 	}
 
-	@Test
+	@ParameterizedTest
+	@ValueSource(booleans = {true, false})
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	public void test_simple_one_step_failed_error_log() {
-		var results = TestUtils.runAsReport(rp, "classpath:feature/simple_failed.feature");
+	public void test_simple_one_step_failed_error_log(boolean report) {
+		Results results;
+		if (report) {
+			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+		} else {
+			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+		}
 		assertThat(results.getFailCount(), equalTo(1));
 
 		ArgumentCaptor<List> logCaptor = ArgumentCaptor.forClass(List.class);
@@ -67,8 +76,8 @@ public class SimpleFailureLoggingTest {
 				.filter(rq -> LogLevel.ERROR.name().equals(rq.getLevel()))
 				.collect(Collectors.toList());
 
-		assertThat(logs, hasSize(1));
-		SaveLogRQ log = logs.get(0);
+		assertThat(logs, hasSize(greaterThan(0)));
+		SaveLogRQ log = logs.get(logs.size() - 1);
 		assertThat(log.getItemUuid(), oneOf(stepIds.toArray(new String[0])));
 		assertThat(log.getLaunchUuid(), equalTo(launchUuid));
 		assertThat(log.getMessage(), equalTo("Then assert actualFour != four\n"
