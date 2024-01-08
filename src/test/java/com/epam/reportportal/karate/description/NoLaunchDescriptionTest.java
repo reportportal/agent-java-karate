@@ -56,13 +56,13 @@ public class NoLaunchDescriptionTest {
 		mockBatchLogging(client);
 	}
 
-	public static List<Arguments> dataValues() {
+	public static Stream<Arguments> dataValues() {
 		List<Object> descriptions = Arrays.asList(
 				null,
 				"",
 				"   "
 		);
-		return Arrays.asList(Arguments.of(true, descriptions), Arguments.of(false, descriptions));
+		return Stream.of(true, false).flatMap(b -> descriptions.stream().map(d -> Arguments.of(b, d)));
 	}
 
 	@ParameterizedTest
