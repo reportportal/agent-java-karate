@@ -49,7 +49,7 @@ public class ScenarioTestCaseIdTest {
 		} else {
 			results = TestUtils.runAsHook(rp, TEST_FEATURE);
 		}
-		assertThat(results.getFailCount(), equalTo(0));;
+		assertThat(results.getFailCount(), equalTo(0));
 
 		ArgumentCaptor<StartTestItemRQ> captor = ArgumentCaptor.forClass(StartTestItemRQ.class);
 		verify(client, times(1)).startTestItem(captor.capture());
