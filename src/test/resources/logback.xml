@@ -35,6 +35,7 @@
     </appender>
 
     <logger name="com.intuit.karate" level="DEBUG"/>
+    <logger name="com.epam.reportportal" level="WARN"/>
 
     <!-- By default, the level of the root level is set to DEBUG -->
     <root level="DEBUG">

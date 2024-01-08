@@ -8,10 +8,12 @@ import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.ParameterResource;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.epam.ta.reportportal.ws.model.log.SaveLogRQ;
+import com.intuit.karate.Results;
 import okhttp3.MultipartBody;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
 import java.util.Collection;
@@ -30,6 +32,7 @@ import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.*;
 
 public class ExamplesStepParametersTest {
+	private static final String TEST_FEATURE = "classpath:feature/examples.feature";
 	private final String featureId = CommonUtils.namedId("feature_");
 	private final List<String> exampleIds = Stream.generate(() -> CommonUtils.namedId("example_")).limit(2)
 			.collect(Collectors.toList());
@@ -54,10 +57,16 @@ public class ExamplesStepParametersTest {
 				.collect(Collectors.toSet());
 	}
 
-	@Test
+	@ParameterizedTest
+	@ValueSource(booleans = {true, false})
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	public void test_examples_parameters_for_steps() {
-		var results = TestUtils.runAsReport(rp, "classpath:feature/examples.feature");
+	public void test_examples_parameters_for_steps(boolean report) {
+		Results results;
+		if (report) {
+			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+		} else {
+			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+		}
 		assertThat(results.getFailCount(), equalTo(0));
 
 		ArgumentCaptor<StartTestItemRQ> captor = ArgumentCaptor.forClass(StartTestItemRQ.class);
