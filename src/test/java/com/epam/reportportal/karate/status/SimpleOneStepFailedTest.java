@@ -23,8 +23,10 @@ import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
+import com.intuit.karate.Results;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
 import java.util.List;
@@ -38,6 +40,7 @@ import static org.hamcrest.Matchers.*;
 import static org.mockito.Mockito.*;
 
 public class SimpleOneStepFailedTest {
+	private static final String TEST_FEATURE = "classpath:feature/simple_failed.feature";
 	private final String launchUuid = CommonUtils.namedId("launch_");
 	private final String featureId = CommonUtils.namedId("feature_");
 	private final String scenarioId = CommonUtils.namedId("scenario_");
@@ -53,9 +56,15 @@ public class SimpleOneStepFailedTest {
 		mockBatchLogging(client);
 	}
 
-	@Test
-	public void test_simple_one_step_failed() {
-		var results = TestUtils.runAsReport(rp, "classpath:feature/simple_failed.feature");
+	@ParameterizedTest
+	@ValueSource(booleans = {true, false})
+	public void test_simple_one_step_failed(boolean report) {
+		Results results;
+		if (report) {
+			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+		} else {
+			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+		}
 		assertThat(results.getFailCount(), equalTo(1));
 
 		ArgumentCaptor<FinishTestItemRQ> featureCaptor = ArgumentCaptor.forClass(FinishTestItemRQ.class);

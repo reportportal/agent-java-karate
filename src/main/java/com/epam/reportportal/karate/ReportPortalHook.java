@@ -145,6 +145,7 @@ public class ReportPortalHook implements RuntimeHook {
 
 	@Override
 	public boolean beforeFeature(FeatureRuntime fr) {
+		// TODO: add item start time test
 		Maybe<String> featureId = launch.get().startTestItem(buildStartFeatureRq(fr));
 		Feature feature = fr.featureCall.feature;
 		featureIdMap.put(feature.getNameForReport(), featureId);
