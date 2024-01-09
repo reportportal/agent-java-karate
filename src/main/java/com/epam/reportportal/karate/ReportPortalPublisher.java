@@ -42,6 +42,9 @@ import static com.epam.reportportal.utils.markdown.MarkdownUtils.formatDataTable
 import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
+/**
+ * ReportPortal test results publisher for Karate. This class publish results after test pass.
+ */
 public class ReportPortalPublisher {
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalPublisher.class);
 	private final Map<String, Maybe<String>> featureIdMap = new HashMap<>();

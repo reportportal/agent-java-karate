@@ -49,6 +49,9 @@ import static com.epam.reportportal.utils.markdown.MarkdownUtils.formatDataTable
 import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
+/**
+ * ReportPortal test results reporting hook for Karate. This class publish results in the process of test pass.
+ */
 public class ReportPortalHook implements RuntimeHook {
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalHook.class);
 
@@ -145,7 +148,6 @@ public class ReportPortalHook implements RuntimeHook {
 
 	@Override
 	public boolean beforeFeature(FeatureRuntime fr) {
-		// TODO: add item start time test
 		Maybe<String> featureId = launch.get().startTestItem(buildStartFeatureRq(fr));
 		Feature feature = fr.featureCall.feature;
 		featureIdMap.put(feature.getNameForReport(), featureId);
@@ -212,8 +214,8 @@ public class ReportPortalHook implements RuntimeHook {
 	/**
 	 * Build ReportPortal request for start Background event.
 	 *
-	 * @param step           Karate's Step object instance
-	 * @param sr Karate's ScenarioRuntime object instance
+	 * @param step Karate's Step object instance
+	 * @param sr   Karate's ScenarioRuntime object instance
 	 * @return request to ReportPortal
 	 */
 	@Nonnull
@@ -225,11 +227,11 @@ public class ReportPortalHook implements RuntimeHook {
 	/**
 	 * Start sending Background data to ReportPortal.
 	 *
-	 * @param step           Karate's Step object instance
-	 * @param sr Karate's ScenarioRuntime object instance
+	 * @param step Karate's Step object instance
+	 * @param sr   Karate's ScenarioRuntime object instance
 	 */
 	public Maybe<String> startBackground(@Nonnull Step step, @Nonnull ScenarioRuntime sr) {
-		return backgroundIdMap.computeIfAbsent(sr.scenario.getUniqueId(), k-> {
+		return backgroundIdMap.computeIfAbsent(sr.scenario.getUniqueId(), k -> {
 			StartTestItemRQ backgroundRq = buildStartBackgroundRq(step, sr);
 			return launch.get().startTestItem(scenarioIdMap.get(sr.scenario.getUniqueId()),
 					backgroundRq);
@@ -239,8 +241,8 @@ public class ReportPortalHook implements RuntimeHook {
 	/**
 	 * Build ReportPortal request for finish Background event.
 	 *
-	 * @param step           Karate's Step object instance
-	 * @param sr Karate's ScenarioRuntime object instance
+	 * @param step Karate's Step object instance
+	 * @param sr   Karate's ScenarioRuntime object instance
 	 * @return request to ReportPortal
 	 */
 	@Nonnull
@@ -253,8 +255,8 @@ public class ReportPortalHook implements RuntimeHook {
 	/**
 	 * Finish sending Scenario data to ReportPortal.
 	 *
-	 * @param step           Karate's Step object instance
-	 * @param sr Karate's ScenarioRuntime object instance
+	 * @param step Karate's Step object instance
+	 * @param sr   Karate's ScenarioRuntime object instance
 	 */
 	public void finishBackground(@Nullable Step step, @Nonnull ScenarioRuntime sr) {
 		Maybe<String> backgroundId = backgroundIdMap.remove(sr.scenario.getUniqueId());
@@ -301,8 +303,8 @@ public class ReportPortalHook implements RuntimeHook {
 	/**
 	 * Customize start Step test item event/request.
 	 *
-	 * @param step           Karate's Step object instance
-	 * @param sr Karate's ScenarioRuntime object instance
+	 * @param step Karate's Step object instance
+	 * @param sr   Karate's ScenarioRuntime object instance
 	 * @return request to ReportPortal
 	 */
 	@Nonnull
@@ -363,7 +365,7 @@ public class ReportPortalHook implements RuntimeHook {
 	 * Send Step execution results to ReportPortal.
 	 *
 	 * @param stepResult step execution results
-	 * @param sr Karate's ScenarioRuntime object instance
+	 * @param sr         Karate's ScenarioRuntime object instance
 	 */
 	public void sendStepResults(StepResult stepResult, ScenarioRuntime sr) {
 		Maybe<String> stepId = stepIdMap.get(sr.scenario.getUniqueId());
@@ -382,8 +384,8 @@ public class ReportPortalHook implements RuntimeHook {
 	/**
 	 * Build ReportPortal request for finish Step event.
 	 *
-	 * @param stepResult     Karate's StepResult class instance
-	 * @param sr Karate's ScenarioRuntime object instance
+	 * @param stepResult Karate's StepResult class instance
+	 * @param sr         Karate's ScenarioRuntime object instance
 	 * @return request to ReportPortal
 	 */
 	@Nonnull
