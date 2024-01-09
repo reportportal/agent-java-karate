@@ -98,6 +98,13 @@ public class TestUtils {
 		mockFeature(client, featureUuid, scenarioSteps);
 	}
 
+	public static void mockLaunch(
+			@Nonnull final ReportPortalClient client, @Nullable final String launchUuid) {
+		String launch = ofNullable(launchUuid).orElse(CommonUtils.namedId("launch_"));
+		when(client.startLaunch(any())).thenReturn(Maybe.just(new StartLaunchRS(launch, 1L)));
+		when(client.finishLaunch(eq(launch), any())).thenReturn(Maybe.just(new OperationCompletionRS()));
+	}
+
 	public static <T extends Collection<String>> void mockFeature(
 			@Nonnull final ReportPortalClient client, @Nullable final String featureUuid,
 			@Nonnull final Collection<Pair<String, T>> scenarioSteps) {
@@ -163,10 +170,6 @@ public class TestUtils {
 	@SuppressWarnings("unchecked")
 	public static void mockBatchLogging(final ReportPortalClient client) {
 		when(client.log(any(List.class))).thenReturn(Maybe.just(new BatchSaveOperatingRS()));
-	}
-
-	public static void mockNestedSteps(final ReportPortalClient client, final Pair<String, String> parentNestedPair) {
-		mockNestedSteps(client, Collections.singletonList(parentNestedPair));
 	}
 
 	@SuppressWarnings("unchecked")

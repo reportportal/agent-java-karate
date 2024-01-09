@@ -124,18 +124,7 @@ public class ReportPortalPublisher {
 	 */
 	@Nonnull
 	protected StartTestItemRQ buildStartFeatureRq(@Nonnull FeatureResult featureResult) {
-		StartTestItemRQ rq = ReportPortalUtils.buildStartFeatureRq(featureResult.getFeature());
-		ofNullable(featureResult.getCallArg()).filter(args -> !args.isEmpty()).ifPresent(args -> {
-			// TODO: cover with tests
-			String parameters = String.format(PARAMETERS_PATTERN, formatParametersAsTable(getParameters(args)));
-			String description = rq.getDescription();
-			if (isNotBlank(description)) {
-				rq.setDescription(String.format(MARKDOWN_DELIMITER_PATTERN, parameters, description));
-			} else {
-				rq.setDescription(parameters);
-			}
-		});
-		return rq;
+		return ReportPortalUtils.buildStartFeatureRq(featureResult.getFeature());
 	}
 
 	/**
