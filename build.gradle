@@ -42,7 +42,7 @@ repositories {
 }
 
 dependencies {
-    api 'com.epam.reportportal:client-java:5.1.26'
+    api 'com.epam.reportportal:client-java:5.2.0'
     api "com.intuit.karate:karate-core:${project.karate_version}"
     implementation 'org.slf4j:slf4j-api:2.0.7'
 
@@ -54,6 +54,7 @@ dependencies {
     testImplementation "org.mockito:mockito-core:${project.mockito_version}"
     testImplementation "org.mockito:mockito-junit-jupiter:${project.mockito_version}"
     testImplementation 'org.hamcrest:hamcrest-core:2.2'
+    testImplementation 'com.squareup.okhttp3:okhttp:4.12.0'
 }
 
 test {
