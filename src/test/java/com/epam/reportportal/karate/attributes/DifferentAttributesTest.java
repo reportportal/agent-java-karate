@@ -41,54 +41,55 @@ import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.*;
 
 public class DifferentAttributesTest {
-    private static final String TEST_FEATURE = "classpath:feature/tags.feature";
-    private final String featureId = CommonUtils.namedId("feature_");
-    private final String scenarioId = CommonUtils.namedId("scenario_");
-    private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_"))
-            .limit(3).collect(Collectors.toList());
+	private static final String TEST_FEATURE = "classpath:feature/tags.feature";
+	private final String featureId = CommonUtils.namedId("feature_");
+	private final String scenarioId = CommonUtils.namedId("scenario_");
+	private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_")).limit(3).collect(Collectors.toList());
 
-    private final ReportPortalClient client = mock(ReportPortalClient.class);
-    private final ReportPortal rp = ReportPortal.create(client, standardParameters(), testExecutor());
+	private final ReportPortalClient client = mock(ReportPortalClient.class);
+	private final ReportPortal rp = ReportPortal.create(client, standardParameters(), testExecutor());
 
-    @BeforeEach
-    public void setupMock() {
-        mockLaunch(client, null, featureId, scenarioId, stepIds);
-        mockBatchLogging(client);
-    }
+	@BeforeEach
+	public void setupMock() {
+		mockLaunch(client, null, featureId, scenarioId, stepIds);
+		mockBatchLogging(client);
+	}
 
-    @ParameterizedTest
-    @ValueSource(booleans = {true, false})
-    public void test_different_attributes(boolean report) {
-        Results results;
-        if (report) {
-            results = TestUtils.runAsReport(rp, TEST_FEATURE);
-        } else {
-            results = TestUtils.runAsHook(rp, TEST_FEATURE);
-        }
-        assertThat(results.getFailCount(), equalTo(0));
+	@ParameterizedTest
+	@ValueSource(booleans = { true, false })
+	public void test_different_attributes(boolean report) {
+		Results results;
+		if (report) {
+			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+		} else {
+			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+		}
+		assertThat(results.getFailCount(), equalTo(0));
 
-        ArgumentCaptor<StartTestItemRQ> captor = ArgumentCaptor.forClass(StartTestItemRQ.class);
-        verify(client, times(1)).startTestItem(captor.capture());
-        verify(client, times(1)).startTestItem(same(featureId), captor.capture());
-        verify(client, times(3)).startTestItem(same(scenarioId), captor.capture());
+		ArgumentCaptor<StartTestItemRQ> captor = ArgumentCaptor.forClass(StartTestItemRQ.class);
+		verify(client, times(1)).startTestItem(captor.capture());
+		verify(client, times(1)).startTestItem(same(featureId), captor.capture());
+		verify(client, times(3)).startTestItem(same(scenarioId), captor.capture());
 
-        List<StartTestItemRQ> items = captor.getAllValues();
-        assertThat(items, hasSize(5));
+		List<StartTestItemRQ> items = captor.getAllValues();
+		assertThat(items, hasSize(5));
 
-        StartTestItemRQ featureRq = items.get(0);
-        StartTestItemRQ scenarioRq = items.get(1);
+		StartTestItemRQ featureRq = items.get(0);
+		StartTestItemRQ scenarioRq = items.get(1);
 
-        assertThat(featureRq.getAttributes(), hasSize(1));
-        ItemAttributesRQ featureAttribute = featureRq.getAttributes().iterator().next();
-        assertThat(featureAttribute.getKey(), nullValue());
-        assertThat(featureAttribute.getValue(), equalTo("tag_test"));
+		assertThat(featureRq.getAttributes(), hasSize(1));
+		ItemAttributesRQ featureAttribute = featureRq.getAttributes().iterator().next();
+		assertThat(featureAttribute.getKey(), nullValue());
+		assertThat(featureAttribute.getValue(), equalTo("tag_test"));
 
-        assertThat(scenarioRq.getAttributes(), hasSize(4));
-        Set<Pair<String, String>> scenarioAttributes = scenarioRq
-                .getAttributes().stream().map(a -> Pair.of(a.getKey(), a.getValue())).collect(Collectors.toSet());
-        assertThat(scenarioAttributes, hasItem(Pair.of(null, "math")));
-        assertThat(scenarioAttributes, hasItem(Pair.of("scope", "smoke")));
-        assertThat(scenarioAttributes, hasItem(Pair.of("environment", "dev")));
-        assertThat(scenarioAttributes, hasItem(Pair.of("environment", "qa")));
-    }
+		assertThat(scenarioRq.getAttributes(), hasSize(4));
+		Set<Pair<String, String>> scenarioAttributes = scenarioRq.getAttributes()
+				.stream()
+				.map(a -> Pair.of(a.getKey(), a.getValue()))
+				.collect(Collectors.toSet());
+		assertThat(scenarioAttributes, hasItem(Pair.of(null, "math")));
+		assertThat(scenarioAttributes, hasItem(Pair.of("scope", "smoke")));
+		assertThat(scenarioAttributes, hasItem(Pair.of("environment", "dev")));
+		assertThat(scenarioAttributes, hasItem(Pair.of("environment", "qa")));
+	}
 }

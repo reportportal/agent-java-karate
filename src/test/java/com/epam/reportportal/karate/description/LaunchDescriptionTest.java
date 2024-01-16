@@ -39,41 +39,40 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 public class LaunchDescriptionTest {
-    private static final String TEST_FEATURE = "classpath:feature/simple.feature";
-    private static final String TEST_DESCRIPTION = "My test description";
-    private final String featureId = CommonUtils.namedId("feature_");
-    private final String scenarioId = CommonUtils.namedId("scenario_");
-    private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_"))
-            .limit(3).collect(Collectors.toList());
+	private static final String TEST_FEATURE = "classpath:feature/simple.feature";
+	private static final String TEST_DESCRIPTION = "My test description";
+	private final String featureId = CommonUtils.namedId("feature_");
+	private final String scenarioId = CommonUtils.namedId("scenario_");
+	private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_")).limit(3).collect(Collectors.toList());
 
-    private final ReportPortalClient client = mock(ReportPortalClient.class);
-    private ReportPortal rp;
+	private final ReportPortalClient client = mock(ReportPortalClient.class);
+	private ReportPortal rp;
 
-    @BeforeEach
-    public void setupMock() {
-        ListenerParameters parameters = standardParameters();
-        parameters.setDescription(TEST_DESCRIPTION);
-        rp = ReportPortal.create(client, parameters, testExecutor());
-        mockLaunch(client, null, featureId, scenarioId, stepIds);
-        mockBatchLogging(client);
-    }
+	@BeforeEach
+	public void setupMock() {
+		ListenerParameters parameters = standardParameters();
+		parameters.setDescription(TEST_DESCRIPTION);
+		rp = ReportPortal.create(client, parameters, testExecutor());
+		mockLaunch(client, null, featureId, scenarioId, stepIds);
+		mockBatchLogging(client);
+	}
 
-    @ParameterizedTest
-    @ValueSource(booleans = {true, false})
-    public void verify_start_launch_request_contains_launch_description(boolean report) {
-        Results results;
-        if (report) {
-            results = TestUtils.runAsReport(rp, TEST_FEATURE);
-        } else {
-            results = TestUtils.runAsHook(rp, TEST_FEATURE);
-        }
-        assertThat(results.getFailCount(), equalTo(0));
+	@ParameterizedTest
+	@ValueSource(booleans = { true, false })
+	public void verify_start_launch_request_contains_launch_description(boolean report) {
+		Results results;
+		if (report) {
+			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+		} else {
+			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+		}
+		assertThat(results.getFailCount(), equalTo(0));
 
-        ArgumentCaptor<StartLaunchRQ> startCaptor = ArgumentCaptor.forClass(StartLaunchRQ.class);
-        verify(client).startLaunch(startCaptor.capture());
+		ArgumentCaptor<StartLaunchRQ> startCaptor = ArgumentCaptor.forClass(StartLaunchRQ.class);
+		verify(client).startLaunch(startCaptor.capture());
 
-        StartLaunchRQ launchStart = startCaptor.getValue();
+		StartLaunchRQ launchStart = startCaptor.getValue();
 
-        assertThat(launchStart.getDescription(), equalTo(TEST_DESCRIPTION));
-    }
+		assertThat(launchStart.getDescription(), equalTo(TEST_DESCRIPTION));
+	}
 }

@@ -41,53 +41,58 @@ import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.*;
 
 public class SimpleDescriptionTest {
-    public static final String SCENARIO_DESCRIPTION = "This is my Scenario description.";
-    private static final String TEST_FEATURE = "classpath:feature/description.feature";
-    private final String featureId = CommonUtils.namedId("feature_");
-    private final String scenarioId = CommonUtils.namedId("scenario_");
-    private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_"))
-            .limit(3).collect(Collectors.toList());
-    private final List<Pair<String, String>> nestedStepIds = stepIds.stream()
-            .map(id -> Pair.of(id, CommonUtils.namedId("nested_step_"))).collect(Collectors.toList());
-    private final ReportPortalClient client = mock(ReportPortalClient.class);
-    private final ReportPortal rp = ReportPortal.create(client, standardParameters(), testExecutor());
+	public static final String SCENARIO_DESCRIPTION = "This is my Scenario description.";
+	private static final String TEST_FEATURE = "classpath:feature/description.feature";
+	private final String featureId = CommonUtils.namedId("feature_");
+	private final String scenarioId = CommonUtils.namedId("scenario_");
+	private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_")).limit(3).collect(Collectors.toList());
+	private final List<Pair<String, String>> nestedStepIds = stepIds.stream()
+			.map(id -> Pair.of(id, CommonUtils.namedId("nested_step_")))
+			.collect(Collectors.toList());
+	private final ReportPortalClient client = mock(ReportPortalClient.class);
+	private final ReportPortal rp = ReportPortal.create(client, standardParameters(), testExecutor());
 
-    @BeforeEach
-    public void setupMock() {
-        mockLaunch(client, null, featureId, scenarioId, stepIds);
-        mockNestedSteps(client, nestedStepIds);
-        mockBatchLogging(client);
-    }
+	@BeforeEach
+	public void setupMock() {
+		mockLaunch(client, null, featureId, scenarioId, stepIds);
+		mockNestedSteps(client, nestedStepIds);
+		mockBatchLogging(client);
+	}
 
-    @ParameterizedTest
-    @ValueSource(booleans = {true, false})
-    public void test_description_for_all_possible_items(boolean report) {
-        Results results;
-        if (report) {
-            results = TestUtils.runAsReport(rp, TEST_FEATURE);
-        } else {
-            results = TestUtils.runAsHook(rp, TEST_FEATURE);
-        }
-        assertThat(results.getFailCount(), equalTo(0));
+	@ParameterizedTest
+	@ValueSource(booleans = { true, false })
+	public void test_description_for_all_possible_items(boolean report) {
+		Results results;
+		if (report) {
+			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+		} else {
+			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+		}
+		assertThat(results.getFailCount(), equalTo(0));
 
-        ArgumentCaptor<StartTestItemRQ> featureCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
-        verify(client).startTestItem(featureCaptor.capture());
-        ArgumentCaptor<StartTestItemRQ> scenarioCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
-        verify(client).startTestItem(same(featureId), scenarioCaptor.capture());
-        ArgumentCaptor<StartTestItemRQ> stepCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
-        verify(client, times(3)).startTestItem(same(scenarioId), stepCaptor.capture());
+		ArgumentCaptor<StartTestItemRQ> featureCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
+		verify(client).startTestItem(featureCaptor.capture());
+		ArgumentCaptor<StartTestItemRQ> scenarioCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
+		verify(client).startTestItem(same(featureId), scenarioCaptor.capture());
+		ArgumentCaptor<StartTestItemRQ> stepCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
+		verify(client, times(3)).startTestItem(same(scenarioId), stepCaptor.capture());
 
-        StartTestItemRQ featureStart = featureCaptor.getValue();
-        assertThat(featureStart.getDescription(), endsWith("feature/description.feature\n\n---\n\nThis is my Feature description."));
+		StartTestItemRQ featureStart = featureCaptor.getValue();
+		assertThat(featureStart.getDescription(), endsWith("feature/description.feature\n\n---\n\nThis is my Feature description."));
 
-        StartTestItemRQ scenarioStart = scenarioCaptor.getValue();
-        assertThat(scenarioStart.getDescription(), equalTo(SCENARIO_DESCRIPTION));
+		StartTestItemRQ scenarioStart = scenarioCaptor.getValue();
+		assertThat(scenarioStart.getDescription(), equalTo(SCENARIO_DESCRIPTION));
 
-        List<StartTestItemRQ> backgroundSteps = stepCaptor.getAllValues().stream()
-                .filter(s -> s.getName().startsWith(Background.KEYWORD)).collect(Collectors.toList());
-        assertThat(backgroundSteps, hasSize(1));
-        StartTestItemRQ backgroundStep = backgroundSteps.get(0);
-        assertThat("No support of Background description in Karate yet. But this is a part of Gherkin standard.",
-                backgroundStep.getDescription(), nullValue());
-    }
+		List<StartTestItemRQ> backgroundSteps = stepCaptor.getAllValues()
+				.stream()
+				.filter(s -> s.getName().startsWith(Background.KEYWORD))
+				.collect(Collectors.toList());
+		assertThat(backgroundSteps, hasSize(1));
+		StartTestItemRQ backgroundStep = backgroundSteps.get(0);
+		assertThat(
+				"No support of Background description in Karate yet. But this is a part of Gherkin standard.",
+				backgroundStep.getDescription(),
+				nullValue()
+		);
+	}
 }

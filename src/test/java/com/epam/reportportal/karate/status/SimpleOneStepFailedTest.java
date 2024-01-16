@@ -40,58 +40,58 @@ import static org.hamcrest.Matchers.*;
 import static org.mockito.Mockito.*;
 
 public class SimpleOneStepFailedTest {
-    private static final String TEST_FEATURE = "classpath:feature/simple_failed.feature";
-    private final String launchUuid = CommonUtils.namedId("launch_");
-    private final String featureId = CommonUtils.namedId("feature_");
-    private final String scenarioId = CommonUtils.namedId("scenario_");
-    private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_"))
-            .limit(3).collect(Collectors.toList());
+	private static final String TEST_FEATURE = "classpath:feature/simple_failed.feature";
+	private final String launchUuid = CommonUtils.namedId("launch_");
+	private final String featureId = CommonUtils.namedId("feature_");
+	private final String scenarioId = CommonUtils.namedId("scenario_");
+	private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_")).limit(3).collect(Collectors.toList());
 
-    private final ReportPortalClient client = mock(ReportPortalClient.class);
-    private final ReportPortal rp = ReportPortal.create(client, standardParameters(), testExecutor());
+	private final ReportPortalClient client = mock(ReportPortalClient.class);
+	private final ReportPortal rp = ReportPortal.create(client, standardParameters(), testExecutor());
 
-    @BeforeEach
-    public void setupMock() {
-        mockLaunch(client, launchUuid, featureId, scenarioId, stepIds);
-        mockBatchLogging(client);
-    }
+	@BeforeEach
+	public void setupMock() {
+		mockLaunch(client, launchUuid, featureId, scenarioId, stepIds);
+		mockBatchLogging(client);
+	}
 
-    @ParameterizedTest
-    @ValueSource(booleans = {true, false})
-    public void test_simple_one_step_failed(boolean report) {
-        Results results;
-        if (report) {
-            results = TestUtils.runAsReport(rp, TEST_FEATURE);
-        } else {
-            results = TestUtils.runAsHook(rp, TEST_FEATURE);
-        }
-        assertThat(results.getFailCount(), equalTo(1));
+	@ParameterizedTest
+	@ValueSource(booleans = { true, false })
+	public void test_simple_one_step_failed(boolean report) {
+		Results results;
+		if (report) {
+			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+		} else {
+			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+		}
+		assertThat(results.getFailCount(), equalTo(1));
 
-        ArgumentCaptor<FinishTestItemRQ> featureCaptor = ArgumentCaptor.forClass(FinishTestItemRQ.class);
-        verify(client).finishTestItem(same(featureId), featureCaptor.capture());
-        ArgumentCaptor<FinishTestItemRQ> scenarioCaptor = ArgumentCaptor.forClass(FinishTestItemRQ.class);
-        verify(client).finishTestItem(same(scenarioId), scenarioCaptor.capture());
-        List<ArgumentCaptor<FinishTestItemRQ>> stepCaptors =
-                Stream.generate(() -> ArgumentCaptor.forClass(FinishTestItemRQ.class)).limit(stepIds.size()).collect(Collectors.toList());
-        IntStream.range(0, stepIds.size()).forEach(i -> verify(client).finishTestItem(same(stepIds.get(i)), stepCaptors.get(i).capture()));
+		ArgumentCaptor<FinishTestItemRQ> featureCaptor = ArgumentCaptor.forClass(FinishTestItemRQ.class);
+		verify(client).finishTestItem(same(featureId), featureCaptor.capture());
+		ArgumentCaptor<FinishTestItemRQ> scenarioCaptor = ArgumentCaptor.forClass(FinishTestItemRQ.class);
+		verify(client).finishTestItem(same(scenarioId), scenarioCaptor.capture());
+		List<ArgumentCaptor<FinishTestItemRQ>> stepCaptors = Stream.generate(() -> ArgumentCaptor.forClass(FinishTestItemRQ.class))
+				.limit(stepIds.size())
+				.collect(Collectors.toList());
+		IntStream.range(0, stepIds.size()).forEach(i -> verify(client).finishTestItem(same(stepIds.get(i)), stepCaptors.get(i).capture()));
 
-        FinishTestItemRQ featureRq = featureCaptor.getValue();
-        FinishTestItemRQ scenarioRq = scenarioCaptor.getValue();
+		FinishTestItemRQ featureRq = featureCaptor.getValue();
+		FinishTestItemRQ scenarioRq = scenarioCaptor.getValue();
 
-        assertThat(featureRq.getStatus(), allOf(notNullValue(), equalTo(ItemStatus.FAILED.name())));
-        assertThat(featureRq.getLaunchUuid(), allOf(notNullValue(), equalTo(launchUuid)));
-        assertThat(featureRq.getEndTime(), notNullValue());
+		assertThat(featureRq.getStatus(), allOf(notNullValue(), equalTo(ItemStatus.FAILED.name())));
+		assertThat(featureRq.getLaunchUuid(), allOf(notNullValue(), equalTo(launchUuid)));
+		assertThat(featureRq.getEndTime(), notNullValue());
 
-        assertThat(scenarioRq.getStatus(), allOf(notNullValue(), equalTo(ItemStatus.FAILED.name())));
-        assertThat(scenarioRq.getLaunchUuid(), allOf(notNullValue(), equalTo(launchUuid)));
-        assertThat(scenarioRq.getEndTime(), notNullValue());
+		assertThat(scenarioRq.getStatus(), allOf(notNullValue(), equalTo(ItemStatus.FAILED.name())));
+		assertThat(scenarioRq.getLaunchUuid(), allOf(notNullValue(), equalTo(launchUuid)));
+		assertThat(scenarioRq.getEndTime(), notNullValue());
 
-        List<FinishTestItemRQ> steps = stepCaptors.stream().map(ArgumentCaptor::getValue).collect(Collectors.toList());
-        steps.forEach(step -> {
-            assertThat(step.getLaunchUuid(), allOf(notNullValue(), equalTo(launchUuid)));
-            assertThat(step.getEndTime(), notNullValue());
-        });
-        List<String> statuses = steps.stream().map(FinishExecutionRQ::getStatus).collect(Collectors.toList());
-        assertThat(statuses, containsInAnyOrder("PASSED", "PASSED", "FAILED"));
-    }
+		List<FinishTestItemRQ> steps = stepCaptors.stream().map(ArgumentCaptor::getValue).collect(Collectors.toList());
+		steps.forEach(step -> {
+			assertThat(step.getLaunchUuid(), allOf(notNullValue(), equalTo(launchUuid)));
+			assertThat(step.getEndTime(), notNullValue());
+		});
+		List<String> statuses = steps.stream().map(FinishExecutionRQ::getStatus).collect(Collectors.toList());
+		assertThat(statuses, containsInAnyOrder("PASSED", "PASSED", "FAILED"));
+	}
 }

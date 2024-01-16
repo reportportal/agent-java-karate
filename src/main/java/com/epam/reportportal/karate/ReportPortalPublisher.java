@@ -47,25 +47,13 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
  */
 public class ReportPortalPublisher {
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalPublisher.class);
+	protected final MemoizingSupplier<Launch> launch;
 	private final Map<String, Maybe<String>> featureIdMap = new HashMap<>();
 	private final Map<String, Maybe<String>> scenarioIdMap = new HashMap<>();
 	private final Map<Maybe<String>, Long> stepStartTimeMap = new HashMap<>();
 	private Maybe<String> backgroundId;
 	private Maybe<String> stepId;
-
-	protected final MemoizingSupplier<Launch> launch;
-
 	private Thread shutDownHook;
-
-	/**
-	 * Customize start launch event/request
-	 *
-	 * @param parameters Launch configuration parameters
-	 * @return request to ReportPortal
-	 */
-	protected StartLaunchRQ buildStartLaunchRq(ListenerParameters parameters) {
-		return ReportPortalUtils.buildStartLaunchRq(parameters);
-	}
 
 	public ReportPortalPublisher(ReportPortal reportPortal) {
 		launch = new MemoizingSupplier<>(() -> {
@@ -80,6 +68,16 @@ public class ReportPortalPublisher {
 	public ReportPortalPublisher(Supplier<Launch> launchSupplier) {
 		launch = new MemoizingSupplier<>(launchSupplier);
 		shutDownHook = registerShutdownHook(this::finishLaunch);
+	}
+
+	/**
+	 * Customize start launch event/request
+	 *
+	 * @param parameters Launch configuration parameters
+	 * @return request to ReportPortal
+	 */
+	protected StartLaunchRQ buildStartLaunchRq(ListenerParameters parameters) {
+		return ReportPortalUtils.buildStartLaunchRq(parameters);
 	}
 
 	/**
@@ -108,8 +106,11 @@ public class ReportPortalPublisher {
 		Launch launchObject = launch.get();
 		ListenerParameters parameters = launchObject.getParameters();
 		FinishExecutionRQ rq = buildFinishLaunchRq(parameters);
-		LOGGER.info("Launch URL: {}/ui/#{}/launches/all/{}", parameters.getBaseUrl(), parameters.getProjectName(),
-				System.getProperty("rp.launch.id"));
+		LOGGER.info("Launch URL: {}/ui/#{}/launches/all/{}",
+				parameters.getBaseUrl(),
+				parameters.getProjectName(),
+				System.getProperty("rp.launch.id")
+		);
 		launchObject.finish(rq);
 		if (Thread.currentThread() != shutDownHook) {
 			unregisterShutdownHook(shutDownHook);
@@ -146,8 +147,7 @@ public class ReportPortalPublisher {
 	 */
 	@Nonnull
 	protected FinishTestItemRQ buildFinishFeatureRq(@Nonnull FeatureResult featureResult) {
-		return buildFinishTestItemRq(Calendar.getInstance().getTime(),
-				featureResult.isFailed() ? ItemStatus.FAILED : ItemStatus.PASSED);
+		return buildFinishTestItemRq(Calendar.getInstance().getTime(), featureResult.isFailed() ? ItemStatus.FAILED : ItemStatus.PASSED);
 	}
 
 	/**
@@ -212,7 +212,8 @@ public class ReportPortalPublisher {
 	@Nonnull
 	protected FinishTestItemRQ buildFinishScenarioRq(@Nonnull ScenarioResult scenarioResult) {
 		return buildFinishTestItemRq(Calendar.getInstance().getTime(),
-				scenarioResult.getFailureMessageForDisplay() == null ? ItemStatus.PASSED : ItemStatus.FAILED);
+				scenarioResult.getFailureMessageForDisplay() == null ? ItemStatus.PASSED : ItemStatus.FAILED
+		);
 
 	}
 
@@ -255,8 +256,7 @@ public class ReportPortalPublisher {
 	public void startBackground(@Nonnull StepResult stepResult, @Nonnull ScenarioResult scenarioResult) {
 		backgroundId = ofNullable(backgroundId).orElseGet(() -> {
 			StartTestItemRQ backgroundRq = buildStartBackgroundRq(stepResult, scenarioResult);
-			return launch.get().startTestItem(scenarioIdMap.get(scenarioResult.getScenario().getName()),
-					backgroundRq);
+			return launch.get().startTestItem(scenarioIdMap.get(scenarioResult.getScenario().getName()), backgroundRq);
 		});
 	}
 
@@ -339,19 +339,11 @@ public class ReportPortalPublisher {
 		}
 		StartTestItemRQ stepRq = buildStartStepRq(stepResult, scenarioResult);
 		stepId = launch.get()
-				.startTestItem(
-						backgroundId != null ? backgroundId : scenarioIdMap.get(scenarioResult.getScenario().getName()),
-						stepRq
-				);
+				.startTestItem(backgroundId != null ? backgroundId : scenarioIdMap.get(scenarioResult.getScenario().getName()), stepRq);
 		stepStartTimeMap.put(stepId, stepRq.getStartTime().getTime());
-		ofNullable(stepRq.getParameters())
-				.filter(params -> !params.isEmpty())
-				.ifPresent(params ->
-						sendLog(stepId, String.format(PARAMETERS_PATTERN, formatParametersAsTable(params)),
-								LogLevel.INFO));
-		ofNullable(step.getTable())
-				.ifPresent(table ->
-						sendLog(stepId, "Table:\n\n" + formatDataTable(table.getRows()), LogLevel.INFO));
+		ofNullable(stepRq.getParameters()).filter(params -> !params.isEmpty())
+				.ifPresent(params -> sendLog(stepId, String.format(PARAMETERS_PATTERN, formatParametersAsTable(params)), LogLevel.INFO));
+		ofNullable(step.getTable()).ifPresent(table -> sendLog(stepId, "Table:\n\n" + formatDataTable(table.getRows()), LogLevel.INFO));
 		String docString = step.getDocString();
 		if (isNotBlank(docString)) {
 			sendLog(stepId, "Docstring:\n\n" + asMarkdownCode(step.getDocString()), LogLevel.INFO);

@@ -53,24 +53,19 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
  * Set of useful utils related to Karate -&gt; ReportPortal integration
  */
 public class ReportPortalUtils {
-	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalUtils.class);
-
 	public static final String MARKDOWN_CODE_PATTERN = "```\n%s\n```";
 	public static final String PARAMETERS_PATTERN = "Parameters:\n\n%s";
+	public static final String VARIABLE_PATTERN = "(?:(?<=#\\()%1$s(?=\\)))|(?:(?<=[\\s=+-/*<>(]|^)%1$s(?=[\\s=+-/*<>)]|(?:\\r?\\n)|$))";
+	public static final String AGENT_PROPERTIES_FILE = "agent.properties";
+	public static final String SKIPPED_ISSUE_KEY = "skippedIssue";
+	public static final String SCENARIO_CODE_REFERENCE_PATTERN = "%s/[SCENARIO:%s]";
+	public static final String EXAMPLE_CODE_REFERENCE_PATTERN = "%s/[EXAMPLE:%s%s]";
+	public static final String MARKDOWN_DELIMITER_PATTERN = "%s\n\n---\n\n%s";
+	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalUtils.class);
 	private static final String PARAMETER_ITEMS_START = "[";
 	private static final String PARAMETER_ITEMS_END = "]";
 	private static final String PARAMETER_ITEMS_DELIMITER = ";";
 	private static final String KEY_VALUE_SEPARATOR = ":";
-	public static final String VARIABLE_PATTERN =
-			"(?:(?<=#\\()%1$s(?=\\)))|(?:(?<=[\\s=+-/*<>(]|^)%1$s(?=[\\s=+-/*<>)]|(?:\\r?\\n)|$))";
-
-	public static final String AGENT_PROPERTIES_FILE = "agent.properties";
-	public static final String SKIPPED_ISSUE_KEY = "skippedIssue";
-
-	public static final String SCENARIO_CODE_REFERENCE_PATTERN = "%s/[SCENARIO:%s]";
-	public static final String EXAMPLE_CODE_REFERENCE_PATTERN = "%s/[EXAMPLE:%s%s]";
-
-	public static final String MARKDOWN_DELIMITER_PATTERN = "%s\n\n---\n\n%s";
 
 	private ReportPortalUtils() {
 		throw new RuntimeException("No instances should exist for the class!");
@@ -152,8 +147,7 @@ public class ReportPortalUtils {
 			skippedIssueAttribute.setSystem(true);
 			rq.getAttributes().add(skippedIssueAttribute);
 		}
-		rq.getAttributes().addAll(SystemAttributesExtractor.extract(AGENT_PROPERTIES_FILE,
-				ReportPortalUtils.class.getClassLoader()));
+		rq.getAttributes().addAll(SystemAttributesExtractor.extract(AGENT_PROPERTIES_FILE, ReportPortalUtils.class.getClassLoader()));
 		return rq;
 	}
 
@@ -180,11 +174,16 @@ public class ReportPortalUtils {
 	@Nonnull
 	public static String getCodeRef(@Nonnull Scenario scenario) {
 		if (scenario.isOutlineExample()) {
-			return String.format(EXAMPLE_CODE_REFERENCE_PATTERN, scenario.getFeature().getResource().getRelativePath(),
-					scenario.getName(), ReportPortalUtils.formatExampleKey(scenario.getExampleData()));
+			return String.format(EXAMPLE_CODE_REFERENCE_PATTERN,
+					scenario.getFeature().getResource().getRelativePath(),
+					scenario.getName(),
+					ReportPortalUtils.formatExampleKey(scenario.getExampleData())
+			);
 		} else {
-			return String.format(SCENARIO_CODE_REFERENCE_PATTERN, scenario.getFeature().getResource().getRelativePath(),
-					scenario.getName());
+			return String.format(SCENARIO_CODE_REFERENCE_PATTERN,
+					scenario.getFeature().getResource().getRelativePath(),
+					scenario.getName()
+			);
 		}
 	}
 
@@ -197,8 +196,7 @@ public class ReportPortalUtils {
 	 * @return request to ReportPortal
 	 */
 	@Nonnull
-	public static StartTestItemRQ buildStartTestItemRq(@Nonnull String name, @Nonnull Date startTime,
-	                                                   @Nonnull ItemType type) {
+	public static StartTestItemRQ buildStartTestItemRq(@Nonnull String name, @Nonnull Date startTime, @Nonnull ItemType type) {
 		StartTestItemRQ rq = new StartTestItemRQ();
 		rq.setName(name);
 		rq.setStartTime(startTime);
@@ -301,9 +299,7 @@ public class ReportPortalUtils {
 	 */
 	@Nonnull
 	public static StartTestItemRQ buildStartScenarioRq(@Nonnull Scenario scenario) {
-		StartTestItemRQ rq = buildStartTestItemRq(scenario.getName(),
-				Calendar.getInstance().getTime(),
-				ItemType.STEP);
+		StartTestItemRQ rq = buildStartTestItemRq(scenario.getName(), Calendar.getInstance().getTime(), ItemType.STEP);
 		rq.setCodeRef(getCodeRef(scenario));
 		rq.setTestCaseId(ofNullable(getTestCaseId(scenario)).map(TestCaseIdEntry::getId).orElse(null));
 		rq.setAttributes(toAttributes(scenario.getTags()));
@@ -316,10 +312,10 @@ public class ReportPortalUtils {
 		String description = scenario.getDescription();
 		if (isNotBlank(description)) {
 			if (hasParameters) {
-				rq.setDescription(
-						String.format(MARKDOWN_DELIMITER_PATTERN,
-								String.format(PARAMETERS_PATTERN, ParameterUtils.formatParametersAsTable(parameters)),
-								description));
+				rq.setDescription(String.format(MARKDOWN_DELIMITER_PATTERN,
+						String.format(PARAMETERS_PATTERN, ParameterUtils.formatParametersAsTable(parameters)),
+						description
+				));
 			} else {
 				rq.setDescription(description);
 			}
@@ -357,12 +353,10 @@ public class ReportPortalUtils {
 		StartTestItemRQ rq = buildStartTestItemRq(stepName, Calendar.getInstance().getTime(), ItemType.STEP);
 		rq.setHasStats(false);
 		if (step.isOutline()) {
-			List<ParameterResource> parameters = scenario
-					.getExampleData()
+			List<ParameterResource> parameters = scenario.getExampleData()
 					.entrySet()
 					.stream()
-					.filter(e -> Pattern.compile(String.format(VARIABLE_PATTERN, e.getKey()))
-							.matcher(step.getText()).find())
+					.filter(e -> Pattern.compile(String.format(VARIABLE_PATTERN, e.getKey())).matcher(step.getText()).find())
 					.map(e -> {
 						ParameterResource param = new ParameterResource();
 						param.setKey(e.getKey());
@@ -423,7 +417,7 @@ public class ReportPortalUtils {
 	/**
 	 * Builds markdown representation of some code or script to be logged to ReportPortal
 	 *
-	 * @param code   Code or Script
+	 * @param code Code or Script
 	 * @return Message to be sent to ReportPortal
 	 */
 	public static String asMarkdownCode(String code) {

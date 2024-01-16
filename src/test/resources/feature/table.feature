@@ -1,4 +1,5 @@
 Feature: test with parameter table
+
   Scenario: Verify parameter table
     Given def one = 'hello'
     And def two = { baz: 'world' }

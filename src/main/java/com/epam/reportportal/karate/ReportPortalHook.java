@@ -54,16 +54,34 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
  */
 public class ReportPortalHook implements RuntimeHook {
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalHook.class);
-
+	protected final MemoizingSupplier<Launch> launch;
 	private final Map<String, Maybe<String>> featureIdMap = new ConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> scenarioIdMap = new ConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> backgroundIdMap = new ConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> stepIdMap = new ConcurrentHashMap<>();
 	private final Map<Maybe<String>, Date> stepStartTimeMap = new ConcurrentHashMap<>();
-
-	protected final MemoizingSupplier<Launch> launch;
-
 	private volatile Thread shutDownHook;
+
+	public ReportPortalHook(ReportPortal reportPortal) {
+		launch = new MemoizingSupplier<>(() -> {
+			ListenerParameters params = reportPortal.getParameters();
+			StartLaunchRQ rq = buildStartLaunchRq(params);
+			Launch newLaunch = reportPortal.newLaunch(rq);
+			//noinspection ReactiveStreamsUnusedPublisher
+			newLaunch.start();
+			shutDownHook = registerShutdownHook(this::finishLaunch);
+			return newLaunch;
+		});
+	}
+
+	public ReportPortalHook() {
+		this(ReportPortal.builder().build());
+	}
+
+	public ReportPortalHook(Supplier<Launch> launchSupplier) {
+		launch = new MemoizingSupplier<>(launchSupplier);
+		shutDownHook = registerShutdownHook(this::finishLaunch);
+	}
 
 	/**
 	 * Customize start launch event/request
@@ -93,33 +111,15 @@ public class ReportPortalHook implements RuntimeHook {
 		Launch launchObject = launch.get();
 		ListenerParameters parameters = launchObject.getParameters();
 		FinishExecutionRQ rq = buildFinishLaunchRq(parameters);
-		LOGGER.info("Launch URL: {}/ui/#{}/launches/all/{}", parameters.getBaseUrl(), parameters.getProjectName(),
-				System.getProperty("rp.launch.id"));
+		LOGGER.info("Launch URL: {}/ui/#{}/launches/all/{}",
+				parameters.getBaseUrl(),
+				parameters.getProjectName(),
+				System.getProperty("rp.launch.id")
+		);
 		launchObject.finish(rq);
 		if (Thread.currentThread() != shutDownHook) {
 			unregisterShutdownHook(shutDownHook);
 		}
-	}
-
-	public ReportPortalHook(ReportPortal reportPortal) {
-		launch = new MemoizingSupplier<>(() -> {
-			ListenerParameters params = reportPortal.getParameters();
-			StartLaunchRQ rq = buildStartLaunchRq(params);
-			Launch newLaunch = reportPortal.newLaunch(rq);
-			//noinspection ReactiveStreamsUnusedPublisher
-			newLaunch.start();
-			shutDownHook = registerShutdownHook(this::finishLaunch);
-			return newLaunch;
-		});
-	}
-
-	public ReportPortalHook() {
-		this(ReportPortal.builder().build());
-	}
-
-	public ReportPortalHook(Supplier<Launch> launchSupplier) {
-		launch = new MemoizingSupplier<>(launchSupplier);
-		shutDownHook = registerShutdownHook(this::finishLaunch);
 	}
 
 	/**
@@ -132,8 +132,10 @@ public class ReportPortalHook implements RuntimeHook {
 	@SuppressWarnings("unchecked")
 	protected StartTestItemRQ buildStartFeatureRq(@Nonnull FeatureRuntime fr) {
 		StartTestItemRQ rq = ReportPortalUtils.buildStartFeatureRq(fr.featureCall.feature);
-		ofNullable(fr.caller).map(c -> c.arg).map(a -> (Map<String, Object>) a.getValue())
-				.filter(args -> !args.isEmpty()).ifPresent(args -> {
+		ofNullable(fr.caller).map(c -> c.arg)
+				.map(a -> (Map<String, Object>) a.getValue())
+				.filter(args -> !args.isEmpty())
+				.ifPresent(args -> {
 					// TODO: cover with tests
 					String parameters = String.format(PARAMETERS_PATTERN, formatParametersAsTable(getParameters(args)));
 					String description = rq.getDescription();
@@ -162,8 +164,7 @@ public class ReportPortalHook implements RuntimeHook {
 	 */
 	@Nonnull
 	protected FinishTestItemRQ buildFinishFeatureRq(@Nonnull FeatureRuntime fr) {
-		return buildFinishTestItemRq(Calendar.getInstance().getTime(),
-				fr.result.isFailed() ? ItemStatus.FAILED : ItemStatus.PASSED);
+		return buildFinishTestItemRq(Calendar.getInstance().getTime(), fr.result.isFailed() ? ItemStatus.FAILED : ItemStatus.PASSED);
 	}
 
 	@Override
@@ -208,7 +209,8 @@ public class ReportPortalHook implements RuntimeHook {
 	@Nonnull
 	protected FinishTestItemRQ buildFinishScenarioRq(@Nonnull ScenarioRuntime sr) {
 		return buildFinishTestItemRq(Calendar.getInstance().getTime(),
-				sr.result.getFailureMessageForDisplay() == null ? ItemStatus.PASSED : ItemStatus.FAILED);
+				sr.result.getFailureMessageForDisplay() == null ? ItemStatus.PASSED : ItemStatus.FAILED
+		);
 	}
 
 	/**
@@ -233,8 +235,7 @@ public class ReportPortalHook implements RuntimeHook {
 	public Maybe<String> startBackground(@Nonnull Step step, @Nonnull ScenarioRuntime sr) {
 		return backgroundIdMap.computeIfAbsent(sr.scenario.getUniqueId(), k -> {
 			StartTestItemRQ backgroundRq = buildStartBackgroundRq(step, sr);
-			return launch.get().startTestItem(scenarioIdMap.get(sr.scenario.getUniqueId()),
-					backgroundRq);
+			return launch.get().startTestItem(scenarioIdMap.get(sr.scenario.getUniqueId()), backgroundRq);
 		});
 	}
 
@@ -339,21 +340,12 @@ public class ReportPortalHook implements RuntimeHook {
 		StartTestItemRQ stepRq = buildStartStepRq(step, sr);
 
 		String scenarioId = sr.scenario.getUniqueId();
-		Maybe<String> stepId = launch.get()
-				.startTestItem(
-						background ? backgroundId : scenarioIdMap.get(scenarioId),
-						stepRq
-				);
+		Maybe<String> stepId = launch.get().startTestItem(background ? backgroundId : scenarioIdMap.get(scenarioId), stepRq);
 		stepStartTimeMap.put(stepId, stepRq.getStartTime());
 		stepIdMap.put(scenarioId, stepId);
-		ofNullable(stepRq.getParameters())
-				.filter(params -> !params.isEmpty())
-				.ifPresent(params ->
-						sendLog(stepId, String.format(PARAMETERS_PATTERN, formatParametersAsTable(params)),
-								LogLevel.INFO));
-		ofNullable(step.getTable())
-				.ifPresent(table ->
-						sendLog(stepId, "Table:\n\n" + formatDataTable(table.getRows()), LogLevel.INFO));
+		ofNullable(stepRq.getParameters()).filter(params -> !params.isEmpty())
+				.ifPresent(params -> sendLog(stepId, String.format(PARAMETERS_PATTERN, formatParametersAsTable(params)), LogLevel.INFO));
+		ofNullable(step.getTable()).ifPresent(table -> sendLog(stepId, "Table:\n\n" + formatDataTable(table.getRows()), LogLevel.INFO));
 		String docString = step.getDocString();
 		if (isNotBlank(docString)) {
 			sendLog(stepId, "Docstring:\n\n" + asMarkdownCode(step.getDocString()), LogLevel.INFO);

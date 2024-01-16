@@ -39,40 +39,38 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 public class LaunchRequiredFieldsTest {
-    private static final String TEST_FEATURE = "classpath:feature/simple.feature";
-    private final String featureId = CommonUtils.namedId("feature_");
-    private final String scenarioId = CommonUtils.namedId("scenario_");
-    private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_"))
-            .limit(3).collect(Collectors.toList());
+	private static final String TEST_FEATURE = "classpath:feature/simple.feature";
+	private final String featureId = CommonUtils.namedId("feature_");
+	private final String scenarioId = CommonUtils.namedId("scenario_");
+	private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_")).limit(3).collect(Collectors.toList());
 
-    private final ReportPortalClient client = mock(ReportPortalClient.class);
-    private final ReportPortal rp = ReportPortal.create(client, standardParameters(), testExecutor());
+	private final ReportPortalClient client = mock(ReportPortalClient.class);
+	private final ReportPortal rp = ReportPortal.create(client, standardParameters(), testExecutor());
 
-    @BeforeEach
-    public void setupMock() {
-        mockLaunch(client, null, featureId, scenarioId, stepIds);
-        mockBatchLogging(client);
-    }
+	@BeforeEach
+	public void setupMock() {
+		mockLaunch(client, null, featureId, scenarioId, stepIds);
+		mockBatchLogging(client);
+	}
 
-    @ParameterizedTest
-    @ValueSource(booleans = {true, false})
-    public void verify_start_launch_request_contains_required_fields(boolean report) {
-        Results results;
-        if (report) {
-            results = TestUtils.runAsReport(rp, TEST_FEATURE);
-        } else {
-            results = TestUtils.runAsHook(rp, TEST_FEATURE);
-        }
-        assertThat(results.getFailCount(), equalTo(0));
+	@ParameterizedTest
+	@ValueSource(booleans = { true, false })
+	public void verify_start_launch_request_contains_required_fields(boolean report) {
+		Results results;
+		if (report) {
+			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+		} else {
+			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+		}
+		assertThat(results.getFailCount(), equalTo(0));
 
-        ArgumentCaptor<StartLaunchRQ> startCaptor = ArgumentCaptor.forClass(StartLaunchRQ.class);
-        verify(client).startLaunch(startCaptor.capture());
+		ArgumentCaptor<StartLaunchRQ> startCaptor = ArgumentCaptor.forClass(StartLaunchRQ.class);
+		verify(client).startLaunch(startCaptor.capture());
 
-        StartLaunchRQ launchStart = startCaptor.getValue();
-        assertThat(launchStart.getName(), startsWith("My-test-launch"));
-        assertThat(launchStart.getStartTime(), notNullValue());
-        assertThat(System.currentTimeMillis() - launchStart.getStartTime().getTime(),
-                not(greaterThan(TimeUnit.SECONDS.toMillis(10))));
+		StartLaunchRQ launchStart = startCaptor.getValue();
+		assertThat(launchStart.getName(), startsWith("My-test-launch"));
+		assertThat(launchStart.getStartTime(), notNullValue());
+		assertThat(System.currentTimeMillis() - launchStart.getStartTime().getTime(), not(greaterThan(TimeUnit.SECONDS.toMillis(10))));
 
-    }
+	}
 }

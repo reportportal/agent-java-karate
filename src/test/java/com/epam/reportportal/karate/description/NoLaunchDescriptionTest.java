@@ -42,48 +42,43 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 public class NoLaunchDescriptionTest {
-    private static final String TEST_FEATURE = "classpath:feature/simple.feature";
-    private final String featureId = CommonUtils.namedId("feature_");
-    private final String scenarioId = CommonUtils.namedId("scenario_");
-    private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_"))
-            .limit(3).collect(Collectors.toList());
+	private static final String TEST_FEATURE = "classpath:feature/simple.feature";
+	private final String featureId = CommonUtils.namedId("feature_");
+	private final String scenarioId = CommonUtils.namedId("scenario_");
+	private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_")).limit(3).collect(Collectors.toList());
 
-    private final ReportPortalClient client = mock(ReportPortalClient.class);
+	private final ReportPortalClient client = mock(ReportPortalClient.class);
 
-    public static Stream<Arguments> dataValues() {
-        List<Object> descriptions = Arrays.asList(
-                null,
-                "",
-                "   "
-        );
-        return Stream.of(true, false).flatMap(b -> descriptions.stream().map(d -> Arguments.of(b, d)));
-    }
+	public static Stream<Arguments> dataValues() {
+		List<Object> descriptions = Arrays.asList(null, "", "   ");
+		return Stream.of(true, false).flatMap(b -> descriptions.stream().map(d -> Arguments.of(b, d)));
+	}
 
-    @BeforeEach
-    public void setupMock() {
-        mockLaunch(client, null, featureId, scenarioId, stepIds);
-        mockBatchLogging(client);
-    }
+	@BeforeEach
+	public void setupMock() {
+		mockLaunch(client, null, featureId, scenarioId, stepIds);
+		mockBatchLogging(client);
+	}
 
-    @ParameterizedTest
-    @MethodSource("dataValues")
-    public void verify_start_launch_request_contains_no_launch_description(boolean report, String description) {
-        ListenerParameters parameters = standardParameters();
-        parameters.setDescription(description);
-        ReportPortal rp = ReportPortal.create(client, parameters, testExecutor());
-        Results results;
-        if (report) {
-            results = TestUtils.runAsReport(rp, TEST_FEATURE);
-        } else {
-            results = TestUtils.runAsHook(rp, TEST_FEATURE);
-        }
-        assertThat(results.getFailCount(), equalTo(0));
+	@ParameterizedTest
+	@MethodSource("dataValues")
+	public void verify_start_launch_request_contains_no_launch_description(boolean report, String description) {
+		ListenerParameters parameters = standardParameters();
+		parameters.setDescription(description);
+		ReportPortal rp = ReportPortal.create(client, parameters, testExecutor());
+		Results results;
+		if (report) {
+			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+		} else {
+			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+		}
+		assertThat(results.getFailCount(), equalTo(0));
 
-        ArgumentCaptor<StartLaunchRQ> startCaptor = ArgumentCaptor.forClass(StartLaunchRQ.class);
-        verify(client).startLaunch(startCaptor.capture());
+		ArgumentCaptor<StartLaunchRQ> startCaptor = ArgumentCaptor.forClass(StartLaunchRQ.class);
+		verify(client).startLaunch(startCaptor.capture());
 
-        StartLaunchRQ launchStart = startCaptor.getValue();
+		StartLaunchRQ launchStart = startCaptor.getValue();
 
-        assertThat(launchStart.getDescription(), nullValue());
-    }
+		assertThat(launchStart.getDescription(), nullValue());
+	}
 }

@@ -36,30 +36,29 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.Mockito.*;
 
 public class CallWithParametersPublisherTest {
-    private static final String TEST_FEATURE = "classpath:feature/call.feature";
-    private final String featureId = CommonUtils.namedId("feature_");
-    private final String scenarioId = CommonUtils.namedId("scenario_");
-    private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_"))
-            .limit(1).collect(Collectors.toList());
+	private static final String TEST_FEATURE = "classpath:feature/call.feature";
+	private final String featureId = CommonUtils.namedId("feature_");
+	private final String scenarioId = CommonUtils.namedId("scenario_");
+	private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_")).limit(1).collect(Collectors.toList());
 
-    private final ReportPortalClient client = mock(ReportPortalClient.class);
-    private final ReportPortal rp = ReportPortal.create(client, standardParameters(), testExecutor());
+	private final ReportPortalClient client = mock(ReportPortalClient.class);
+	private final ReportPortal rp = ReportPortal.create(client, standardParameters(), testExecutor());
 
-    @BeforeEach
-    public void setupMock() {
-        mockLaunch(client, null, featureId, scenarioId, stepIds);
-        mockBatchLogging(client);
-    }
+	@BeforeEach
+	public void setupMock() {
+		mockLaunch(client, null, featureId, scenarioId, stepIds);
+		mockBatchLogging(client);
+	}
 
-    @Test
-    public void test_call_feature_with_parameters_publisher_reporting() {
-        Results results = TestUtils.runAsReport(rp, TEST_FEATURE);
-        assertThat(results.getFailCount(), equalTo(0));
+	@Test
+	public void test_call_feature_with_parameters_publisher_reporting() {
+		Results results = TestUtils.runAsReport(rp, TEST_FEATURE);
+		assertThat(results.getFailCount(), equalTo(0));
 
-        ArgumentCaptor<StartTestItemRQ> captor = ArgumentCaptor.forClass(StartTestItemRQ.class);
-        verify(client).startTestItem(captor.capture());
-        verify(client).startTestItem(same(featureId), captor.capture());
-        ArgumentCaptor<StartTestItemRQ> stepCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
-        verify(client).startTestItem(same(scenarioId), stepCaptor.capture());
-    }
+		ArgumentCaptor<StartTestItemRQ> captor = ArgumentCaptor.forClass(StartTestItemRQ.class);
+		verify(client).startTestItem(captor.capture());
+		verify(client).startTestItem(same(featureId), captor.capture());
+		ArgumentCaptor<StartTestItemRQ> stepCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
+		verify(client).startTestItem(same(scenarioId), stepCaptor.capture());
+	}
 }
