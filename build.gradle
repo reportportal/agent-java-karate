@@ -85,4 +85,10 @@ processResources {
     }
 }
 
+release {
+    git {
+        requireBranch = 'main'
+    }
+}
+
 build.dependsOn jacocoTestReport
