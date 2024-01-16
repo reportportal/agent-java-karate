@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+## [5.0.0]
 ### Changed
 - Refactored and implemented main ReportPortal agent features, by @HardNorth
 
