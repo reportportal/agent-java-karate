@@ -1,7 +1,8 @@
 # Changelog
 
 ## [Unreleased]
-- Take items' startTime and endTime from Karate.
+### Changed
+- Refactored and implemented main ReportPortal agent features, by @HardNorth
 
 ## [1.0.6]
 ### Changed

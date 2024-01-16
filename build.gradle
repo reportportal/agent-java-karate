@@ -1,11 +1,11 @@
 /*
- * Copyright 2023 EPAM Systems
+ * Copyright 2024 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *     https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,47 +15,58 @@
  */
 
 apply plugin: 'java-library'
-apply plugin: 'maven-publish'
 
-// Blocking issue for gradle version >=7.0:https://github.com/reportportal/gradle-scripts/issues/37
-//apply from: "${project.scripts_url}/${project.scripts_branch}/release-commons.gradle"
-//apply from: "${project.scripts_url}/${project.scripts_branch}/build-quality.gradle"
-//apply from: "${project.scripts_url}/${project.scripts_branch}/signing.gradle"
+apply from: 'build-quality.gradle'
+apply from: "${project.scripts_url}/${project.scripts_branch}/release-commons.gradle"
+apply from: "${project.scripts_url}/${project.scripts_branch}/signing.gradle"
+apply from: "${project.scripts_url}/${project.scripts_branch}/jacoco.gradle"
 
+project.ext.limits = [
+        'instruction': 70,
+        'branch'     : 53,
+        'line'       : 75,
+        'complexity' : 60,
+        'method'     : 65,
+        'class'      : 83
+]
 
 sourceCompatibility = JavaVersion.VERSION_11
 targetCompatibility = JavaVersion.VERSION_11
+
 compileJava.options.encoding = 'UTF-8'
 compileTestJava.options.encoding = 'UTF-8'
 
 repositories {
+    mavenLocal()
     mavenCentral()
 }
 
 dependencies {
-    api "com.epam.reportportal:client-java:${project.reportportal_client_java_version}"
-    api "com.epam.reportportal:logger-java-logback:${project.reportportal_logback_version}"
+    api 'com.epam.reportportal:client-java:5.2.0'
     api "com.intuit.karate:karate-core:${project.karate_version}"
+    implementation 'org.slf4j:slf4j-api:2.0.7'
+
+    testImplementation 'com.epam.reportportal:logger-java-logback:5.2.0'
+    testImplementation 'com.epam.reportportal:agent-java-test-utils:0.0.2'
     testImplementation "org.junit.jupiter:junit-jupiter-api:${project.junit_version}"
     testImplementation "org.junit.jupiter:junit-jupiter-engine:${project.junit_version}"
+    testImplementation "org.junit.jupiter:junit-jupiter-params:${project.junit_version}"
     testImplementation "org.mockito:mockito-core:${project.mockito_version}"
     testImplementation "org.mockito:mockito-junit-jupiter:${project.mockito_version}"
-}
-
-tasks.withType(Test) {
-    jvmArgs += ['--add-opens', 'java.base/java.lang=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.lang.reflect=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.util=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.util.concurrent=ALL-UNNAMED']
+    testImplementation 'org.hamcrest:hamcrest-core:2.2'
+    testImplementation 'com.squareup.okhttp3:okhttp:4.12.0'
 }
 
 test {
     outputs.upToDateWhen { return false }
-    maxParallelForks(5)
     useJUnitPlatform()
     doFirst {
         def weaver = configurations.testRuntimeClasspath.find { it.name.contains("aspectjweaver") }
         jvmArgs += "-javaagent:$weaver"
+        jvmArgs += ['--add-opens', 'java.base/java.lang=ALL-UNNAMED',
+                    '--add-opens', 'java.base/java.lang.reflect=ALL-UNNAMED',
+                    '--add-opens', 'java.base/java.util=ALL-UNNAMED',
+                    '--add-opens', 'java.base/java.util.concurrent=ALL-UNNAMED']
     }
     environment "AGENT_NO_ANALYTICS", "1"
     testLogging {
@@ -74,10 +85,4 @@ processResources {
     }
 }
 
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            from components.java
-        }
-    }
-}
+build.dependsOn jacocoTestReport
