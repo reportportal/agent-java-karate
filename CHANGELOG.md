@@ -3,6 +3,8 @@
 ## [Unreleased]
 
 ## [5.0.0]
+### Added
+- Basic Agent functionality, by @vrymar 
 ### Changed
 - Refactored and implemented main ReportPortal agent features, by @HardNorth
 
