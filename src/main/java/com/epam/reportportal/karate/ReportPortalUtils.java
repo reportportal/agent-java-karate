@@ -60,7 +60,8 @@ public class ReportPortalUtils {
 	public static final String SKIPPED_ISSUE_KEY = "skippedIssue";
 	public static final String SCENARIO_CODE_REFERENCE_PATTERN = "%s/[SCENARIO:%s]";
 	public static final String EXAMPLE_CODE_REFERENCE_PATTERN = "%s/[EXAMPLE:%s%s]";
-	public static final String MARKDOWN_DELIMITER_PATTERN = "%s\n\n---\n\n%s";
+	public static final String MARKDOWN_DELIMITER = "\n\n---\n\n";
+	public static final String MARKDOWN_DELIMITER_PATTERN = "%s" + MARKDOWN_DELIMITER + "%s";
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalUtils.class);
 	private static final String PARAMETER_ITEMS_START = "[";
 	private static final String PARAMETER_ITEMS_END = "]";
@@ -294,35 +295,56 @@ public class ReportPortalUtils {
 	/**
 	 * Build ReportPortal request for start Scenario event
 	 *
-	 * @param scenario Karate's Scenario object instance
+	 * @param result Karate's ScenarioResult object instance
 	 * @return request to ReportPortal
 	 */
 	@Nonnull
-	public static StartTestItemRQ buildStartScenarioRq(@Nonnull Scenario scenario) {
+	public static StartTestItemRQ buildStartScenarioRq(@Nonnull ScenarioResult result) {
+		Scenario scenario = result.getScenario();
 		StartTestItemRQ rq = buildStartTestItemRq(scenario.getName(), Calendar.getInstance().getTime(), ItemType.STEP);
 		rq.setCodeRef(getCodeRef(scenario));
 		rq.setTestCaseId(ofNullable(getTestCaseId(scenario)).map(TestCaseIdEntry::getId).orElse(null));
 		rq.setAttributes(toAttributes(scenario.getTags()));
-		List<ParameterResource> parameters = getParameters(scenario);
-		boolean hasParameters = ofNullable(parameters).filter(p -> !p.isEmpty()).isPresent();
-		if (hasParameters) {
-			rq.setParameters(parameters);
+		rq.setParameters(getParameters(scenario));
+		rq.setDescription(buildDescription(scenario, result.getErrorMessage(), getParameters(scenario)));
+		return rq;
+	}
+
+	/**
+	 * Build ReportPortal request for finish Scenario event
+	 *
+	 * @param result Karate's ScenarioResult object instance
+	 * @return request to ReportPortal
+	 */
+	@Nonnull
+	public static FinishTestItemRQ buildFinishScenarioRq(@Nonnull ScenarioResult result) {
+		Scenario scenario = result.getScenario();
+		FinishTestItemRQ rq = buildFinishTestItemRq(Calendar.getInstance().getTime(), result.getFailureMessageForDisplay() == null ? ItemStatus.PASSED : ItemStatus.FAILED);
+		rq.setDescription(buildDescription(scenario, result.getErrorMessage(), getParameters(scenario)));
+		return rq;
+	}
+
+	private static String buildDescription(Scenario scenario, String errorMessage, List<ParameterResource> parameters) {
+		StringBuilder descriptionBuilder = new StringBuilder();
+
+		if (parameters != null && !parameters.isEmpty()) {
+			descriptionBuilder.append(String.format(PARAMETERS_PATTERN, ParameterUtils.formatParametersAsTable(parameters)));
+		}
+		if (isNotBlank(scenario.getDescription())) {
+			appendWithDelimiter(descriptionBuilder, scenario.getDescription());
+		}
+		if (isNotBlank(errorMessage)) {
+			appendWithDelimiter(descriptionBuilder, String.format("Error:\n%s", errorMessage));
 		}
 
-		String description = scenario.getDescription();
-		if (isNotBlank(description)) {
-			if (hasParameters) {
-				rq.setDescription(String.format(MARKDOWN_DELIMITER_PATTERN,
-						String.format(PARAMETERS_PATTERN, ParameterUtils.formatParametersAsTable(parameters)),
-						description
-				));
-			} else {
-				rq.setDescription(description);
-			}
-		} else if (hasParameters) {
-			rq.setDescription(String.format(PARAMETERS_PATTERN, ParameterUtils.formatParametersAsTable(parameters)));
+		return descriptionBuilder.toString();
+	}
+
+	private static void appendWithDelimiter(StringBuilder builder, String text) {
+		if (builder.length() > 0) {
+			builder.append(MARKDOWN_DELIMITER);
 		}
-		return rq;
+		builder.append(text);
 	}
 
 	/**
