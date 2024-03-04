@@ -13,22 +13,22 @@ Karate reporters which uploads the results to a ReportPortal server.
 [![stackoverflow](https://img.shields.io/badge/reportportal-stackoverflow-orange.svg?style=flat)](http://stackoverflow.com/questions/tagged/reportportal)
 [![Build with Love](https://img.shields.io/badge/build%20with-❤%EF%B8%8F%E2%80%8D-lightgrey.svg)](http://reportportal.io?style=flat)
 
-The latest version: 5.0.0. Please use `Maven Central` link above to get the agent.
+The latest version: 5.0.1. Please use `Maven Central` link above to get the agent.
 
 ## Overview: How to Add ReportPortal Logging to Your Project
 
 To start using ReportPortal with Karate framework please do the following steps:
 
 1. [Configuration](#configuration)
-  * Create/update the `reportportal.properties` configuration file
-  * Build system configuration
-  * Add Listener
-    * Runtime
-    * Post-running
+    * Create/update the `reportportal.properties` configuration file
+    * Build system configuration
+    * Add Listener
+        * Runtime
+        * Post-running
 2. [Logging configuration](#logging)
-  * Loggers and their types
+    * Loggers and their types
 3. [Running tests](#running-tests)
-  * Build system commands
+    * Build system commands
 
 ## Configuration
 
@@ -72,7 +72,7 @@ If your project is Maven-based you need to add dependencies to `pom.xml` file:
     <dependency>
         <groupId>com.epam.reportportal</groupId>
         <artifactId>agent-java-karate</artifactId>
-        <version>5.0.0</version>
+        <version>5.0.1</version>
         <scope>test</scope>
     </dependency>
 
@@ -89,7 +89,7 @@ For Gradle-based projects please update dependencies section in `build.gradle` f
 
 ```groovy
 dependencies {
-    testImplementation 'com.epam.reportportal:agent-java-karate:5.0.0'
+    testImplementation 'com.epam.reportportal:agent-java-karate:5.0.1'
 }
 ```
 
