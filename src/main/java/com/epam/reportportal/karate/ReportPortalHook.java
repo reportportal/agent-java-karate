@@ -16,6 +16,7 @@
 
 package com.epam.reportportal.karate;
 
+import com.epam.reportportal.karate.utils.BlockingConcurrentHashMap;
 import com.epam.reportportal.listeners.ItemStatus;
 import com.epam.reportportal.listeners.ListenerParameters;
 import com.epam.reportportal.listeners.LogLevel;
@@ -55,7 +56,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 public class ReportPortalHook implements RuntimeHook {
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalHook.class);
 	protected final MemoizingSupplier<Launch> launch;
-	private final Map<String, Maybe<String>> featureIdMap = new ConcurrentHashMap<>();
+	private final BlockingConcurrentHashMap<String, Maybe<String>> featureIdMap = new BlockingConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> scenarioIdMap = new ConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> backgroundIdMap = new ConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> stepIdMap = new ConcurrentHashMap<>();
@@ -160,9 +161,7 @@ public class ReportPortalHook implements RuntimeHook {
 
 	@Override
 	public boolean beforeFeature(FeatureRuntime fr) {
-		Maybe<String> featureId = launch.get().startTestItem(buildStartFeatureRq(fr));
-		Feature feature = fr.featureCall.feature;
-		featureIdMap.put(feature.getNameForReport(), featureId);
+		featureIdMap.computeIfAbsent(fr.featureCall.feature.getNameForReport(), f -> launch.get().startTestItem(buildStartFeatureRq(fr)));
 		return true;
 	}
 
@@ -179,8 +178,7 @@ public class ReportPortalHook implements RuntimeHook {
 
 	@Override
 	public void afterFeature(FeatureRuntime fr) {
-		Feature feature = fr.featureCall.feature;
-		Maybe<String> featureId = featureIdMap.remove(feature.getNameForReport());
+		Maybe<String> featureId = featureIdMap.remove(fr.featureCall.feature.getNameForReport());
 		if (featureId == null) {
 			LOGGER.error("ERROR: Trying to finish unspecified feature.");
 		}
@@ -202,10 +200,9 @@ public class ReportPortalHook implements RuntimeHook {
 
 	@Override
 	public boolean beforeScenario(ScenarioRuntime sr) {
+		Maybe<String> featureId = featureIdMap.get(sr.featureRuntime.featureCall.feature.getNameForReport());
 		StartTestItemRQ rq = buildStartScenarioRq(sr);
-
-		Maybe<String> scenarioId = launch.get()
-				.startTestItem(featureIdMap.get(sr.featureRuntime.featureCall.feature.getNameForReport()), rq);
+		Maybe<String> scenarioId = launch.get().startTestItem(featureId, rq);
 		scenarioIdMap.put(sr.scenario.getUniqueId(), scenarioId);
 		return true;
 	}
