@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+## [5.0.2]
 ### Changed
 - Karate dependency marked as `compileOnly` to force users specify their own version of Karate, by @HardNorth
 - Client version updated on [5.2.5](https://github.com/reportportal/client-java/releases/tag/5.2.5), by @HardNorth
