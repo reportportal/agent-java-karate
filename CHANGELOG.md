@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### Fixed
+- Backgrounds finish with `FAILED` status, by @HardNorth
 
 ## [5.0.2]
 ### Changed
