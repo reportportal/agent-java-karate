@@ -230,6 +230,7 @@ public class ReportPortalHook implements RuntimeHook {
 	 *
 	 * @param step Karate's Step object instance
 	 * @param sr   Karate's ScenarioRuntime object instance
+	 * @return item ID Future
 	 */
 	public Maybe<String> startBackground(@Nonnull Step step, @Nonnull ScenarioRuntime sr) {
 		return backgroundIdMap.computeIfAbsent(sr.scenario.getUniqueId(), k -> {
