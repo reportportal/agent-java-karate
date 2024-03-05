@@ -61,6 +61,8 @@ dependencies {
 test {
     outputs.upToDateWhen { return false }
     useJUnitPlatform()
+    forkEvery(1)
+    maxParallelForks(5)
     doFirst {
         def weaver = configurations.testRuntimeClasspath.find { it.name.contains("aspectjweaver") }
         jvmArgs += "-javaagent:$weaver"
