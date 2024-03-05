@@ -22,6 +22,7 @@ import com.epam.reportportal.listeners.LogLevel;
 import com.epam.reportportal.service.Launch;
 import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.utils.MemoizingSupplier;
+import com.epam.reportportal.utils.StatusEvaluation;
 import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
@@ -52,6 +53,7 @@ public class ReportPortalPublisher {
 	private final Map<String, Maybe<String>> scenarioIdMap = new HashMap<>();
 	private final Map<Maybe<String>, Long> stepStartTimeMap = new HashMap<>();
 	private Maybe<String> backgroundId;
+	private ItemStatus backgroundStatus;
 	private Maybe<String> stepId;
 	private Thread shutDownHook;
 
@@ -67,7 +69,6 @@ public class ReportPortalPublisher {
 
 	public ReportPortalPublisher(Supplier<Launch> launchSupplier) {
 		launch = new MemoizingSupplier<>(launchSupplier);
-		shutDownHook = registerShutdownHook(this::finishLaunch);
 	}
 
 	/**
@@ -112,7 +113,7 @@ public class ReportPortalPublisher {
 				System.getProperty("rp.launch.id")
 		);
 		launchObject.finish(rq);
-		if (Thread.currentThread() != shutDownHook) {
+		if (shutDownHook != null && Thread.currentThread() != shutDownHook) {
 			unregisterShutdownHook(shutDownHook);
 		}
 	}
@@ -267,7 +268,7 @@ public class ReportPortalPublisher {
 	@Nonnull
 	@SuppressWarnings("unused")
 	protected FinishTestItemRQ buildFinishBackgroundRq(@Nullable StepResult stepResult, @Nonnull ScenarioResult scenarioResult) {
-		return buildFinishTestItemRq(Calendar.getInstance().getTime(), null);
+		return buildFinishTestItemRq(Calendar.getInstance().getTime(), backgroundStatus);
 
 	}
 
@@ -278,12 +279,13 @@ public class ReportPortalPublisher {
 	 * @param scenarioResult scenario result
 	 */
 	public void finishBackground(@Nullable StepResult stepResult, @Nonnull ScenarioResult scenarioResult) {
-		ofNullable(backgroundId).ifPresent(id -> {
+		Maybe<String> myBackgroundId = backgroundId;
+		backgroundId = null;
+		ofNullable(myBackgroundId).ifPresent(id -> {
 			FinishTestItemRQ finishRq = buildFinishBackgroundRq(stepResult, scenarioResult);
 			//noinspection ReactiveStreamsUnusedPublisher
 			launch.get().finishTestItem(id, finishRq);
 		});
-		backgroundId = null;
 	}
 
 	/**
@@ -329,14 +331,17 @@ public class ReportPortalPublisher {
 	 */
 	public void startStep(StepResult stepResult, ScenarioResult scenarioResult) {
 		Step step = stepResult.getStep();
-		if (step.isBackground()) {
+		boolean background = step.isBackground();
+		if (background) {
 			startBackground(stepResult, scenarioResult);
-		} else {
-			finishBackground(stepResult, scenarioResult);
 		}
+
 		StartTestItemRQ stepRq = buildStartStepRq(stepResult, scenarioResult);
 		stepId = launch.get()
-				.startTestItem(backgroundId != null ? backgroundId : scenarioIdMap.get(scenarioResult.getScenario().getName()), stepRq);
+				.startTestItem(
+						background && backgroundId != null ? backgroundId : scenarioIdMap.get(scenarioResult.getScenario().getName()),
+						stepRq
+				);
 		stepStartTimeMap.put(stepId, stepRq.getStartTime().getTime());
 		ofNullable(stepRq.getParameters()).filter(params -> !params.isEmpty())
 				.ifPresent(params -> sendLog(stepId, String.format(PARAMETERS_PATTERN, formatParametersAsTable(params)), LogLevel.INFO));
@@ -360,6 +365,11 @@ public class ReportPortalPublisher {
 		return buildFinishTestItemRq(Calendar.getInstance().getTime(), getStepStatus(stepResult.getResult().getStatus()));
 	}
 
+	@SuppressWarnings("unused")
+	private void saveBackgroundStatus(@Nonnull StepResult stepResult, @Nonnull ScenarioResult scenarioResult) {
+		backgroundStatus = StatusEvaluation.evaluateStatus(backgroundStatus, getStepStatus(stepResult.getResult().getStatus()));
+	}
+
 	/**
 	 * Finish sending Step data to ReportPortal.
 	 *
@@ -367,12 +377,21 @@ public class ReportPortalPublisher {
 	 * @param scenarioResult Karate's ScenarioResult class instance
 	 */
 	public void finishStep(StepResult stepResult, ScenarioResult scenarioResult) {
+		Step step = stepResult.getStep();
+		boolean background = step.isBackground();
+		if (!background) {
+			finishBackground(stepResult, scenarioResult);
+		}
+
 		if (stepId == null) {
 			LOGGER.error("ERROR: Trying to finish unspecified step.");
 			return;
 		}
 
 		FinishTestItemRQ rq = buildFinishStepRq(stepResult, scenarioResult);
+		if (background) {
+			saveBackgroundStatus(stepResult, scenarioResult);
+		}
 		//noinspection ReactiveStreamsUnusedPublisher
 		launch.get().finishTestItem(stepId, rq);
 	}
