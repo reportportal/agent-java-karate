@@ -23,6 +23,7 @@ import com.epam.reportportal.listeners.LogLevel;
 import com.epam.reportportal.service.Launch;
 import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.utils.MemoizingSupplier;
+import com.epam.reportportal.utils.StatusEvaluation;
 import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
@@ -59,6 +60,7 @@ public class ReportPortalHook implements RuntimeHook {
 	private final BlockingConcurrentHashMap<String, Maybe<String>> featureIdMap = new BlockingConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> scenarioIdMap = new ConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> backgroundIdMap = new ConcurrentHashMap<>();
+	private final Map<String, ItemStatus> backgroundStatusMap = new ConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> stepIdMap = new ConcurrentHashMap<>();
 	private final Map<Maybe<String>, Date> stepStartTimeMap = new ConcurrentHashMap<>();
 	private volatile Thread shutDownHook;
@@ -239,27 +241,28 @@ public class ReportPortalHook implements RuntimeHook {
 	/**
 	 * Build ReportPortal request for finish Background event.
 	 *
-	 * @param step Karate's Step object instance
-	 * @param sr   Karate's ScenarioRuntime object instance
+	 * @param stepResult Karate's StepResult class instance
+	 * @param sr         Karate's ScenarioRuntime object instance
 	 * @return request to ReportPortal
 	 */
 	@Nonnull
 	@SuppressWarnings("unused")
-	protected FinishTestItemRQ buildFinishBackgroundRq(@Nullable Step step, @Nonnull ScenarioRuntime sr) {
-		return buildFinishTestItemRq(Calendar.getInstance().getTime(), null);
+	protected FinishTestItemRQ buildFinishBackgroundRq(@Nullable StepResult stepResult, @Nonnull ScenarioRuntime sr) {
+		return buildFinishTestItemRq(Calendar.getInstance().getTime(), backgroundStatusMap.remove(sr.scenario.getUniqueId()));
 
 	}
 
 	/**
 	 * Finish sending Scenario data to ReportPortal.
 	 *
-	 * @param step Karate's Step object instance
-	 * @param sr   Karate's ScenarioRuntime object instance
+	 * @param stepResult Karate's StepResult class instance
+	 * @param sr         Karate's ScenarioRuntime object instance
 	 */
-	public void finishBackground(@Nullable Step step, @Nonnull ScenarioRuntime sr) {
-		Maybe<String> backgroundId = backgroundIdMap.remove(sr.scenario.getUniqueId());
+	public void finishBackground(@Nullable StepResult stepResult, @Nonnull ScenarioRuntime sr) {
+		String uniqueId = sr.scenario.getUniqueId();
+		Maybe<String> backgroundId = backgroundIdMap.remove(uniqueId);
 		if (backgroundId != null) {
-			FinishTestItemRQ finishRq = buildFinishBackgroundRq(step, sr);
+			FinishTestItemRQ finishRq = buildFinishBackgroundRq(stepResult, sr);
 			//noinspection ReactiveStreamsUnusedPublisher
 			launch.get().finishTestItem(backgroundId, finishRq);
 		}
@@ -272,10 +275,10 @@ public class ReportPortalHook implements RuntimeHook {
 			LOGGER.error("ERROR: Trying to finish unspecified scenario.");
 		}
 
+		finishBackground(null, sr);
 		FinishTestItemRQ rq = buildFinishScenarioRq(sr);
 		//noinspection ReactiveStreamsUnusedPublisher
 		launch.get().finishTestItem(scenarioId, rq);
-		finishBackground(null, sr);
 	}
 
 	/**
@@ -331,8 +334,6 @@ public class ReportPortalHook implements RuntimeHook {
 		Maybe<String> backgroundId = null;
 		if (background) {
 			backgroundId = startBackground(step, sr);
-		} else {
-			finishBackground(step, sr);
 		}
 		StartTestItemRQ stepRq = buildStartStepRq(step, sr);
 
@@ -383,8 +384,21 @@ public class ReportPortalHook implements RuntimeHook {
 		return buildFinishTestItemRq(Calendar.getInstance().getTime(), getStepStatus(stepResult.getResult().getStatus()));
 	}
 
+	private void saveBackgroundStatus(@Nonnull StepResult stepResult, @Nonnull ScenarioRuntime sr) {
+		backgroundStatusMap.put(sr.scenario.getUniqueId(),
+				StatusEvaluation.evaluateStatus(backgroundStatusMap.get(sr.scenario.getUniqueId()),
+						getStepStatus(stepResult.getResult().getStatus())
+				)
+		);
+	}
+
 	@Override
 	public void afterStep(StepResult stepResult, ScenarioRuntime sr) {
+		boolean background = stepResult.getStep().isBackground();
+		if (!background) {
+			finishBackground(stepResult, sr);
+		}
+
 		sendStepResults(stepResult, sr);
 		Maybe<String> stepId = stepIdMap.get(sr.scenario.getUniqueId());
 		if (stepId == null) {
@@ -393,6 +407,9 @@ public class ReportPortalHook implements RuntimeHook {
 		}
 
 		FinishTestItemRQ rq = buildFinishStepRq(stepResult, sr);
+		if (background) {
+			saveBackgroundStatus(stepResult, sr);
+		}
 		//noinspection ReactiveStreamsUnusedPublisher
 		launch.get().finishTestItem(stepId, rq);
 	}
