@@ -15,7 +15,7 @@
   -->
 
 <aspectj>
-    <weaver options="-Xset:weaveJavaPackages=false,weaveJavaxPackages=false" />
+    <weaver options="-nowarn" />
     <aspects>
         <aspect name="com.epam.reportportal.aspect.StepAspect"/>
     </aspects>
