@@ -83,7 +83,6 @@ public class ReportPortalHook implements RuntimeHook {
 
 	public ReportPortalHook(Supplier<Launch> launchSupplier) {
 		launch = new MemoizingSupplier<>(launchSupplier);
-		shutDownHook = registerShutdownHook(this::finishLaunch);
 	}
 
 	/**
@@ -120,7 +119,7 @@ public class ReportPortalHook implements RuntimeHook {
 				System.getProperty("rp.launch.id")
 		);
 		launchObject.finish(rq);
-		if (Thread.currentThread() != shutDownHook) {
+		if (shutDownHook != null && Thread.currentThread() != shutDownHook) {
 			unregisterShutdownHook(shutDownHook);
 		}
 	}

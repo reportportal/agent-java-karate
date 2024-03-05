@@ -69,7 +69,6 @@ public class ReportPortalPublisher {
 
 	public ReportPortalPublisher(Supplier<Launch> launchSupplier) {
 		launch = new MemoizingSupplier<>(launchSupplier);
-		shutDownHook = registerShutdownHook(this::finishLaunch);
 	}
 
 	/**
@@ -114,7 +113,7 @@ public class ReportPortalPublisher {
 				System.getProperty("rp.launch.id")
 		);
 		launchObject.finish(rq);
-		if (Thread.currentThread() != shutDownHook) {
+		if (shutDownHook != null && Thread.currentThread() != shutDownHook) {
 			unregisterShutdownHook(shutDownHook);
 		}
 	}
