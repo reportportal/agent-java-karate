@@ -20,25 +20,55 @@ import com.epam.reportportal.service.ReportPortal;
 import com.intuit.karate.Results;
 import com.intuit.karate.Runner;
 
+/**
+ * Karate runner with ReportPortal integration
+ */
 public class KarateReportPortalRunner {
 
+	/**
+	 * Create a new builder for the Karate runner with ReportPortal integration
+	 *
+	 * @param paths paths to feature files
+	 * @param <T>   type of the builder
+	 * @return a new builder
+	 */
 	public static <T extends Builder<T>> Builder<T> path(String... paths) {
 		Builder<T> builder = new Builder<>();
 		return builder.path(paths);
 	}
 
+	/**
+	 * Builder for the Karate runner with ReportPortal integration
+	 *
+	 * @param <T> type of the builder
+	 */
 	public static class Builder<T extends Builder<T>> extends Runner.Builder<T> {
 		private ReportPortal rp;
 
+		/**
+		 * Create a new builder
+		 */
 		public Builder() {
 			super();
 		}
 
+		/**
+		 * Set the ReportPortal instance to use
+		 *
+		 * @param reportPortal the ReportPortal instance
+		 * @return the builder
+		 */
 		public Builder<T> withReportPortal(ReportPortal reportPortal) {
 			rp = reportPortal;
 			return this;
 		}
 
+		/**
+		 * Run the tests in parallel
+		 *
+		 * @param threadCount number of threads to use
+		 * @return the results of the tests
+		 */
 		@Override
 		public Results parallel(int threadCount) {
 			if (rp == null) {
