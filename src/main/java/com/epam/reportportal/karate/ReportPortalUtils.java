@@ -324,7 +324,8 @@ public class ReportPortalUtils {
 		return rq;
 	}
 
-	private static String buildDescription(Scenario scenario, String errorMessage, List<ParameterResource> parameters) {
+	@Nonnull
+	private static String buildDescription(@Nonnull Scenario scenario, @Nullable String errorMessage, @Nullable List<ParameterResource> parameters) {
 		StringBuilder descriptionBuilder = new StringBuilder();
 
 		if (parameters != null && !parameters.isEmpty()) {
