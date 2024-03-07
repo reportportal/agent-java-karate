@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+## [5.0.4]
 ### Removed
 - Shutdown hook register on supplied Launch, by @HardNorth
 ### Added
