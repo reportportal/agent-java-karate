@@ -1,6 +1,13 @@
 # Changelog
 
 ## [Unreleased]
+### Removed
+- Shutdown hook register on supplied Launch, by @HardNorth
+### Added
+- Implemented new feature: display last error log in scenario description, by @vrymar
+- Implemented unit tests for the new feature, by @vrymar
+### Changed
+- Improved dependencies references in build.gradle, by @vrymar
 
 ## [5.0.3]
 ### Fixed

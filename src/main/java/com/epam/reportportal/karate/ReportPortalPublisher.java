@@ -69,7 +69,6 @@ public class ReportPortalPublisher {
 
 	public ReportPortalPublisher(Supplier<Launch> launchSupplier) {
 		launch = new MemoizingSupplier<>(launchSupplier);
-		shutDownHook = registerShutdownHook(this::finishLaunch);
 	}
 
 	/**
@@ -114,7 +113,7 @@ public class ReportPortalPublisher {
 				System.getProperty("rp.launch.id")
 		);
 		launchObject.finish(rq);
-		if (Thread.currentThread() != shutDownHook) {
+		if (shutDownHook != null && Thread.currentThread() != shutDownHook) {
 			unregisterShutdownHook(shutDownHook);
 		}
 	}
@@ -189,7 +188,7 @@ public class ReportPortalPublisher {
 	 */
 	@Nonnull
 	protected StartTestItemRQ buildStartScenarioRq(@Nonnull ScenarioResult scenarioResult) {
-		return ReportPortalUtils.buildStartScenarioRq(scenarioResult.getScenario());
+		return ReportPortalUtils.buildStartScenarioRq(scenarioResult);
 	}
 
 	/**
@@ -213,10 +212,7 @@ public class ReportPortalPublisher {
 	 */
 	@Nonnull
 	protected FinishTestItemRQ buildFinishScenarioRq(@Nonnull ScenarioResult scenarioResult) {
-		return buildFinishTestItemRq(Calendar.getInstance().getTime(),
-				scenarioResult.getFailureMessageForDisplay() == null ? ItemStatus.PASSED : ItemStatus.FAILED
-		);
-
+		return ReportPortalUtils.buildFinishScenarioRq(scenarioResult);
 	}
 
 	/**

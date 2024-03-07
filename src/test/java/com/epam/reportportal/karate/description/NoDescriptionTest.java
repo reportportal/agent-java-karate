@@ -75,7 +75,7 @@ public class NoDescriptionTest {
 		assertThat(featureStart.getDescription(), endsWith("feature/simple.feature"));
 
 		StartTestItemRQ scenarioStart = scenarioCaptor.getValue();
-		assertThat(scenarioStart.getDescription(), nullValue());
+		assertThat(scenarioStart.getDescription(), emptyString());
 
 		stepCaptor.getAllValues().forEach(step -> assertThat(step.getDescription(), nullValue()));
 	}

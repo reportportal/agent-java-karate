@@ -65,6 +65,11 @@ public class ReportPortalHook implements RuntimeHook {
 	private final Map<Maybe<String>, Date> stepStartTimeMap = new ConcurrentHashMap<>();
 	private volatile Thread shutDownHook;
 
+	/**
+	 * Create a new instance of the ReportPortalHook with the specified ReportPortal instance.
+	 *
+	 * @param reportPortal the ReportPortal instance
+	 */
 	public ReportPortalHook(ReportPortal reportPortal) {
 		launch = new MemoizingSupplier<>(() -> {
 			ListenerParameters params = reportPortal.getParameters();
@@ -77,13 +82,17 @@ public class ReportPortalHook implements RuntimeHook {
 		});
 	}
 
+	/**
+	 * Default constructor. Create a new instance of the ReportPortalHook with default ReportPortal instance.
+	 */
+	@SuppressWarnings("unused")
 	public ReportPortalHook() {
 		this(ReportPortal.builder().build());
 	}
 
+	@SuppressWarnings("unused")
 	public ReportPortalHook(Supplier<Launch> launchSupplier) {
 		launch = new MemoizingSupplier<>(launchSupplier);
-		shutDownHook = registerShutdownHook(this::finishLaunch);
 	}
 
 	/**
@@ -120,7 +129,7 @@ public class ReportPortalHook implements RuntimeHook {
 				System.getProperty("rp.launch.id")
 		);
 		launchObject.finish(rq);
-		if (Thread.currentThread() != shutDownHook) {
+		if (shutDownHook != null && Thread.currentThread() != shutDownHook) {
 			unregisterShutdownHook(shutDownHook);
 		}
 	}
@@ -187,7 +196,7 @@ public class ReportPortalHook implements RuntimeHook {
 	 */
 	@Nonnull
 	protected StartTestItemRQ buildStartScenarioRq(@Nonnull ScenarioRuntime sr) {
-		return ReportPortalUtils.buildStartScenarioRq(sr.scenario);
+		return ReportPortalUtils.buildStartScenarioRq(sr.result);
 	}
 
 	@Override
@@ -207,9 +216,7 @@ public class ReportPortalHook implements RuntimeHook {
 	 */
 	@Nonnull
 	protected FinishTestItemRQ buildFinishScenarioRq(@Nonnull ScenarioRuntime sr) {
-		return buildFinishTestItemRq(Calendar.getInstance().getTime(),
-				sr.result.getFailureMessageForDisplay() == null ? ItemStatus.PASSED : ItemStatus.FAILED
-		);
+		return ReportPortalUtils.buildFinishScenarioRq(sr.result);
 	}
 
 	/**
