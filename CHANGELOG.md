@@ -1,6 +1,10 @@
 # Changelog
 
 ## [Unreleased]
+### Changed
+- Client version updated on [5.2.13](https://github.com/reportportal/client-java/releases/tag/5.2.13), by @HardNorth
+### Fixed
+- Issue [#30](https://github.com/reportportal/agent-java-karate/issues/30) Empty interrupted features in case of scenarios tag skip, by @HardNorth
 
 ## [5.0.4]
 ### Removed
