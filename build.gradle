@@ -21,7 +21,7 @@ apply from: "${scripts_url}/${scripts_branch}/release-commons.gradle"
 apply from: "${scripts_url}/${scripts_branch}/signing.gradle"
 apply from: "${scripts_url}/${scripts_branch}/jacoco.gradle"
 
-ext.limits = [
+project.ext.limits = [
         'instruction': 70,
         'branch'     : 53,
         'line'       : 75,
@@ -85,7 +85,7 @@ wrapper {
 
 processResources {
     filesMatching('agent.properties') {
-        expand(properties)
+        expand(project.properties)
     }
 }
 
