@@ -42,6 +42,7 @@ import javax.annotation.Nullable;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
@@ -57,7 +58,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 public class ReportPortalHook implements RuntimeHook {
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalHook.class);
 	protected final MemoizingSupplier<Launch> launch;
-	private final BlockingConcurrentHashMap<String, Maybe<String>> featureIdMap = new BlockingConcurrentHashMap<>();
+	private final BlockingConcurrentHashMap<String, Supplier<Maybe<String>>> featureIdMap = new BlockingConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> scenarioIdMap = new ConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> backgroundIdMap = new ConcurrentHashMap<>();
 	private final Map<String, ItemStatus> backgroundStatusMap = new ConcurrentHashMap<>();
@@ -162,7 +163,9 @@ public class ReportPortalHook implements RuntimeHook {
 
 	@Override
 	public boolean beforeFeature(FeatureRuntime fr) {
-		featureIdMap.computeIfAbsent(fr.featureCall.feature.getNameForReport(), f -> launch.get().startTestItem(buildStartFeatureRq(fr)));
+		featureIdMap.computeIfAbsent(fr.featureCall.feature.getNameForReport(),
+				f -> new MemoizingSupplier<>(() -> launch.get().startTestItem(buildStartFeatureRq(fr)))
+		);
 		return true;
 	}
 
@@ -179,13 +182,14 @@ public class ReportPortalHook implements RuntimeHook {
 
 	@Override
 	public void afterFeature(FeatureRuntime fr) {
-		Maybe<String> featureId = featureIdMap.remove(fr.featureCall.feature.getNameForReport());
-		if (featureId == null) {
+		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.remove(fr.featureCall.feature.getNameForReport())).map(Supplier::get);
+		if (optionalId.isEmpty()) {
 			LOGGER.error("ERROR: Trying to finish unspecified feature.");
 		}
-		FinishTestItemRQ rq = buildFinishFeatureRq(fr);
-		//noinspection ReactiveStreamsUnusedPublisher
-		launch.get().finishTestItem(featureId, rq);
+		optionalId.ifPresent(featureId -> {
+			//noinspection ReactiveStreamsUnusedPublisher
+			launch.get().finishTestItem(featureId, buildFinishFeatureRq(fr));
+		});
 	}
 
 	/**
@@ -201,10 +205,15 @@ public class ReportPortalHook implements RuntimeHook {
 
 	@Override
 	public boolean beforeScenario(ScenarioRuntime sr) {
-		Maybe<String> featureId = featureIdMap.get(sr.featureRuntime.featureCall.feature.getNameForReport());
-		StartTestItemRQ rq = buildStartScenarioRq(sr);
-		Maybe<String> scenarioId = launch.get().startTestItem(featureId, rq);
-		scenarioIdMap.put(sr.scenario.getUniqueId(), scenarioId);
+		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.get(sr.featureRuntime.featureCall.feature.getNameForReport())).map(Supplier::get);
+		if (optionalId.isEmpty()) {
+			LOGGER.error("ERROR: Trying to post unspecified feature.");
+		}
+		optionalId.ifPresent(featureId -> {
+			StartTestItemRQ rq = buildStartScenarioRq(sr);
+			Maybe<String> scenarioId = launch.get().startTestItem(featureId, rq);
+			scenarioIdMap.put(sr.scenario.getUniqueId(), scenarioId);
+		});
 		return true;
 	}
 
@@ -257,7 +266,6 @@ public class ReportPortalHook implements RuntimeHook {
 	@SuppressWarnings("unused")
 	protected FinishTestItemRQ buildFinishBackgroundRq(@Nullable StepResult stepResult, @Nonnull ScenarioRuntime sr) {
 		return buildFinishTestItemRq(Calendar.getInstance().getTime(), backgroundStatusMap.remove(sr.scenario.getUniqueId()));
-
 	}
 
 	/**

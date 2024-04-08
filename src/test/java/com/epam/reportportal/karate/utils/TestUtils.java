@@ -65,12 +65,21 @@ public class TestUtils {
 		});
 	}
 
+	public static Results runAsReport(ReportPortal reportPortal, List<String> tags, String... paths) {
+		return KarateReportPortalRunner.path(paths).withReportPortal(reportPortal).outputCucumberJson(false).tags(tags).parallel(1);
+	}
+
 	public static Results runAsReport(ReportPortal reportPortal, String... paths) {
-		return KarateReportPortalRunner.path(paths).withReportPortal(reportPortal).outputCucumberJson(false).parallel(1);
+		return runAsReport(reportPortal, Collections.emptyList(), paths);
+	}
+
+	public static Results runAsHook(ReportPortal reportPortal, List<String> tags, String... paths) {
+		Runner.Builder<?> path = Runner.path(paths).hook(new ReportPortalHook(reportPortal)).outputCucumberJson(false);
+		return path.tags(tags).parallel(1);
 	}
 
 	public static Results runAsHook(ReportPortal reportPortal, String... paths) {
-		return Runner.path(paths).hook(new ReportPortalHook(reportPortal)).outputCucumberJson(false).parallel(1);
+		return runAsHook(reportPortal, Collections.emptyList(), paths);
 	}
 
 	public static ListenerParameters standardParameters() {
