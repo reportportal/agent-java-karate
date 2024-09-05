@@ -28,6 +28,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
+/**
+ * This class ensures that {@link Map#computeIfAbsent(Object, Function)} is called only once for the same key. It has inner blocking timeout
+ * of 1 minute to wait for the value to be computed.
+ *
+ * @param <K> a key type for the map
+ * @param <V> a value type to store
+ */
 public class BlockingConcurrentHashMap<K, V> {
 	private static final Logger LOGGER = LoggerFactory.getLogger(BlockingConcurrentHashMap.class);
 
