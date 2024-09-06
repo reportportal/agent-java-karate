@@ -18,6 +18,7 @@ package com.epam.reportportal.karate;
 
 import com.epam.reportportal.karate.utils.BlockingConcurrentHashMap;
 import com.epam.reportportal.listeners.ItemStatus;
+import com.epam.reportportal.listeners.ItemType;
 import com.epam.reportportal.listeners.ListenerParameters;
 import com.epam.reportportal.listeners.LogLevel;
 import com.epam.reportportal.service.Launch;
@@ -56,6 +57,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
  * ReportPortal test results reporting hook for Karate. This class publish results in the process of test pass.
  */
 public class ReportPortalHook implements RuntimeHook {
+	private static final String FEATURE_TAG = "Feature: ";
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalHook.class);
 	protected final MemoizingSupplier<Launch> launch;
 	private final BlockingConcurrentHashMap<String, Supplier<Maybe<String>>> featureIdMap = new BlockingConcurrentHashMap<>();
@@ -164,8 +166,24 @@ public class ReportPortalHook implements RuntimeHook {
 	@Override
 	public boolean beforeFeature(FeatureRuntime fr) {
 		featureIdMap.computeIfAbsent(fr.featureCall.feature.getNameForReport(),
-				f -> new MemoizingSupplier<>(() -> launch.get().startTestItem(buildStartFeatureRq(fr)))
-		);
+				f -> new MemoizingSupplier<>(() -> {
+					StartTestItemRQ rq = buildStartFeatureRq(fr);
+					if(fr.caller == null) {
+						return launch.get().startTestItem(rq);
+					} else {
+						Maybe<String> scenarioId = scenarioIdMap.get(fr.caller.parentRuntime.scenario.getUniqueId());
+						if (scenarioId == null) {
+							LOGGER.error("ERROR: Trying to post unspecified scenario.");
+							return launch.get().startTestItem(rq);
+						}
+						rq.setType(ItemType.STEP.name());
+						rq.setHasStats(false);
+						rq.setName(FEATURE_TAG + rq.getName());
+						Maybe<String> itemId = launch.get().startTestItem(scenarioId, rq);
+						ReportPortalUtils.sendLog(itemId, rq.getDescription(), LogLevel.INFO);
+						return itemId;
+					}
+				}));
 		return true;
 	}
 
