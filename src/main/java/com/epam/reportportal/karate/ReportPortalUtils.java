@@ -425,16 +425,28 @@ public class ReportPortalUtils {
 	 * @param itemId  item ID future
 	 * @param message log message to send
 	 * @param level   log level
+	 * @param logTime log time
 	 */
-	public static void sendLog(Maybe<String> itemId, String message, LogLevel level) {
+	public static void sendLog(Maybe<String> itemId, String message, LogLevel level, Date logTime) {
 		ReportPortal.emitLog(itemId, id -> {
 			SaveLogRQ rq = new SaveLogRQ();
 			rq.setMessage(message);
 			rq.setItemUuid(id);
 			rq.setLevel(level.name());
-			rq.setLogTime(Calendar.getInstance().getTime());
+			rq.setLogTime(logTime);
 			return rq;
 		});
+	}
+
+	/**
+	 * Send Step logs to ReportPortal.
+	 *
+	 * @param itemId  item ID future
+	 * @param message log message to send
+	 * @param level   log level
+	 */
+	public static void sendLog(Maybe<String> itemId, String message, LogLevel level) {
+		sendLog(itemId, message, level, Calendar.getInstance().getTime());
 	}
 
 	/**

@@ -35,15 +35,13 @@ import com.intuit.karate.core.*;
 import com.intuit.karate.http.HttpRequest;
 import com.intuit.karate.http.Response;
 import io.reactivex.Maybe;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
@@ -58,6 +56,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
  */
 public class ReportPortalHook implements RuntimeHook {
 	private static final String FEATURE_TAG = "Feature: ";
+	private static final String SCENARIO_TAG = "Scenario: ";
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalHook.class);
 	protected final MemoizingSupplier<Launch> launch;
 	private final BlockingConcurrentHashMap<String, Supplier<Maybe<String>>> featureIdMap = new BlockingConcurrentHashMap<>();
@@ -66,6 +65,7 @@ public class ReportPortalHook implements RuntimeHook {
 	private final Map<String, ItemStatus> backgroundStatusMap = new ConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> stepIdMap = new ConcurrentHashMap<>();
 	private final Map<Maybe<String>, Date> stepStartTimeMap = new ConcurrentHashMap<>();
+	private final Set<Maybe<String>> innerFeatures = Collections.newSetFromMap(new ConcurrentHashMap<>());
 	private volatile Thread shutDownHook;
 
 	/**
@@ -74,9 +74,9 @@ public class ReportPortalHook implements RuntimeHook {
 	 * @param reportPortal the ReportPortal instance
 	 */
 	public ReportPortalHook(ReportPortal reportPortal) {
+		ListenerParameters params = reportPortal.getParameters();
+		StartLaunchRQ rq = buildStartLaunchRq(params);
 		launch = new MemoizingSupplier<>(() -> {
-			ListenerParameters params = reportPortal.getParameters();
-			StartLaunchRQ rq = buildStartLaunchRq(params);
 			Launch newLaunch = reportPortal.newLaunch(rq);
 			//noinspection ReactiveStreamsUnusedPublisher
 			newLaunch.start();
@@ -165,10 +165,10 @@ public class ReportPortalHook implements RuntimeHook {
 
 	@Override
 	public boolean beforeFeature(FeatureRuntime fr) {
+		StartTestItemRQ rq = buildStartFeatureRq(fr);
 		featureIdMap.computeIfAbsent(fr.featureCall.feature.getNameForReport(),
 				f -> new MemoizingSupplier<>(() -> {
-					StartTestItemRQ rq = buildStartFeatureRq(fr);
-					if(fr.caller == null) {
+					if(fr.caller == null || fr.caller.depth == 0) {
 						return launch.get().startTestItem(rq);
 					} else {
 						Maybe<String> scenarioId = scenarioIdMap.get(fr.caller.parentRuntime.scenario.getUniqueId());
@@ -180,7 +180,10 @@ public class ReportPortalHook implements RuntimeHook {
 						rq.setHasStats(false);
 						rq.setName(FEATURE_TAG + rq.getName());
 						Maybe<String> itemId = launch.get().startTestItem(scenarioId, rq);
-						ReportPortalUtils.sendLog(itemId, rq.getDescription(), LogLevel.INFO);
+						innerFeatures.add(itemId);
+						if (StringUtils.isNotBlank(rq.getDescription())) {
+							ReportPortalUtils.sendLog(itemId, rq.getDescription(), LogLevel.INFO, rq.getStartTime());
+						}
 						return itemId;
 					}
 				}));
@@ -207,6 +210,7 @@ public class ReportPortalHook implements RuntimeHook {
 		optionalId.ifPresent(featureId -> {
 			//noinspection ReactiveStreamsUnusedPublisher
 			launch.get().finishTestItem(featureId, buildFinishFeatureRq(fr));
+			innerFeatures.remove(featureId);
 		});
 	}
 
@@ -218,18 +222,31 @@ public class ReportPortalHook implements RuntimeHook {
 	 */
 	@Nonnull
 	protected StartTestItemRQ buildStartScenarioRq(@Nonnull ScenarioRuntime sr) {
-		return ReportPortalUtils.buildStartScenarioRq(sr.result);
+		StartTestItemRQ rq = ReportPortalUtils.buildStartScenarioRq(sr.result);
+		ofNullable(featureIdMap.get(sr.featureRuntime.featureCall.feature.getNameForReport()))
+				.map(Supplier::get)
+				.map(featureId -> innerFeatures.contains(featureId) ? featureId : null)
+				.ifPresent(featureId -> {
+					rq.setType(ItemType.STEP.name());
+					rq.setHasStats(false);
+					rq.setName(SCENARIO_TAG + rq.getName());
+				});
+		return rq;
 	}
 
 	@Override
 	public boolean beforeScenario(ScenarioRuntime sr) {
-		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.get(sr.featureRuntime.featureCall.feature.getNameForReport())).map(Supplier::get);
+		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.get(sr.featureRuntime.featureCall.feature.getNameForReport()))
+				.map(Supplier::get);
 		if (optionalId.isEmpty()) {
 			LOGGER.error("ERROR: Trying to post unspecified feature.");
 		}
 		optionalId.ifPresent(featureId -> {
 			StartTestItemRQ rq = buildStartScenarioRq(sr);
 			Maybe<String> scenarioId = launch.get().startTestItem(featureId, rq);
+			if (innerFeatures.contains(featureId) && StringUtils.isNotBlank(rq.getDescription())) {
+				ReportPortalUtils.sendLog(scenarioId, rq.getDescription(), LogLevel.INFO);
+			}
 			scenarioIdMap.put(sr.scenario.getUniqueId(), scenarioId);
 		});
 		return true;
