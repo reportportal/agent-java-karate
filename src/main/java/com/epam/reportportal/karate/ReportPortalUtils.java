@@ -62,6 +62,8 @@ public class ReportPortalUtils {
 	public static final String EXAMPLE_CODE_REFERENCE_PATTERN = "%s/[EXAMPLE:%s%s]";
 	public static final String MARKDOWN_DELIMITER = "\n\n---\n\n";
 	public static final String MARKDOWN_DELIMITER_PATTERN = "%s" + MARKDOWN_DELIMITER + "%s";
+	public static final String FEATURE_TAG = "Feature: ";
+	public static final String SCENARIO_TAG = "Scenario: ";
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalUtils.class);
 	private static final String PARAMETER_ITEMS_START = "[";
 	private static final String PARAMETER_ITEMS_END = "]";
@@ -457,5 +459,25 @@ public class ReportPortalUtils {
 	 */
 	public static String asMarkdownCode(String code) {
 		return String.format(MARKDOWN_CODE_PATTERN, code);
+	}
+
+	/**
+	 * Build name of inner scenario (called by another scenario).
+	 *
+	 * @param name Scenario name
+	 * @return Inner scenario name
+	 */
+	public static String getInnerScenarioName(String name) {
+		return SCENARIO_TAG + name;
+	}
+
+	/**
+	 * Build name of inner feature (called by another scenario).
+	 *
+	 * @param name Feature name
+	 * @return Inner feature name
+	 */
+	public static String getInnerFeatureName(String name) {
+		return FEATURE_TAG + name;
 	}
 }

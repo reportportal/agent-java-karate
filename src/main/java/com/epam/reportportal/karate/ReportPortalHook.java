@@ -55,8 +55,6 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
  * ReportPortal test results reporting hook for Karate. This class publish results in the process of test pass.
  */
 public class ReportPortalHook implements RuntimeHook {
-	private static final String FEATURE_TAG = "Feature: ";
-	private static final String SCENARIO_TAG = "Scenario: ";
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalHook.class);
 	protected final MemoizingSupplier<Launch> launch;
 	private final BlockingConcurrentHashMap<String, Supplier<Maybe<String>>> featureIdMap = new BlockingConcurrentHashMap<>();
@@ -178,7 +176,7 @@ public class ReportPortalHook implements RuntimeHook {
 						}
 						rq.setType(ItemType.STEP.name());
 						rq.setHasStats(false);
-						rq.setName(FEATURE_TAG + rq.getName());
+						rq.setName(getInnerFeatureName(rq.getName()));
 						Maybe<String> itemId = launch.get().startTestItem(scenarioId, rq);
 						innerFeatures.add(itemId);
 						if (StringUtils.isNotBlank(rq.getDescription())) {
@@ -229,20 +227,20 @@ public class ReportPortalHook implements RuntimeHook {
 				.ifPresent(featureId -> {
 					rq.setType(ItemType.STEP.name());
 					rq.setHasStats(false);
-					rq.setName(SCENARIO_TAG + rq.getName());
+					rq.setName(getInnerScenarioName(rq.getName()));
 				});
 		return rq;
 	}
 
 	@Override
 	public boolean beforeScenario(ScenarioRuntime sr) {
+		StartTestItemRQ rq = buildStartScenarioRq(sr);
 		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.get(sr.featureRuntime.featureCall.feature.getNameForReport()))
 				.map(Supplier::get);
 		if (optionalId.isEmpty()) {
 			LOGGER.error("ERROR: Trying to post unspecified feature.");
 		}
 		optionalId.ifPresent(featureId -> {
-			StartTestItemRQ rq = buildStartScenarioRq(sr);
 			Maybe<String> scenarioId = launch.get().startTestItem(featureId, rq);
 			if (innerFeatures.contains(featureId) && StringUtils.isNotBlank(rq.getDescription())) {
 				ReportPortalUtils.sendLog(scenarioId, rq.getDescription(), LogLevel.INFO);
