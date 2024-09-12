@@ -96,7 +96,7 @@ public class CallWithParametersHookTest {
 
 		StartTestItemRQ calledFeature = stepCaptor.getAllValues()
 				.stream()
-				.filter(rq -> "a feature which is called with parameters".equals(rq.getName()))
+				.filter(rq -> "Feature: a feature which is called with parameters".equals(rq.getName()))
 				.findAny()
 				.orElseThrow();
 
