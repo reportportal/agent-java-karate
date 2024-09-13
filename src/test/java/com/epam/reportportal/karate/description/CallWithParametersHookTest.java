@@ -47,7 +47,7 @@ public class CallWithParametersHookTest {
 	private static final String PARAMETERS_DESCRIPTION_PATTERN =
 			"Parameters:\n\n" + MarkdownUtils.TABLE_INDENT + "|\u00A0vara\u00A0|\u00A0result\u00A0|\n" + MarkdownUtils.TABLE_INDENT
 					+ "|------|--------|\n" + MarkdownUtils.TABLE_INDENT
-					+ "|\u00A0\u00A02\u00A0\u00A0\u00A0|\u00A0\u00A0\u00A04\u00A0\u00A0\u00A0\u00A0|\n\n"
+					+ "|\u00A0\u00A02\u00A0\u00A0\u00A0|\u00A0\u00A0\u00A04\u00A0\u00A0\u00A0\u00A0|\n"
 					+ MarkdownUtils.TABLE_ROW_SEPARATOR;
 	private final String featureId = CommonUtils.namedId("feature_");
 	private final String scenarioId = CommonUtils.namedId("scenario_");
