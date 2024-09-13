@@ -25,6 +25,7 @@ import com.epam.reportportal.service.Launch;
 import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.utils.MemoizingSupplier;
 import com.epam.reportportal.utils.StatusEvaluation;
+import com.epam.reportportal.utils.markdown.MarkdownUtils;
 import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
@@ -153,7 +154,7 @@ public class ReportPortalHook implements RuntimeHook {
 					String parameters = String.format(PARAMETERS_PATTERN, formatParametersAsTable(getParameters(args)));
 					String description = rq.getDescription();
 					if (isNotBlank(description)) {
-						rq.setDescription(String.format(MARKDOWN_DELIMITER_PATTERN, parameters, description));
+						rq.setDescription(MarkdownUtils.asTwoParts(parameters, description));
 					} else {
 						rq.setDescription(parameters);
 					}
