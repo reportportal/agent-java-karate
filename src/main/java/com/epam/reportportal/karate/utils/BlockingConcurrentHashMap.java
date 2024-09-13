@@ -76,7 +76,7 @@ public class BlockingConcurrentHashMap<K, V> {
 
 	private final Map<K, BlockingReference<V>> map = new ConcurrentHashMap<>();
 
-	public void computeIfAbsent(@Nonnull K key, Function<?, V> mappingFunction) {
+	public void computeIfAbsent(@Nonnull K key, Function<K, V> mappingFunction) {
 		map.computeIfAbsent(key, k -> new BlockingReference<>()).set(mappingFunction);
 	}
 

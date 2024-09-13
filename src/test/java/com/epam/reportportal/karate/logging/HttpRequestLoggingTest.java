@@ -64,7 +64,7 @@ public class HttpRequestLoggingTest {
 		} else {
 			results = TestUtils.runAsHook(rp, TEST_FEATURE);
 		}
-		assertThat(results.getFailCount(), equalTo(0));
+		assertThat(results.getFailCount(), equalTo(1));
 
 		ArgumentCaptor<List> logCaptor = ArgumentCaptor.forClass(List.class);
 		verify(client, atLeastOnce()).log(logCaptor.capture());

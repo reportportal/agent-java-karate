@@ -18,12 +18,14 @@ package com.epam.reportportal.karate;
 
 import com.epam.reportportal.karate.utils.BlockingConcurrentHashMap;
 import com.epam.reportportal.listeners.ItemStatus;
+import com.epam.reportportal.listeners.ItemType;
 import com.epam.reportportal.listeners.ListenerParameters;
 import com.epam.reportportal.listeners.LogLevel;
 import com.epam.reportportal.service.Launch;
 import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.utils.MemoizingSupplier;
 import com.epam.reportportal.utils.StatusEvaluation;
+import com.epam.reportportal.utils.markdown.MarkdownUtils;
 import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
@@ -34,15 +36,13 @@ import com.intuit.karate.core.*;
 import com.intuit.karate.http.HttpRequest;
 import com.intuit.karate.http.Response;
 import io.reactivex.Maybe;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
@@ -64,6 +64,7 @@ public class ReportPortalHook implements RuntimeHook {
 	private final Map<String, ItemStatus> backgroundStatusMap = new ConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> stepIdMap = new ConcurrentHashMap<>();
 	private final Map<Maybe<String>, Date> stepStartTimeMap = new ConcurrentHashMap<>();
+	private final Set<Maybe<String>> innerFeatures = Collections.newSetFromMap(new ConcurrentHashMap<>());
 	private volatile Thread shutDownHook;
 
 	/**
@@ -72,9 +73,9 @@ public class ReportPortalHook implements RuntimeHook {
 	 * @param reportPortal the ReportPortal instance
 	 */
 	public ReportPortalHook(ReportPortal reportPortal) {
+		ListenerParameters params = reportPortal.getParameters();
+		StartLaunchRQ rq = buildStartLaunchRq(params);
 		launch = new MemoizingSupplier<>(() -> {
-			ListenerParameters params = reportPortal.getParameters();
-			StartLaunchRQ rq = buildStartLaunchRq(params);
 			Launch newLaunch = reportPortal.newLaunch(rq);
 			//noinspection ReactiveStreamsUnusedPublisher
 			newLaunch.start();
@@ -153,7 +154,7 @@ public class ReportPortalHook implements RuntimeHook {
 					String parameters = String.format(PARAMETERS_PATTERN, formatParametersAsTable(getParameters(args)));
 					String description = rq.getDescription();
 					if (isNotBlank(description)) {
-						rq.setDescription(String.format(MARKDOWN_DELIMITER_PATTERN, parameters, description));
+						rq.setDescription(MarkdownUtils.asTwoParts(parameters, description));
 					} else {
 						rq.setDescription(parameters);
 					}
@@ -163,9 +164,28 @@ public class ReportPortalHook implements RuntimeHook {
 
 	@Override
 	public boolean beforeFeature(FeatureRuntime fr) {
+		StartTestItemRQ rq = buildStartFeatureRq(fr);
 		featureIdMap.computeIfAbsent(fr.featureCall.feature.getNameForReport(),
-				f -> new MemoizingSupplier<>(() -> launch.get().startTestItem(buildStartFeatureRq(fr)))
-		);
+				f -> new MemoizingSupplier<>(() -> {
+					if(fr.caller == null || fr.caller.depth == 0) {
+						return launch.get().startTestItem(rq);
+					} else {
+						Maybe<String> scenarioId = scenarioIdMap.get(fr.caller.parentRuntime.scenario.getUniqueId());
+						if (scenarioId == null) {
+							LOGGER.error("ERROR: Trying to post unspecified scenario.");
+							return launch.get().startTestItem(rq);
+						}
+						rq.setType(ItemType.STEP.name());
+						rq.setHasStats(false);
+						rq.setName(getInnerFeatureName(rq.getName()));
+						Maybe<String> itemId = launch.get().startTestItem(scenarioId, rq);
+						innerFeatures.add(itemId);
+						if (StringUtils.isNotBlank(rq.getDescription())) {
+							ReportPortalUtils.sendLog(itemId, rq.getDescription(), LogLevel.INFO, rq.getStartTime());
+						}
+						return itemId;
+					}
+				}));
 		return true;
 	}
 
@@ -189,6 +209,7 @@ public class ReportPortalHook implements RuntimeHook {
 		optionalId.ifPresent(featureId -> {
 			//noinspection ReactiveStreamsUnusedPublisher
 			launch.get().finishTestItem(featureId, buildFinishFeatureRq(fr));
+			innerFeatures.remove(featureId);
 		});
 	}
 
@@ -200,18 +221,31 @@ public class ReportPortalHook implements RuntimeHook {
 	 */
 	@Nonnull
 	protected StartTestItemRQ buildStartScenarioRq(@Nonnull ScenarioRuntime sr) {
-		return ReportPortalUtils.buildStartScenarioRq(sr.result);
+		StartTestItemRQ rq = ReportPortalUtils.buildStartScenarioRq(sr.result);
+		ofNullable(featureIdMap.get(sr.featureRuntime.featureCall.feature.getNameForReport()))
+				.map(Supplier::get)
+				.map(featureId -> innerFeatures.contains(featureId) ? featureId : null)
+				.ifPresent(featureId -> {
+					rq.setType(ItemType.STEP.name());
+					rq.setHasStats(false);
+					rq.setName(getInnerScenarioName(rq.getName()));
+				});
+		return rq;
 	}
 
 	@Override
 	public boolean beforeScenario(ScenarioRuntime sr) {
-		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.get(sr.featureRuntime.featureCall.feature.getNameForReport())).map(Supplier::get);
+		StartTestItemRQ rq = buildStartScenarioRq(sr);
+		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.get(sr.featureRuntime.featureCall.feature.getNameForReport()))
+				.map(Supplier::get);
 		if (optionalId.isEmpty()) {
 			LOGGER.error("ERROR: Trying to post unspecified feature.");
 		}
 		optionalId.ifPresent(featureId -> {
-			StartTestItemRQ rq = buildStartScenarioRq(sr);
 			Maybe<String> scenarioId = launch.get().startTestItem(featureId, rq);
+			if (innerFeatures.contains(featureId) && StringUtils.isNotBlank(rq.getDescription())) {
+				ReportPortalUtils.sendLog(scenarioId, rq.getDescription(), LogLevel.INFO);
+			}
 			scenarioIdMap.put(sr.scenario.getUniqueId(), scenarioId);
 		});
 		return true;
