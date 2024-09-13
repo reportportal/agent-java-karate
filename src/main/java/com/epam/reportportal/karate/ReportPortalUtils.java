@@ -25,6 +25,7 @@ import com.epam.reportportal.service.item.TestCaseIdEntry;
 import com.epam.reportportal.utils.AttributeParser;
 import com.epam.reportportal.utils.ParameterUtils;
 import com.epam.reportportal.utils.TestCaseIdUtils;
+import com.epam.reportportal.utils.markdown.MarkdownUtils;
 import com.epam.reportportal.utils.properties.SystemAttributesExtractor;
 import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
@@ -60,8 +61,10 @@ public class ReportPortalUtils {
 	public static final String SKIPPED_ISSUE_KEY = "skippedIssue";
 	public static final String SCENARIO_CODE_REFERENCE_PATTERN = "%s/[SCENARIO:%s]";
 	public static final String EXAMPLE_CODE_REFERENCE_PATTERN = "%s/[EXAMPLE:%s%s]";
-	public static final String MARKDOWN_DELIMITER = "\n\n---\n\n";
+	public static final String MARKDOWN_DELIMITER = "\n" + MarkdownUtils.LOGICAL_SEPARATOR + "\n";
 	public static final String MARKDOWN_DELIMITER_PATTERN = "%s" + MARKDOWN_DELIMITER + "%s";
+	public static final String FEATURE_TAG = "Feature: ";
+	public static final String SCENARIO_TAG = "Scenario: ";
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalUtils.class);
 	private static final String PARAMETER_ITEMS_START = "[";
 	private static final String PARAMETER_ITEMS_END = "]";
@@ -244,7 +247,7 @@ public class ReportPortalUtils {
 		String featurePath = feature.getResource().getUri().toString();
 		String description = feature.getDescription();
 		if (isNotBlank(description)) {
-			rq.setDescription(String.format(MARKDOWN_DELIMITER_PATTERN, featurePath, description));
+			rq.setDescription(MarkdownUtils.asTwoParts(featurePath, description));
 		} else {
 			rq.setDescription(featurePath);
 		}
@@ -319,13 +322,17 @@ public class ReportPortalUtils {
 	@Nonnull
 	public static FinishTestItemRQ buildFinishScenarioRq(@Nonnull ScenarioResult result) {
 		Scenario scenario = result.getScenario();
-		FinishTestItemRQ rq = buildFinishTestItemRq(Calendar.getInstance().getTime(), result.getFailureMessageForDisplay() == null ? ItemStatus.PASSED : ItemStatus.FAILED);
+		FinishTestItemRQ rq = buildFinishTestItemRq(
+				Calendar.getInstance().getTime(),
+				result.getFailureMessageForDisplay() == null ? ItemStatus.PASSED : ItemStatus.FAILED
+		);
 		rq.setDescription(buildDescription(scenario, result.getErrorMessage(), getParameters(scenario)));
 		return rq;
 	}
 
 	@Nonnull
-	private static String buildDescription(@Nonnull Scenario scenario, @Nullable String errorMessage, @Nullable List<ParameterResource> parameters) {
+	private static String buildDescription(@Nonnull Scenario scenario, @Nullable String errorMessage,
+			@Nullable List<ParameterResource> parameters) {
 		StringBuilder descriptionBuilder = new StringBuilder();
 
 		if (parameters != null && !parameters.isEmpty()) {
@@ -425,16 +432,28 @@ public class ReportPortalUtils {
 	 * @param itemId  item ID future
 	 * @param message log message to send
 	 * @param level   log level
+	 * @param logTime log time
 	 */
-	public static void sendLog(Maybe<String> itemId, String message, LogLevel level) {
+	public static void sendLog(Maybe<String> itemId, String message, LogLevel level, Date logTime) {
 		ReportPortal.emitLog(itemId, id -> {
 			SaveLogRQ rq = new SaveLogRQ();
 			rq.setMessage(message);
 			rq.setItemUuid(id);
 			rq.setLevel(level.name());
-			rq.setLogTime(Calendar.getInstance().getTime());
+			rq.setLogTime(logTime);
 			return rq;
 		});
+	}
+
+	/**
+	 * Send Step logs to ReportPortal.
+	 *
+	 * @param itemId  item ID future
+	 * @param message log message to send
+	 * @param level   log level
+	 */
+	public static void sendLog(Maybe<String> itemId, String message, LogLevel level) {
+		sendLog(itemId, message, level, Calendar.getInstance().getTime());
 	}
 
 	/**
@@ -445,5 +464,25 @@ public class ReportPortalUtils {
 	 */
 	public static String asMarkdownCode(String code) {
 		return String.format(MARKDOWN_CODE_PATTERN, code);
+	}
+
+	/**
+	 * Build name of inner scenario (called by another scenario).
+	 *
+	 * @param name Scenario name
+	 * @return Inner scenario name
+	 */
+	public static String getInnerScenarioName(String name) {
+		return SCENARIO_TAG + name;
+	}
+
+	/**
+	 * Build name of inner feature (called by another scenario).
+	 *
+	 * @param name Feature name
+	 * @return Inner feature name
+	 */
+	public static String getInnerFeatureName(String name) {
+		return FEATURE_TAG + name;
 	}
 }
