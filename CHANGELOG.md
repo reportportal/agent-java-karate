@@ -4,6 +4,7 @@
 ### Changed
 - Client version updated on [5.2.14](https://github.com/reportportal/client-java/releases/tag/5.2.14), by @HardNorth
 - Called inner Features are now Nested Steps inside base Feature, by @HardNorth
+- Unify Markdown description generation with other agents, by @HardNorth
 
 ## [5.0.5]
 ### Changed
