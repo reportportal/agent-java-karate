@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.epam.reportportal.karate.description;
+package com.epam.reportportal.karate.call;
 
 import com.epam.reportportal.karate.utils.TestUtils;
 import com.epam.reportportal.service.ReportPortal;
