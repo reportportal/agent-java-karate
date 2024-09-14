@@ -83,10 +83,10 @@ public class CallTheSameFeatureWithParametersHookTest {
 		ArgumentCaptor<StartTestItemRQ> scenarioCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
 		verify(client).startTestItem(same(featureId), scenarioCaptor.capture());
 		ArgumentCaptor<StartTestItemRQ> stepCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
-		verify(client, times(2)).startTestItem(same(scenarioId), stepCaptor.capture());
+		verify(client, times(4)).startTestItem(same(scenarioId), stepCaptor.capture());
 		ArgumentCaptor<StartTestItemRQ> innerScenarioCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
 		verify(client).startTestItem(same(innerFeatureId), innerScenarioCaptor.capture());
 		ArgumentCaptor<StartTestItemRQ> innerStepCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
-		verify(client, times(3)).startTestItem(same(innerScenarioId), innerStepCaptor.capture());
+		verify(client, times(4)).startTestItem(same(innerScenarioId), innerStepCaptor.capture());
 	}
 }
