@@ -162,30 +162,34 @@ public class ReportPortalHook implements RuntimeHook {
 		return rq;
 	}
 
+	private String getFeatureNameForReport(FeatureRuntime fr) {
+		int callDepth = ofNullable(fr.caller).map(c -> c.depth).orElse(0);
+		return callDepth + ":" + fr.featureCall.feature.getNameForReport();
+	}
+
 	@Override
 	public boolean beforeFeature(FeatureRuntime fr) {
 		StartTestItemRQ rq = buildStartFeatureRq(fr);
-		featureIdMap.computeIfAbsent(fr.featureCall.feature.getNameForReport(),
-				f -> new MemoizingSupplier<>(() -> {
-					if(fr.caller == null || fr.caller.depth == 0) {
-						return launch.get().startTestItem(rq);
-					} else {
-						Maybe<String> scenarioId = scenarioIdMap.get(fr.caller.parentRuntime.scenario.getUniqueId());
-						if (scenarioId == null) {
-							LOGGER.error("ERROR: Trying to post unspecified scenario.");
-							return launch.get().startTestItem(rq);
-						}
-						rq.setType(ItemType.STEP.name());
-						rq.setHasStats(false);
-						rq.setName(getInnerFeatureName(rq.getName()));
-						Maybe<String> itemId = launch.get().startTestItem(scenarioId, rq);
-						innerFeatures.add(itemId);
-						if (StringUtils.isNotBlank(rq.getDescription())) {
-							ReportPortalUtils.sendLog(itemId, rq.getDescription(), LogLevel.INFO, rq.getStartTime());
-						}
-						return itemId;
-					}
-				}));
+		featureIdMap.computeIfAbsent(getFeatureNameForReport(fr), f -> new MemoizingSupplier<>(() -> {
+			if (ofNullable(fr.caller).map(c -> c.depth).orElse(0) == 0) {
+				return launch.get().startTestItem(rq);
+			} else {
+				Maybe<String> scenarioId = scenarioIdMap.get(fr.caller.parentRuntime.scenario.getUniqueId());
+				if (scenarioId == null) {
+					LOGGER.error("ERROR: Trying to post unspecified scenario.");
+					return launch.get().startTestItem(rq);
+				}
+				rq.setType(ItemType.STEP.name());
+				rq.setHasStats(false);
+				rq.setName(getInnerFeatureName(rq.getName()));
+				Maybe<String> itemId = launch.get().startTestItem(scenarioId, rq);
+				innerFeatures.add(itemId);
+				if (StringUtils.isNotBlank(rq.getDescription())) {
+					ReportPortalUtils.sendLog(itemId, rq.getDescription(), LogLevel.INFO, rq.getStartTime());
+				}
+				return itemId;
+			}
+		}));
 		return true;
 	}
 
@@ -202,7 +206,7 @@ public class ReportPortalHook implements RuntimeHook {
 
 	@Override
 	public void afterFeature(FeatureRuntime fr) {
-		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.remove(fr.featureCall.feature.getNameForReport())).map(Supplier::get);
+		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.remove(getFeatureNameForReport(fr))).map(Supplier::get);
 		if (optionalId.isEmpty()) {
 			LOGGER.error("ERROR: Trying to finish unspecified feature.");
 		}
@@ -222,8 +226,7 @@ public class ReportPortalHook implements RuntimeHook {
 	@Nonnull
 	protected StartTestItemRQ buildStartScenarioRq(@Nonnull ScenarioRuntime sr) {
 		StartTestItemRQ rq = ReportPortalUtils.buildStartScenarioRq(sr.result);
-		ofNullable(featureIdMap.get(sr.featureRuntime.featureCall.feature.getNameForReport()))
-				.map(Supplier::get)
+		ofNullable(featureIdMap.get(getFeatureNameForReport(sr.featureRuntime))).map(Supplier::get)
 				.map(featureId -> innerFeatures.contains(featureId) ? featureId : null)
 				.ifPresent(featureId -> {
 					rq.setType(ItemType.STEP.name());
@@ -236,8 +239,8 @@ public class ReportPortalHook implements RuntimeHook {
 	@Override
 	public boolean beforeScenario(ScenarioRuntime sr) {
 		StartTestItemRQ rq = buildStartScenarioRq(sr);
-		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.get(sr.featureRuntime.featureCall.feature.getNameForReport()))
-				.map(Supplier::get);
+		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.get(getFeatureNameForReport(sr.featureRuntime))).map(
+				Supplier::get);
 		if (optionalId.isEmpty()) {
 			LOGGER.error("ERROR: Trying to post unspecified feature.");
 		}
