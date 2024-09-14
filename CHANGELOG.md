@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+## [5.1.1]
 ### Fixed
 - Issue [#32](https://github.com/reportportal/agent-java-karate/issues/32): Handling of calling scenario in the same Feature file, by @HardNorth
 
