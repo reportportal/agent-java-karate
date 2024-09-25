@@ -3,6 +3,8 @@
 ## [Unreleased]
 ### Changed
 - Client version updated on [5.2.15](https://github.com/reportportal/client-java/releases/tag/5.2.15), by @HardNorth
+### Fixed
+- Issue [#38](https://github.com/reportportal/agent-java-karate/issues/38): Rerun failed scenarios, by @HardNorth
 
 ## [5.1.1]
 ### Fixed
