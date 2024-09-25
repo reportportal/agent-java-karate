@@ -206,7 +206,7 @@ public class ReportPortalHook implements RuntimeHook {
 
 	@Override
 	public void afterFeature(FeatureRuntime fr) {
-		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.remove(getFeatureNameForReport(fr))).map(Supplier::get);
+		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.get(getFeatureNameForReport(fr))).map(Supplier::get);
 		if (optionalId.isEmpty()) {
 			LOGGER.error("ERROR: Trying to finish unspecified feature.");
 		}
@@ -239,11 +239,14 @@ public class ReportPortalHook implements RuntimeHook {
 	@Override
 	public boolean beforeScenario(ScenarioRuntime sr) {
 		StartTestItemRQ rq = buildStartScenarioRq(sr);
-		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.get(getFeatureNameForReport(sr.featureRuntime))).map(
-				Supplier::get);
+		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.get(getFeatureNameForReport(sr.featureRuntime))).map(Supplier::get);
 		if (optionalId.isEmpty()) {
 			LOGGER.error("ERROR: Trying to post unspecified feature.");
 		}
+		ofNullable(scenarioIdMap.get(sr.scenario.getUniqueId())).map(Maybe::blockingGet).ifPresent(id -> {
+			rq.setRetry(true);
+			rq.setRetryOf(id);
+		});
 		optionalId.ifPresent(featureId -> {
 			Maybe<String> scenarioId = launch.get().startTestItem(featureId, rq);
 			if (innerFeatures.contains(featureId) && StringUtils.isNotBlank(rq.getDescription())) {
@@ -323,7 +326,7 @@ public class ReportPortalHook implements RuntimeHook {
 
 	@Override
 	public void afterScenario(ScenarioRuntime sr) {
-		Maybe<String> scenarioId = scenarioIdMap.remove(sr.scenario.getUniqueId());
+		Maybe<String> scenarioId = scenarioIdMap.get(sr.scenario.getUniqueId());
 		if (scenarioId == null) {
 			LOGGER.error("ERROR: Trying to finish unspecified scenario.");
 		}
