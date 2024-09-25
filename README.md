@@ -13,7 +13,7 @@ Karate reporters which uploads the results to a ReportPortal server.
 [![stackoverflow](https://img.shields.io/badge/reportportal-stackoverflow-orange.svg?style=flat)](http://stackoverflow.com/questions/tagged/reportportal)
 [![Build with Love](https://img.shields.io/badge/build%20with-❤%EF%B8%8F%E2%80%8D-lightgrey.svg)](http://reportportal.io?style=flat)
 
-The latest version: 5.1.1. Please use `Maven Central` link above to get the agent.
+The latest version: 5.1.2. Please use `Maven Central` link above to get the agent.
 
 ## Overview: How to Add ReportPortal Logging to Your Project
 
@@ -72,7 +72,7 @@ If your project is Maven-based you need to add dependencies to `pom.xml` file:
     <dependency>
         <groupId>com.epam.reportportal</groupId>
         <artifactId>agent-java-karate</artifactId>
-        <version>5.1.1</version>
+        <version>5.1.2</version>
         <scope>test</scope>
     </dependency>
 
@@ -89,7 +89,7 @@ For Gradle-based projects please update dependencies section in `build.gradle` f
 
 ```groovy
 dependencies {
-    testImplementation 'com.epam.reportportal:agent-java-karate:5.1.1'
+    testImplementation 'com.epam.reportportal:agent-java-karate:5.1.2'
 }
 ```
 
