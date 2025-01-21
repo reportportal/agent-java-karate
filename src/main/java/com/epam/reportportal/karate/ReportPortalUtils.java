@@ -61,7 +61,7 @@ public class ReportPortalUtils {
 	public static final String SKIPPED_ISSUE_KEY = "skippedIssue";
 	public static final String SCENARIO_CODE_REFERENCE_PATTERN = "%s/[SCENARIO:%s]";
 	public static final String EXAMPLE_CODE_REFERENCE_PATTERN = "%s/[EXAMPLE:%s%s]";
-	public static final String MARKDOWN_DELIMITER = "\n" + MarkdownUtils.LOGICAL_SEPARATOR + "\n";
+	public static final String MARKDOWN_DELIMITER = MarkdownUtils.LOGICAL_SEPARATOR;
 	public static final String MARKDOWN_DELIMITER_PATTERN = "%s" + MARKDOWN_DELIMITER + "%s";
 	public static final String FEATURE_TAG = "Feature: ";
 	public static final String SCENARIO_TAG = "Scenario: ";

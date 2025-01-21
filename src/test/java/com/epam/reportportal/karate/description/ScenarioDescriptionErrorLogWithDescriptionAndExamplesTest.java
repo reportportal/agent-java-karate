@@ -48,7 +48,7 @@ import static org.mockito.Mockito.*;
 
 public class ScenarioDescriptionErrorLogWithDescriptionAndExamplesTest {
 
-    public static final String MARKDOWN_DELIMITER_PATTERN_THREE_ARGS = "%s\n---\n%s\n---\n%s";
+    public static final String MARKDOWN_DELIMITER_PATTERN_THREE_ARGS = "%s\n\n---\n\n%s\n\n---\n\n%s";
     public static final String ERROR = "did not evaluate to 'true': mathResult == 5\nclasspath:feature/simple_failed_description_examples.feature:8";
     public static final String ERROR_MESSAGE = "Then assert mathResult == 5\n" + ERROR;
     public static final String DESCRIPTION_ERROR_LOG = "Error:\n" + ERROR;

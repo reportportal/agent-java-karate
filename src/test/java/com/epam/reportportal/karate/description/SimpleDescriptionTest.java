@@ -78,7 +78,7 @@ public class SimpleDescriptionTest {
 		verify(client, times(3)).startTestItem(same(scenarioId), stepCaptor.capture());
 
 		StartTestItemRQ featureStart = featureCaptor.getValue();
-		assertThat(featureStart.getDescription(), endsWith("feature/description.feature\n---\nThis is my Feature description."));
+		assertThat(featureStart.getDescription(), endsWith("feature/description.feature\n\n---\n\nThis is my Feature description."));
 
 		StartTestItemRQ scenarioStart = scenarioCaptor.getValue();
 		assertThat(scenarioStart.getDescription(), equalTo(SCENARIO_DESCRIPTION));
