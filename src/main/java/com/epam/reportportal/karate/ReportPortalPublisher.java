@@ -298,7 +298,7 @@ public class ReportPortalPublisher {
 	private Date getStepStartTime(@Nonnull Maybe<String> stepId) {
 		long currentStepStartTime = Calendar.getInstance().getTime().getTime();
 
-		if (!stepStartTimeMap.keySet().isEmpty()) {
+		if (!stepStartTimeMap.isEmpty()) {
 			long lastStepStartTime = stepStartTimeMap.get(stepId);
 
 			if (lastStepStartTime >= currentStepStartTime) {

@@ -25,7 +25,7 @@ import com.epam.reportportal.service.item.TestCaseIdEntry;
 import com.epam.reportportal.utils.AttributeParser;
 import com.epam.reportportal.utils.ParameterUtils;
 import com.epam.reportportal.utils.TestCaseIdUtils;
-import com.epam.reportportal.utils.markdown.MarkdownUtils;
+import com.epam.reportportal.utils.formatting.MarkdownUtils;
 import com.epam.reportportal.utils.properties.SystemAttributesExtractor;
 import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
@@ -61,7 +61,7 @@ public class ReportPortalUtils {
 	public static final String SKIPPED_ISSUE_KEY = "skippedIssue";
 	public static final String SCENARIO_CODE_REFERENCE_PATTERN = "%s/[SCENARIO:%s]";
 	public static final String EXAMPLE_CODE_REFERENCE_PATTERN = "%s/[EXAMPLE:%s%s]";
-	public static final String MARKDOWN_DELIMITER = "\n" + MarkdownUtils.LOGICAL_SEPARATOR + "\n";
+	public static final String MARKDOWN_DELIMITER = MarkdownUtils.LOGICAL_SEPARATOR;
 	public static final String MARKDOWN_DELIMITER_PATTERN = "%s" + MARKDOWN_DELIMITER + "%s";
 	public static final String FEATURE_TAG = "Feature: ";
 	public static final String SCENARIO_TAG = "Scenario: ";

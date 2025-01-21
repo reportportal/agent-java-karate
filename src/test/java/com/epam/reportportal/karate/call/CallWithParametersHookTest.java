@@ -20,7 +20,7 @@ import com.epam.reportportal.karate.utils.TestUtils;
 import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
-import com.epam.reportportal.utils.markdown.MarkdownUtils;
+import com.epam.reportportal.utils.formatting.MarkdownUtils;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.intuit.karate.Results;
 import org.apache.commons.lang3.tuple.Pair;
@@ -47,7 +47,7 @@ public class CallWithParametersHookTest {
 	private static final String PARAMETERS_DESCRIPTION_PATTERN =
 			"Parameters:\n\n" + MarkdownUtils.TABLE_INDENT + "|\u00A0vara\u00A0|\u00A0result\u00A0|\n" + MarkdownUtils.TABLE_INDENT
 					+ "|------|--------|\n" + MarkdownUtils.TABLE_INDENT
-					+ "|\u00A0\u00A02\u00A0\u00A0\u00A0|\u00A0\u00A0\u00A04\u00A0\u00A0\u00A0\u00A0|\n"
+					+ "|\u00A0\u00A02\u00A0\u00A0\u00A0|\u00A0\u00A0\u00A04\u00A0\u00A0\u00A0\u00A0|\n\n"
 					+ MarkdownUtils.TABLE_ROW_SEPARATOR;
 	private final String featureId = CommonUtils.namedId("feature_");
 	private final String scenarioId = CommonUtils.namedId("scenario_");
