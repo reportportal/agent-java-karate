@@ -39,7 +39,7 @@ import java.util.function.Supplier;
 
 import static com.epam.reportportal.karate.ReportPortalUtils.*;
 import static com.epam.reportportal.utils.ParameterUtils.formatParametersAsTable;
-import static com.epam.reportportal.utils.markdown.MarkdownUtils.formatDataTable;
+import static com.epam.reportportal.utils.formatting.MarkdownUtils.formatDataTable;
 import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
