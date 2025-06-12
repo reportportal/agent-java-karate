@@ -21,6 +21,7 @@ import com.epam.reportportal.listeners.ItemStatus;
 import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
+import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.intuit.karate.Results;
 import org.apache.commons.lang3.tuple.Pair;
@@ -29,6 +30,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -37,6 +39,7 @@ import java.util.stream.Stream;
 import static com.epam.reportportal.karate.utils.TestUtils.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.contains;
 import static org.mockito.Mockito.*;
 
 public class OneExampleWithBackgroundFailedTest {
@@ -46,11 +49,13 @@ public class OneExampleWithBackgroundFailedTest {
 	private final List<Pair<String, List<String>>> stepIds = exampleIds.stream()
 			.map(e -> Pair.of(e, Stream.generate(() -> CommonUtils.namedId("step_")).limit(3).collect(Collectors.toList())))
 			.collect(Collectors.toList());
-	private final List<Pair<String, String>> nestedSteps =
-			Arrays.asList(
-					Pair.of(stepIds.get(0).getValue().get(0), CommonUtils.namedId("nested_step_")),
-					Pair.of(stepIds.get(1).getValue().get(0), CommonUtils.namedId("nested_step_"))
-			);
+	private final List<Pair<String, String>> nestedSteps = Arrays.asList(
+			Pair.of(
+					stepIds.get(0).getValue().get(0),
+					CommonUtils.namedId("nested_step_")
+			),
+			Pair.of(stepIds.get(1).getValue().get(0), CommonUtils.namedId("nested_step_"))
+	);
 
 	private final ReportPortalClient client = mock(ReportPortalClient.class);
 	private final ReportPortal rp = ReportPortal.create(client, standardParameters(), testExecutor());
@@ -63,14 +68,18 @@ public class OneExampleWithBackgroundFailedTest {
 	}
 
 	private static void verifyStatus(List<FinishTestItemRQ> rqs, ItemStatus... statuses) {
-		for (int i = 0; i < rqs.size(); i++) {
-			ItemStatus statusTest = i >= statuses.length ? statuses[statuses.length - 1] : statuses[i];
-			assertThat(
-					"Failed verifying request number: " + (i + 1),
-					rqs.get(i).getStatus(),
-					allOf(notNullValue(), equalTo(statusTest.name()))
-			);
-		}
+		List<String> actualStatuses = rqs.stream().map(FinishExecutionRQ::getStatus).collect(Collectors.toList());
+		List<String> expectedStatuses = Arrays.stream(statuses).map(ItemStatus::name).collect(Collectors.toList());
+		assertThat("Failed verifying status number", actualStatuses, hasSize(rqs.size()));
+
+		// Status for the last item may come in different order, that's OK.
+		List<String> expectedStatuses2 = new ArrayList<>(expectedStatuses);
+		String status = expectedStatuses2.remove(expectedStatuses2.size() - 2);
+		expectedStatuses2.add(status);
+		assertThat(
+				actualStatuses,
+				anyOf(contains(expectedStatuses.toArray(new String[0])), contains(expectedStatuses2.toArray(new String[0])))
+		);
 	}
 
 	@ParameterizedTest
@@ -117,6 +126,14 @@ public class OneExampleWithBackgroundFailedTest {
 				secondExampleThirdStepCaptor.getValue()
 		);
 
-		verifyStatus(steps, ItemStatus.PASSED, ItemStatus.PASSED, ItemStatus.PASSED, ItemStatus.PASSED, ItemStatus.PASSED, ItemStatus.FAILED);
+		verifyStatus(
+				steps,
+				ItemStatus.PASSED,
+				ItemStatus.PASSED,
+				ItemStatus.PASSED,
+				ItemStatus.PASSED,
+				ItemStatus.PASSED,
+				ItemStatus.FAILED
+		);
 	}
 }
