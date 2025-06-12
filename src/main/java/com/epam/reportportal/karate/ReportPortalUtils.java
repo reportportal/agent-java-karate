@@ -170,6 +170,11 @@ public class ReportPortalUtils {
 		return rq;
 	}
 
+	@Nonnull
+	public static String getCodeRef(@Nonnull Feature feature) {
+		return feature.getResource().getRelativePath();
+	}
+
 	/**
 	 * Returns code reference for feature files by URI and Scenario reference
 	 *
@@ -178,17 +183,16 @@ public class ReportPortalUtils {
 	 */
 	@Nonnull
 	public static String getCodeRef(@Nonnull Scenario scenario) {
+		String featurePath = getCodeRef(scenario.getFeature());
 		if (scenario.isOutlineExample()) {
-			return String.format(EXAMPLE_CODE_REFERENCE_PATTERN,
-					scenario.getFeature().getResource().getRelativePath(),
+			return String.format(
+					EXAMPLE_CODE_REFERENCE_PATTERN,
+					featurePath,
 					scenario.getName(),
 					ReportPortalUtils.formatExampleKey(scenario.getExampleData())
 			);
 		} else {
-			return String.format(SCENARIO_CODE_REFERENCE_PATTERN,
-					scenario.getFeature().getResource().getRelativePath(),
-					scenario.getName()
-			);
+			return String.format(SCENARIO_CODE_REFERENCE_PATTERN, featurePath, scenario.getName());
 		}
 	}
 
@@ -243,7 +247,8 @@ public class ReportPortalUtils {
 	 */
 	@Nonnull
 	public static StartTestItemRQ buildStartFeatureRq(@Nonnull Feature feature) {
-		StartTestItemRQ rq = buildStartTestItemRq(feature.getName(), Calendar.getInstance().getTime(), ItemType.STORY);
+		String featureName = ofNullable(feature.getName()).filter(n -> !n.isBlank()).orElseGet(() -> getCodeRef(feature));
+		StartTestItemRQ rq = buildStartTestItemRq(featureName, Calendar.getInstance().getTime(), ItemType.STORY);
 		rq.setAttributes(toAttributes(feature.getTags()));
 		String featurePath = feature.getResource().getUri().toString();
 		String description = feature.getDescription();
