@@ -58,6 +58,7 @@ public class ReportPortalPublisherTest {
 	@Test
 	public void shouldFinishLaunch() {
 		when(launchMock.getParameters()).thenReturn(getListenerParameters());
+		when(launchMock.getLaunch()).thenReturn(Maybe.just("launchUuid"));
 		reportPortalPublisher.finishLaunch();
 		verify(launchMock, times(1)).finish(any(FinishExecutionRQ.class));
 	}
