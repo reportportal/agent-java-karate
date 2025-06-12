@@ -20,6 +20,7 @@ import com.epam.reportportal.listeners.ItemStatus;
 import com.epam.reportportal.listeners.ItemType;
 import com.epam.reportportal.listeners.ListenerParameters;
 import com.epam.reportportal.listeners.LogLevel;
+import com.epam.reportportal.service.Launch;
 import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.item.TestCaseIdEntry;
 import com.epam.reportportal.utils.AttributeParser;
@@ -169,6 +170,11 @@ public class ReportPortalUtils {
 		return rq;
 	}
 
+	@Nonnull
+	public static String getCodeRef(@Nonnull Feature feature) {
+		return feature.getResource().getRelativePath();
+	}
+
 	/**
 	 * Returns code reference for feature files by URI and Scenario reference
 	 *
@@ -177,17 +183,16 @@ public class ReportPortalUtils {
 	 */
 	@Nonnull
 	public static String getCodeRef(@Nonnull Scenario scenario) {
+		String featurePath = getCodeRef(scenario.getFeature());
 		if (scenario.isOutlineExample()) {
-			return String.format(EXAMPLE_CODE_REFERENCE_PATTERN,
-					scenario.getFeature().getResource().getRelativePath(),
+			return String.format(
+					EXAMPLE_CODE_REFERENCE_PATTERN,
+					featurePath,
 					scenario.getName(),
 					ReportPortalUtils.formatExampleKey(scenario.getExampleData())
 			);
 		} else {
-			return String.format(SCENARIO_CODE_REFERENCE_PATTERN,
-					scenario.getFeature().getResource().getRelativePath(),
-					scenario.getName()
-			);
+			return String.format(SCENARIO_CODE_REFERENCE_PATTERN, featurePath, scenario.getName());
 		}
 	}
 
@@ -242,7 +247,8 @@ public class ReportPortalUtils {
 	 */
 	@Nonnull
 	public static StartTestItemRQ buildStartFeatureRq(@Nonnull Feature feature) {
-		StartTestItemRQ rq = buildStartTestItemRq(feature.getName(), Calendar.getInstance().getTime(), ItemType.STORY);
+		String featureName = ofNullable(feature.getName()).filter(n -> !n.isBlank()).orElseGet(() -> getCodeRef(feature));
+		StartTestItemRQ rq = buildStartTestItemRq(featureName, Calendar.getInstance().getTime(), ItemType.STORY);
 		rq.setAttributes(toAttributes(feature.getTags()));
 		String featurePath = feature.getResource().getUri().toString();
 		String description = feature.getDescription();
@@ -435,14 +441,16 @@ public class ReportPortalUtils {
 	 * @param logTime log time
 	 */
 	public static void sendLog(Maybe<String> itemId, String message, LogLevel level, Date logTime) {
-		ReportPortal.emitLog(itemId, id -> {
-			SaveLogRQ rq = new SaveLogRQ();
-			rq.setMessage(message);
-			rq.setItemUuid(id);
-			rq.setLevel(level.name());
-			rq.setLogTime(logTime);
-			return rq;
-		});
+		ReportPortal.emitLog(
+				itemId, id -> {
+					SaveLogRQ rq = new SaveLogRQ();
+					rq.setMessage(message);
+					rq.setItemUuid(id);
+					rq.setLevel(level.name());
+					rq.setLogTime(logTime);
+					return rq;
+				}
+		);
 	}
 
 	/**
@@ -454,6 +462,27 @@ public class ReportPortalUtils {
 	 */
 	public static void sendLog(Maybe<String> itemId, String message, LogLevel level) {
 		sendLog(itemId, message, level, Calendar.getInstance().getTime());
+	}
+
+	/**
+	 * Finish sending Launch data to ReportPortal.
+	 *
+	 * @param launch       Launch object to finish
+	 * @param rq           Request to finish execution
+	 * @param shutDownHook Optional shutdown hook to unregister
+	 */
+	public static void doFinishLaunch(@Nonnull Launch launch, @Nonnull FinishExecutionRQ rq, @Nullable Thread shutDownHook) {
+		ListenerParameters parameters = launch.getParameters();
+		LOGGER.info(
+				"Launch URL: {}/ui/#{}/launches/all/{}",
+				parameters.getBaseUrl(),
+				parameters.getProjectName(),
+				launch.getLaunch().blockingGet()
+		);
+		launch.finish(rq);
+		if (shutDownHook != null && Thread.currentThread() != shutDownHook) {
+			unregisterShutdownHook(shutDownHook);
+		}
 	}
 
 	/**

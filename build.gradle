@@ -16,7 +16,7 @@
 
 apply plugin: 'java-library'
 
-apply from: 'build-quality.gradle'
+apply from: "${scripts_url}/${scripts_branch}/build-quality.gradle"
 apply from: "${scripts_url}/${scripts_branch}/release-commons.gradle"
 apply from: "${scripts_url}/${scripts_branch}/signing.gradle"
 apply from: "${scripts_url}/${scripts_branch}/jacoco.gradle"

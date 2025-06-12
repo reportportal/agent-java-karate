@@ -74,8 +74,11 @@ public class TestUtils {
 	}
 
 	public static Results runAsHook(ReportPortal reportPortal, List<String> tags, String... paths) {
-		Runner.Builder<?> path = Runner.path(paths).hook(new ReportPortalHook(reportPortal)).outputCucumberJson(false);
-		return path.tags(tags).parallel(1);
+		ReportPortalHook hook = new ReportPortalHook(reportPortal);
+		Runner.Builder<?> path = Runner.path(paths).hook(hook).outputCucumberJson(false);
+		Results result = path.tags(tags).parallel(1);
+		hook.finishLaunch();
+		return result;
 	}
 
 	public static Results runAsHook(ReportPortal reportPortal, String... paths) {
@@ -170,7 +173,8 @@ public class TestUtils {
 				Maybe<ItemCreatedRS> myFirst = stepResponses.get(0);
 				Maybe<ItemCreatedRS>[] myOther = stepResponses.subList(1, stepResponses.size()).toArray(new Maybe[0]);
 				when(client.startTestItem(same(scenarioUuid), any())).thenReturn(myFirst, myOther);
-				new HashSet<>(test.getValue()).forEach(testMethodUuid -> when(client.finishTestItem(same(testMethodUuid),
+				new HashSet<>(test.getValue()).forEach(testMethodUuid -> when(client.finishTestItem(
+						same(testMethodUuid),
 						any()
 				)).thenReturn(Maybe.just(new OperationCompletionRS())));
 			}
@@ -195,7 +199,8 @@ public class TestUtils {
 			Maybe<ItemCreatedRS>[] other = responses.subList(1, responses.size()).toArray(new Maybe[0]);
 			when(client.startTestItem(eq(k), any())).thenReturn(first, other);
 		});
-		parentNestedPairs.forEach(p -> when(client.finishTestItem(same(p.getValue()),
+		parentNestedPairs.forEach(p -> when(client.finishTestItem(
+				same(p.getValue()),
 				any()
 		)).thenAnswer((Answer<Maybe<OperationCompletionRS>>) invocation -> Maybe.just(new OperationCompletionRS())));
 	}
@@ -216,8 +221,10 @@ public class TestUtils {
 				})
 				.map(b -> {
 					try {
-						return HttpRequestUtils.MAPPER.readValue(b, new TypeReference<>() {
-						});
+						return HttpRequestUtils.MAPPER.readValue(
+								b, new TypeReference<>() {
+								}
+						);
 					} catch (IOException e) {
 						return Collections.<SaveLogRQ>emptyList();
 					}

@@ -39,7 +39,7 @@ import java.util.function.Supplier;
 
 import static com.epam.reportportal.karate.ReportPortalUtils.*;
 import static com.epam.reportportal.utils.ParameterUtils.formatParametersAsTable;
-import static com.epam.reportportal.utils.markdown.MarkdownUtils.formatDataTable;
+import static com.epam.reportportal.utils.formatting.MarkdownUtils.formatDataTable;
 import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
@@ -104,18 +104,7 @@ public class ReportPortalPublisher {
 	 * Finish sending Launch data to ReportPortal.
 	 */
 	public void finishLaunch() {
-		Launch launchObject = launch.get();
-		ListenerParameters parameters = launchObject.getParameters();
-		FinishExecutionRQ rq = buildFinishLaunchRq(parameters);
-		LOGGER.info("Launch URL: {}/ui/#{}/launches/all/{}",
-				parameters.getBaseUrl(),
-				parameters.getProjectName(),
-				System.getProperty("rp.launch.id")
-		);
-		launchObject.finish(rq);
-		if (shutDownHook != null && Thread.currentThread() != shutDownHook) {
-			unregisterShutdownHook(shutDownHook);
-		}
+		ReportPortalUtils.doFinishLaunch(launch.get(), buildFinishLaunchRq(launch.get().getParameters()), shutDownHook);
 	}
 
 	/**
