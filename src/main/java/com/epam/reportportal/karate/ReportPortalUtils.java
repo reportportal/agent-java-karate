@@ -20,6 +20,7 @@ import com.epam.reportportal.listeners.ItemStatus;
 import com.epam.reportportal.listeners.ItemType;
 import com.epam.reportportal.listeners.ListenerParameters;
 import com.epam.reportportal.listeners.LogLevel;
+import com.epam.reportportal.service.Launch;
 import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.item.TestCaseIdEntry;
 import com.epam.reportportal.utils.AttributeParser;
@@ -435,14 +436,16 @@ public class ReportPortalUtils {
 	 * @param logTime log time
 	 */
 	public static void sendLog(Maybe<String> itemId, String message, LogLevel level, Date logTime) {
-		ReportPortal.emitLog(itemId, id -> {
-			SaveLogRQ rq = new SaveLogRQ();
-			rq.setMessage(message);
-			rq.setItemUuid(id);
-			rq.setLevel(level.name());
-			rq.setLogTime(logTime);
-			return rq;
-		});
+		ReportPortal.emitLog(
+				itemId, id -> {
+					SaveLogRQ rq = new SaveLogRQ();
+					rq.setMessage(message);
+					rq.setItemUuid(id);
+					rq.setLevel(level.name());
+					rq.setLogTime(logTime);
+					return rq;
+				}
+		);
 	}
 
 	/**
@@ -454,6 +457,27 @@ public class ReportPortalUtils {
 	 */
 	public static void sendLog(Maybe<String> itemId, String message, LogLevel level) {
 		sendLog(itemId, message, level, Calendar.getInstance().getTime());
+	}
+
+	/**
+	 * Finish sending Launch data to ReportPortal.
+	 *
+	 * @param launch       Launch object to finish
+	 * @param rq           Request to finish execution
+	 * @param shutDownHook Optional shutdown hook to unregister
+	 */
+	public static void doFinishLaunch(@Nonnull Launch launch, @Nonnull FinishExecutionRQ rq, @Nullable Thread shutDownHook) {
+		ListenerParameters parameters = launch.getParameters();
+		LOGGER.info(
+				"Launch URL: {}/ui/#{}/launches/all/{}",
+				parameters.getBaseUrl(),
+				parameters.getProjectName(),
+				launch.getLaunch().blockingGet()
+		);
+		launch.finish(rq);
+		if (shutDownHook != null && Thread.currentThread() != shutDownHook) {
+			unregisterShutdownHook(shutDownHook);
+		}
 	}
 
 	/**

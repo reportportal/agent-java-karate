@@ -122,18 +122,7 @@ public class ReportPortalHook implements RuntimeHook {
 	 * Finish sending Launch data to ReportPortal.
 	 */
 	public void finishLaunch() {
-		Launch launchObject = launch.get();
-		ListenerParameters parameters = launchObject.getParameters();
-		FinishExecutionRQ rq = buildFinishLaunchRq(parameters);
-		LOGGER.info("Launch URL: {}/ui/#{}/launches/all/{}",
-				parameters.getBaseUrl(),
-				parameters.getProjectName(),
-				System.getProperty("rp.launch.id")
-		);
-		launchObject.finish(rq);
-		if (shutDownHook != null && Thread.currentThread() != shutDownHook) {
-			unregisterShutdownHook(shutDownHook);
-		}
+		ReportPortalUtils.doFinishLaunch(launch.get(), buildFinishLaunchRq(launch.get().getParameters()), shutDownHook);
 	}
 
 	/**
@@ -170,26 +159,28 @@ public class ReportPortalHook implements RuntimeHook {
 	@Override
 	public boolean beforeFeature(FeatureRuntime fr) {
 		StartTestItemRQ rq = buildStartFeatureRq(fr);
-		featureIdMap.computeIfAbsent(getFeatureNameForReport(fr), f -> new MemoizingSupplier<>(() -> {
-			if (ofNullable(fr.caller).map(c -> c.depth).orElse(0) == 0) {
-				return launch.get().startTestItem(rq);
-			} else {
-				Maybe<String> scenarioId = scenarioIdMap.get(fr.caller.parentRuntime.scenario.getUniqueId());
-				if (scenarioId == null) {
-					LOGGER.error("ERROR: Trying to post unspecified scenario.");
-					return launch.get().startTestItem(rq);
-				}
-				rq.setType(ItemType.STEP.name());
-				rq.setHasStats(false);
-				rq.setName(getInnerFeatureName(rq.getName()));
-				Maybe<String> itemId = launch.get().startTestItem(scenarioId, rq);
-				innerFeatures.add(itemId);
-				if (StringUtils.isNotBlank(rq.getDescription())) {
-					ReportPortalUtils.sendLog(itemId, rq.getDescription(), LogLevel.INFO, rq.getStartTime());
-				}
-				return itemId;
-			}
-		}));
+		featureIdMap.computeIfAbsent(
+				getFeatureNameForReport(fr), f -> new MemoizingSupplier<>(() -> {
+					if (ofNullable(fr.caller).map(c -> c.depth).orElse(0) == 0) {
+						return launch.get().startTestItem(rq);
+					} else {
+						Maybe<String> scenarioId = scenarioIdMap.get(fr.caller.parentRuntime.scenario.getUniqueId());
+						if (scenarioId == null) {
+							LOGGER.error("ERROR: Trying to post unspecified scenario.");
+							return launch.get().startTestItem(rq);
+						}
+						rq.setType(ItemType.STEP.name());
+						rq.setHasStats(false);
+						rq.setName(getInnerFeatureName(rq.getName()));
+						Maybe<String> itemId = launch.get().startTestItem(scenarioId, rq);
+						innerFeatures.add(itemId);
+						if (StringUtils.isNotBlank(rq.getDescription())) {
+							ReportPortalUtils.sendLog(itemId, rq.getDescription(), LogLevel.INFO, rq.getStartTime());
+						}
+						return itemId;
+					}
+				})
+		);
 		return true;
 	}
 
@@ -289,10 +280,12 @@ public class ReportPortalHook implements RuntimeHook {
 	 * @return item ID Future
 	 */
 	public Maybe<String> startBackground(@Nonnull Step step, @Nonnull ScenarioRuntime sr) {
-		return backgroundIdMap.computeIfAbsent(sr.scenario.getUniqueId(), k -> {
-			StartTestItemRQ backgroundRq = buildStartBackgroundRq(step, sr);
-			return launch.get().startTestItem(scenarioIdMap.get(sr.scenario.getUniqueId()), backgroundRq);
-		});
+		return backgroundIdMap.computeIfAbsent(
+				sr.scenario.getUniqueId(), k -> {
+					StartTestItemRQ backgroundRq = buildStartBackgroundRq(step, sr);
+					return launch.get().startTestItem(scenarioIdMap.get(sr.scenario.getUniqueId()), backgroundRq);
+				}
+		);
 	}
 
 	/**
@@ -441,8 +434,10 @@ public class ReportPortalHook implements RuntimeHook {
 	}
 
 	private void saveBackgroundStatus(@Nonnull StepResult stepResult, @Nonnull ScenarioRuntime sr) {
-		backgroundStatusMap.put(sr.scenario.getUniqueId(),
-				StatusEvaluation.evaluateStatus(backgroundStatusMap.get(sr.scenario.getUniqueId()),
+		backgroundStatusMap.put(
+				sr.scenario.getUniqueId(),
+				StatusEvaluation.evaluateStatus(
+						backgroundStatusMap.get(sr.scenario.getUniqueId()),
 						getStepStatus(stepResult.getResult().getStatus())
 				)
 		);
