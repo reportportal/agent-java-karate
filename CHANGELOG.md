@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+## [5.2.0]
 ### Added
 - Code reference as feature name in case it is not specified, by @HardNorth
 ### Changed
