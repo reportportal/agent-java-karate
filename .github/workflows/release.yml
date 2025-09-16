@@ -21,7 +21,6 @@ on:
       - '.github/**'
       - README.md
       - README_TEMPLATE.md
-      - gradle.properties
       - CHANGELOG.md
 
 env:
