@@ -37,11 +37,12 @@ import com.epam.ta.reportportal.ws.model.launch.StartLaunchRQ;
 import com.epam.ta.reportportal.ws.model.log.SaveLogRQ;
 import com.intuit.karate.core.*;
 import io.reactivex.Maybe;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import java.time.Instant;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -135,7 +136,7 @@ public class ReportPortalUtils {
 	public static StartLaunchRQ buildStartLaunchRq(@Nonnull ListenerParameters parameters) {
 		StartLaunchRQ rq = new StartLaunchRQ();
 		rq.setName(parameters.getLaunchName());
-		rq.setStartTime(Calendar.getInstance().getTime());
+		rq.setStartTime(Instant.now());
 		rq.setMode(parameters.getLaunchRunningMode());
 		rq.setAttributes(new HashSet<>(parameters.getAttributes()));
 		if (isNotBlank(parameters.getDescription())) {
@@ -166,7 +167,7 @@ public class ReportPortalUtils {
 	@SuppressWarnings("unused")
 	public static FinishExecutionRQ buildFinishLaunchRq(@Nonnull ListenerParameters parameters) {
 		FinishExecutionRQ rq = new FinishExecutionRQ();
-		rq.setEndTime(Calendar.getInstance().getTime());
+		rq.setEndTime(Instant.now());
 		return rq;
 	}
 
@@ -200,12 +201,12 @@ public class ReportPortalUtils {
 	 * Build default start test item event/request
 	 *
 	 * @param name      item's name
-	 * @param startTime item's start time in Date format
+	 * @param startTime item's start time in Instant format
 	 * @param type      item's type (e.g. feature, scenario, step, etc.)
 	 * @return request to ReportPortal
 	 */
 	@Nonnull
-	public static StartTestItemRQ buildStartTestItemRq(@Nonnull String name, @Nonnull Date startTime, @Nonnull ItemType type) {
+	public static StartTestItemRQ buildStartTestItemRq(@Nonnull String name, @Nonnull Instant startTime, @Nonnull ItemType type) {
 		StartTestItemRQ rq = new StartTestItemRQ();
 		rq.setName(name);
 		rq.setStartTime(startTime);
@@ -221,7 +222,7 @@ public class ReportPortalUtils {
 	 * @return request to ReportPortal
 	 */
 	@Nonnull
-	public static FinishTestItemRQ buildFinishTestItemRq(@Nonnull Date endTime, @Nullable ItemStatus status) {
+	public static FinishTestItemRQ buildFinishTestItemRq(@Nonnull Instant endTime, @Nullable ItemStatus status) {
 		FinishTestItemRQ rq = new FinishTestItemRQ();
 		rq.setEndTime(endTime);
 		rq.setStatus(ofNullable(status).map(Enum::name).orElse(null));
@@ -248,7 +249,7 @@ public class ReportPortalUtils {
 	@Nonnull
 	public static StartTestItemRQ buildStartFeatureRq(@Nonnull Feature feature) {
 		String featureName = ofNullable(feature.getName()).filter(n -> !n.isBlank()).orElseGet(() -> getCodeRef(feature));
-		StartTestItemRQ rq = buildStartTestItemRq(featureName, Calendar.getInstance().getTime(), ItemType.STORY);
+		StartTestItemRQ rq = buildStartTestItemRq(featureName, Instant.now(), ItemType.STORY);
 		rq.setAttributes(toAttributes(feature.getTags()));
 		String featurePath = feature.getResource().getUri().toString();
 		String description = feature.getDescription();
@@ -310,7 +311,7 @@ public class ReportPortalUtils {
 	@Nonnull
 	public static StartTestItemRQ buildStartScenarioRq(@Nonnull ScenarioResult result) {
 		Scenario scenario = result.getScenario();
-		StartTestItemRQ rq = buildStartTestItemRq(scenario.getName(), Calendar.getInstance().getTime(), ItemType.STEP);
+		StartTestItemRQ rq = buildStartTestItemRq(scenario.getName(), Instant.now(), ItemType.STEP);
 		rq.setCodeRef(getCodeRef(scenario));
 		rq.setTestCaseId(ofNullable(getTestCaseId(scenario)).map(TestCaseIdEntry::getId).orElse(null));
 		rq.setAttributes(toAttributes(scenario.getTags()));
@@ -329,7 +330,7 @@ public class ReportPortalUtils {
 	public static FinishTestItemRQ buildFinishScenarioRq(@Nonnull ScenarioResult result) {
 		Scenario scenario = result.getScenario();
 		FinishTestItemRQ rq = buildFinishTestItemRq(
-				Calendar.getInstance().getTime(),
+				Instant.now(),
 				result.getFailureMessageForDisplay() == null ? ItemStatus.PASSED : ItemStatus.FAILED
 		);
 		rq.setDescription(buildDescription(scenario, result.getErrorMessage(), getParameters(scenario)));
@@ -371,7 +372,7 @@ public class ReportPortalUtils {
 	@Nonnull
 	@SuppressWarnings("unused")
 	public static StartTestItemRQ buildStartBackgroundRq(@Nonnull Step step, @Nonnull Scenario scenario) {
-		StartTestItemRQ rq = buildStartTestItemRq(Background.KEYWORD, Calendar.getInstance().getTime(), ItemType.STEP);
+		StartTestItemRQ rq = buildStartTestItemRq(Background.KEYWORD, Instant.now(), ItemType.STEP);
 		rq.setHasStats(false);
 		return rq;
 	}
@@ -386,7 +387,7 @@ public class ReportPortalUtils {
 	@Nonnull
 	public static StartTestItemRQ buildStartStepRq(@Nonnull Step step, @Nonnull Scenario scenario) {
 		String stepName = step.getPrefix() + " " + step.getText();
-		StartTestItemRQ rq = buildStartTestItemRq(stepName, Calendar.getInstance().getTime(), ItemType.STEP);
+		StartTestItemRQ rq = buildStartTestItemRq(stepName, Instant.now(), ItemType.STEP);
 		rq.setHasStats(false);
 		if (step.isOutline()) {
 			List<ParameterResource> parameters = scenario.getExampleData()
@@ -440,7 +441,7 @@ public class ReportPortalUtils {
 	 * @param level   log level
 	 * @param logTime log time
 	 */
-	public static void sendLog(Maybe<String> itemId, String message, LogLevel level, Date logTime) {
+	public static void sendLog(Maybe<String> itemId, String message, LogLevel level, Instant logTime) {
 		ReportPortal.emitLog(
 				itemId, id -> {
 					SaveLogRQ rq = new SaveLogRQ();
@@ -461,7 +462,7 @@ public class ReportPortalUtils {
 	 * @param level   log level
 	 */
 	public static void sendLog(Maybe<String> itemId, String message, LogLevel level) {
-		sendLog(itemId, message, level, Calendar.getInstance().getTime());
+		sendLog(itemId, message, level, Instant.now());
 	}
 
 	/**

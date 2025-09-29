@@ -33,13 +33,13 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.intuit.karate.Results;
 import com.intuit.karate.Runner;
 import io.reactivex.Maybe;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import okhttp3.MultipartBody;
 import okio.Buffer;
 import org.apache.commons.lang3.tuple.Pair;
 import org.mockito.stubbing.Answer;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;

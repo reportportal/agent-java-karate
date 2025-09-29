@@ -50,10 +50,7 @@ public class OneExampleWithBackgroundFailedTest {
 			.map(e -> Pair.of(e, Stream.generate(() -> CommonUtils.namedId("step_")).limit(3).collect(Collectors.toList())))
 			.collect(Collectors.toList());
 	private final List<Pair<String, String>> nestedSteps = Arrays.asList(
-			Pair.of(
-					stepIds.get(0).getValue().get(0),
-					CommonUtils.namedId("nested_step_")
-			),
+			Pair.of(stepIds.get(0).getValue().get(0), CommonUtils.namedId("nested_step_")),
 			Pair.of(stepIds.get(1).getValue().get(0), CommonUtils.namedId("nested_step_"))
 	);
 

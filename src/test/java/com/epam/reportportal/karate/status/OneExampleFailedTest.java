@@ -97,7 +97,8 @@ public class OneExampleFailedTest {
 
 		verifyStatus(Arrays.asList(firstExampleCaptor.getValue(), secondExampleCaptor.getValue()), ItemStatus.PASSED, ItemStatus.FAILED);
 
-		List<FinishTestItemRQ> steps = Arrays.asList(firstExampleFirstStepCaptor.getValue(),
+		List<FinishTestItemRQ> steps = Arrays.asList(
+				firstExampleFirstStepCaptor.getValue(),
 				firstExampleSecondStepCaptor.getValue(),
 				secondExampleFirstStepCaptor.getValue(),
 				secondExampleSecondStepCaptor.getValue()

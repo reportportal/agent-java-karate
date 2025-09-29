@@ -76,10 +76,10 @@ public class HttpRequestLoggingTest {
 
 		assertThat(logs, hasSize(greaterThanOrEqualTo(2)));
 		List<String> messages = logs.stream().map(SaveLogRQ::getMessage).collect(Collectors.toList());
-		assertThat(messages,
-				hasItems(equalTo(
-								"Docstring:\n\n```\n{\n" + "  username: 'user',\n" + "  password: 'password',\n" + "  grant_type: 'password'\n"
-										+ "}\n```"),
+		assertThat(
+				messages, hasItems(
+						equalTo("Docstring:\n\n```\n{\n" + "  username: 'user',\n" + "  password: 'password',\n"
+								+ "  grant_type: 'password'\n" + "}\n```"),
 						containsString("{\"username\":\"user\",\"password\":\"password\",\"grant_type\":\"password\"}")
 				)
 		);

@@ -33,8 +33,8 @@ import java.util.stream.Stream;
 
 import static com.epam.reportportal.karate.utils.TestUtils.*;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.endsWith;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.*;
 

@@ -36,13 +36,18 @@ import com.intuit.karate.core.*;
 import com.intuit.karate.http.HttpRequest;
 import com.intuit.karate.http.Response;
 import io.reactivex.Maybe;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.util.*;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
@@ -63,7 +68,7 @@ public class ReportPortalHook implements RuntimeHook {
 	private final Map<String, Maybe<String>> backgroundIdMap = new ConcurrentHashMap<>();
 	private final Map<String, ItemStatus> backgroundStatusMap = new ConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> stepIdMap = new ConcurrentHashMap<>();
-	private final Map<Maybe<String>, Date> stepStartTimeMap = new ConcurrentHashMap<>();
+	private final Map<Maybe<String>, Instant> stepStartTimeMap = new ConcurrentHashMap<>();
 	private final Set<Maybe<String>> innerFeatures = Collections.newSetFromMap(new ConcurrentHashMap<>());
 	private volatile Thread shutDownHook;
 
@@ -175,7 +180,7 @@ public class ReportPortalHook implements RuntimeHook {
 						Maybe<String> itemId = launch.get().startTestItem(scenarioId, rq);
 						innerFeatures.add(itemId);
 						if (StringUtils.isNotBlank(rq.getDescription())) {
-							ReportPortalUtils.sendLog(itemId, rq.getDescription(), LogLevel.INFO, rq.getStartTime());
+							ReportPortalUtils.sendLog(itemId, rq.getDescription(), LogLevel.INFO, (Instant) rq.getStartTime());
 						}
 						return itemId;
 					}
@@ -192,7 +197,7 @@ public class ReportPortalHook implements RuntimeHook {
 	 */
 	@Nonnull
 	protected FinishTestItemRQ buildFinishFeatureRq(@Nonnull FeatureRuntime fr) {
-		return buildFinishTestItemRq(Calendar.getInstance().getTime(), fr.result.isFailed() ? ItemStatus.FAILED : ItemStatus.PASSED);
+		return buildFinishTestItemRq(Instant.now(), fr.result.isFailed() ? ItemStatus.FAILED : ItemStatus.PASSED);
 	}
 
 	@Override
@@ -298,7 +303,7 @@ public class ReportPortalHook implements RuntimeHook {
 	@Nonnull
 	@SuppressWarnings("unused")
 	protected FinishTestItemRQ buildFinishBackgroundRq(@Nullable StepResult stepResult, @Nonnull ScenarioRuntime sr) {
-		return buildFinishTestItemRq(Calendar.getInstance().getTime(), backgroundStatusMap.remove(sr.scenario.getUniqueId()));
+		return buildFinishTestItemRq(Instant.now(), backgroundStatusMap.remove(sr.scenario.getUniqueId()));
 	}
 
 	/**
@@ -335,17 +340,17 @@ public class ReportPortalHook implements RuntimeHook {
 	 * previous step startTime > current step startTime.
 	 *
 	 * @param stepId step ID.
-	 * @return step new startTime in Date format.
+	 * @return step new startTime in Instant format.
 	 */
 	@Nonnull
-	private Date getStepStartTime(@Nullable Maybe<String> stepId) {
-		Date currentStepStartTime = Calendar.getInstance().getTime();
+	private Instant getStepStartTime(@Nullable Maybe<String> stepId) {
+		Instant currentStepStartTime = Instant.now();
 		if (stepId == null || stepStartTimeMap.isEmpty()) {
 			return currentStepStartTime;
 		}
-		Date lastStepStartTime = stepStartTimeMap.get(stepId);
+		Instant lastStepStartTime = stepStartTimeMap.get(stepId);
 		if (lastStepStartTime.compareTo(currentStepStartTime) >= 0) {
-			currentStepStartTime.setTime(lastStepStartTime.getTime() + 1);
+			currentStepStartTime = lastStepStartTime.plus(1, ChronoUnit.MICROS);
 		}
 		return currentStepStartTime;
 	}
@@ -361,7 +366,7 @@ public class ReportPortalHook implements RuntimeHook {
 	protected StartTestItemRQ buildStartStepRq(@Nonnull Step step, @Nonnull ScenarioRuntime sr) {
 		StartTestItemRQ rq = ReportPortalUtils.buildStartStepRq(step, sr.scenario);
 		Maybe<String> stepId = stepIdMap.get(sr.scenario.getUniqueId());
-		Date startTime = getStepStartTime(stepId);
+		Instant startTime = getStepStartTime(stepId);
 		rq.setStartTime(startTime);
 		return rq;
 	}
@@ -388,7 +393,7 @@ public class ReportPortalHook implements RuntimeHook {
 
 		String scenarioId = sr.scenario.getUniqueId();
 		Maybe<String> stepId = launch.get().startTestItem(background ? backgroundId : scenarioIdMap.get(scenarioId), stepRq);
-		stepStartTimeMap.put(stepId, stepRq.getStartTime());
+		stepStartTimeMap.put(stepId, (Instant) stepRq.getStartTime());
 		stepIdMap.put(scenarioId, stepId);
 		ofNullable(stepRq.getParameters()).filter(params -> !params.isEmpty())
 				.ifPresent(params -> sendLog(stepId, String.format(PARAMETERS_PATTERN, formatParametersAsTable(params)), LogLevel.INFO));
@@ -430,7 +435,7 @@ public class ReportPortalHook implements RuntimeHook {
 	@Nonnull
 	@SuppressWarnings("unused")
 	protected FinishTestItemRQ buildFinishStepRq(@Nonnull StepResult stepResult, @Nonnull ScenarioRuntime sr) {
-		return buildFinishTestItemRq(Calendar.getInstance().getTime(), getStepStatus(stepResult.getResult().getStatus()));
+		return buildFinishTestItemRq(Instant.now(), getStepStatus(stepResult.getResult().getStatus()));
 	}
 
 	private void saveBackgroundStatus(@Nonnull StepResult stepResult, @Nonnull ScenarioRuntime sr) {

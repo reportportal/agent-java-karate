@@ -27,6 +27,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -70,7 +71,10 @@ public class LaunchRequiredFieldsTest {
 		StartLaunchRQ launchStart = startCaptor.getValue();
 		assertThat(launchStart.getName(), startsWith("My-test-launch"));
 		assertThat(launchStart.getStartTime(), notNullValue());
-		assertThat(System.currentTimeMillis() - launchStart.getStartTime().getTime(), not(greaterThan(TimeUnit.SECONDS.toMillis(10))));
+		assertThat(
+				System.currentTimeMillis() - ((Date) launchStart.getStartTime()).getTime(),
+				not(greaterThan(TimeUnit.SECONDS.toMillis(10)))
+		);
 
 	}
 }
