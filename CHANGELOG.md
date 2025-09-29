@@ -5,6 +5,8 @@
 - Client version updated on [5.4.3](https://github.com/reportportal/client-java/releases/tag/5.4.3), by @HardNorth
 - Replace "jsr305" annotations with "jakarta.annotation-api", by @HardNorth
 - Switch on use of `Instant` class instead of `Date` to get more timestamp precision, by @HardNorth
+### Fixed
+- Issue [#43](https://github.com/reportportal/agent-java-karate/issues/43) NullpointerException in case of `null` parameter in Examples, by @HardNorth
 
 ## [5.2.2]
 ### Changed

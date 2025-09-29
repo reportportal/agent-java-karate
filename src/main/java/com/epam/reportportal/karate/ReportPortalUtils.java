@@ -87,7 +87,7 @@ public class ReportPortalUtils {
 		return example.entrySet()
 				.stream()
 				.sorted(Map.Entry.comparingByKey())
-				.map(e -> e.getKey() + KEY_VALUE_SEPARATOR + e.getValue().toString())
+				.map(e -> e.getKey() + KEY_VALUE_SEPARATOR + ofNullable(e.getValue()).map(Object::toString).orElse(NULL_VALUE))
 				.collect(Collectors.joining(PARAMETER_ITEMS_DELIMITER, PARAMETER_ITEMS_START, PARAMETER_ITEMS_END));
 	}
 
