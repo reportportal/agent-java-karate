@@ -78,7 +78,8 @@ public class SimpleFailureLoggingTest {
 		SaveLogRQ log = logs.get(logs.size() - 1);
 		assertThat(log.getItemUuid(), oneOf(stepIds.toArray(new String[0])));
 		assertThat(log.getLaunchUuid(), equalTo(launchUuid));
-		assertThat(log.getMessage(),
+		assertThat(
+				log.getMessage(),
 				equalTo("Then assert actualFour != four\n" + "did not evaluate to 'true': actualFour != four\n"
 						+ "classpath:feature/simple_failed.feature:6")
 		);

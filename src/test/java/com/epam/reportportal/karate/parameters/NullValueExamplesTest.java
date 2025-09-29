@@ -14,49 +14,52 @@
  * limitations under the License.
  */
 
-package com.epam.reportportal.karate.launch;
+package com.epam.reportportal.karate.parameters;
 
 import com.epam.reportportal.karate.utils.TestUtils;
 import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
-import com.epam.ta.reportportal.ws.model.launch.StartLaunchRQ;
+import com.epam.ta.reportportal.ws.model.ParameterResource;
+import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.intuit.karate.Results;
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
-import java.util.Date;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.epam.reportportal.karate.utils.TestUtils.*;
+import static com.epam.reportportal.utils.ParameterUtils.NULL_VALUE;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.*;
 
-public class LaunchRequiredFieldsTest {
-	private static final String TEST_FEATURE = "classpath:feature/simple.feature";
+public class NullValueExamplesTest {
+	private static final String TEST_FEATURE = "classpath:feature/null_examples.feature";
 	private final String featureId = CommonUtils.namedId("feature_");
-	private final String scenarioId = CommonUtils.namedId("scenario_");
-	private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_")).limit(3).collect(Collectors.toList());
+	private final List<String> exampleIds = Stream.generate(() -> CommonUtils.namedId("example_")).limit(1).collect(Collectors.toList());
+	private final List<Pair<String, List<String>>> stepIds = exampleIds.stream()
+			.map(e -> Pair.of(e, Stream.generate(() -> CommonUtils.namedId("step_")).limit(1).collect(Collectors.toList())))
+			.collect(Collectors.toList());
 
 	private final ReportPortalClient client = mock(ReportPortalClient.class);
 	private final ReportPortal rp = ReportPortal.create(client, standardParameters(), testExecutor());
 
 	@BeforeEach
 	public void setupMock() {
-		mockLaunch(client, null, featureId, scenarioId, stepIds);
+		mockLaunch(client, null, featureId, stepIds);
 		mockBatchLogging(client);
 	}
 
 	@ParameterizedTest
 	@ValueSource(booleans = { true, false })
-	public void verify_start_launch_request_contains_required_fields(boolean report) {
+	public void test_examples_null_value(boolean report) {
 		Results results;
 		if (report) {
 			results = TestUtils.runAsReport(rp, TEST_FEATURE);
@@ -65,16 +68,21 @@ public class LaunchRequiredFieldsTest {
 		}
 		assertThat(results.getFailCount(), equalTo(0));
 
-		ArgumentCaptor<StartLaunchRQ> startCaptor = ArgumentCaptor.forClass(StartLaunchRQ.class);
-		verify(client).startLaunch(startCaptor.capture());
+		ArgumentCaptor<StartTestItemRQ> captor = ArgumentCaptor.forClass(StartTestItemRQ.class);
+		verify(client, times(1)).startTestItem(captor.capture());
+		verify(client, times(1)).startTestItem(same(featureId), captor.capture());
+		verify(client, times(1)).startTestItem(same(exampleIds.get(0)), captor.capture());
 
-		StartLaunchRQ launchStart = startCaptor.getValue();
-		assertThat(launchStart.getName(), startsWith("My-test-launch"));
-		assertThat(launchStart.getStartTime(), notNullValue());
+		List<StartTestItemRQ> items = captor.getAllValues();
+		assertThat(items, hasSize(3));
+
+		StartTestItemRQ firstScenarioRq = items.get(1);
+		List<ParameterResource> firstParameters = firstScenarioRq.getParameters();
+		assertThat(firstParameters, hasSize(1));
+
 		assertThat(
-				System.currentTimeMillis() - ((Date) launchStart.getStartTime()).getTime(),
-				not(greaterThan(TimeUnit.SECONDS.toMillis(10)))
+				firstParameters.stream().map(p -> p.getKey() + ":" + p.getValue()).collect(Collectors.toSet()),
+				hasItem("vara:" + NULL_VALUE)
 		);
-
 	}
 }

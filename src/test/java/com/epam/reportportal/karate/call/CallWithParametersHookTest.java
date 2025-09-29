@@ -37,9 +37,9 @@ import java.util.stream.Stream;
 
 import static com.epam.reportportal.karate.utils.TestUtils.*;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.*;
 import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.startsWith;
-import static org.hamcrest.Matchers.*;
 import static org.mockito.Mockito.*;
 
 public class CallWithParametersHookTest {
@@ -58,14 +58,16 @@ public class CallWithParametersHookTest {
 			.limit(3)
 			.collect(Collectors.toList());
 
-	private final List<Pair<String, Collection<Pair<String, List<String>>>>> features = Stream.of(Pair.of(featureId,
+	private final List<Pair<String, Collection<Pair<String, List<String>>>>> features = Stream.of(Pair.of(
+					featureId,
 					(Collection<Pair<String, List<String>>>) Collections.singletonList(Pair.of(scenarioId, stepIds))
 			))
 			.collect(Collectors.toList());
 	private final List<Pair<String, String>> nestedSteps = Stream.concat(
-			Stream.of(Pair.of(innerFeatureId, innerScenarioId)),
-			innerStepIds.stream().map(id -> Pair.of(innerScenarioId, id))
-	).collect(Collectors.toList());
+					Stream.of(Pair.of(innerFeatureId, innerScenarioId)),
+					innerStepIds.stream().map(id -> Pair.of(innerScenarioId, id))
+			)
+			.collect(Collectors.toList());
 
 	private final ReportPortalClient client = mock(ReportPortalClient.class);
 	private final ReportPortal rp = ReportPortal.create(client, standardParameters(), testExecutor());

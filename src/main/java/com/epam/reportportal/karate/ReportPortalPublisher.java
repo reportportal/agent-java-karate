@@ -29,12 +29,16 @@ import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.epam.ta.reportportal.ws.model.launch.StartLaunchRQ;
 import com.intuit.karate.core.*;
 import io.reactivex.Maybe;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.util.*;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import static com.epam.reportportal.karate.ReportPortalUtils.*;
@@ -51,7 +55,7 @@ public class ReportPortalPublisher {
 	protected final MemoizingSupplier<Launch> launch;
 	private final Map<String, Maybe<String>> featureIdMap = new HashMap<>();
 	private final Map<String, Maybe<String>> scenarioIdMap = new HashMap<>();
-	private final Map<Maybe<String>, Long> stepStartTimeMap = new HashMap<>();
+	private final Map<Maybe<String>, Instant> stepStartTimeMap = new HashMap<>();
 	private Maybe<String> backgroundId;
 	private ItemStatus backgroundStatus;
 	private Maybe<String> stepId;
@@ -137,7 +141,7 @@ public class ReportPortalPublisher {
 	 */
 	@Nonnull
 	protected FinishTestItemRQ buildFinishFeatureRq(@Nonnull FeatureResult featureResult) {
-		return buildFinishTestItemRq(Calendar.getInstance().getTime(), featureResult.isFailed() ? ItemStatus.FAILED : ItemStatus.PASSED);
+		return buildFinishTestItemRq(Instant.now(), featureResult.isFailed() ? ItemStatus.FAILED : ItemStatus.PASSED);
 	}
 
 	/**
@@ -257,7 +261,7 @@ public class ReportPortalPublisher {
 	@Nonnull
 	@SuppressWarnings("unused")
 	protected FinishTestItemRQ buildFinishBackgroundRq(@Nullable StepResult stepResult, @Nonnull ScenarioResult scenarioResult) {
-		return buildFinishTestItemRq(Calendar.getInstance().getTime(), backgroundStatus);
+		return buildFinishTestItemRq(Instant.now(), backgroundStatus);
 
 	}
 
@@ -282,19 +286,19 @@ public class ReportPortalPublisher {
 	 * previous step startTime > current step startTime.
 	 *
 	 * @param stepId step ID.
-	 * @return step new startTime in Date format.
+	 * @return step new startTime in Instant format.
 	 */
-	private Date getStepStartTime(@Nonnull Maybe<String> stepId) {
-		long currentStepStartTime = Calendar.getInstance().getTime().getTime();
+	private Instant getStepStartTime(@Nonnull Maybe<String> stepId) {
+		Instant currentStepStartTime = Instant.now();
 
 		if (!stepStartTimeMap.isEmpty()) {
-			long lastStepStartTime = stepStartTimeMap.get(stepId);
+			Instant lastStepStartTime = stepStartTimeMap.get(stepId);
 
-			if (lastStepStartTime >= currentStepStartTime) {
-				currentStepStartTime += (lastStepStartTime - currentStepStartTime) + 1;
+			if (lastStepStartTime.compareTo(currentStepStartTime) >= 0) {
+				currentStepStartTime = lastStepStartTime.plus(1, ChronoUnit.MICROS);
 			}
 		}
-		return new Date(currentStepStartTime);
+		return currentStepStartTime;
 	}
 
 	/**
@@ -307,7 +311,7 @@ public class ReportPortalPublisher {
 	@Nonnull
 	protected StartTestItemRQ buildStartStepRq(@Nonnull StepResult stepResult, @Nonnull ScenarioResult scenarioResult) {
 		StartTestItemRQ rq = ReportPortalUtils.buildStartStepRq(stepResult.getStep(), scenarioResult.getScenario());
-		Date startTime = getStepStartTime(stepId);
+		Instant startTime = getStepStartTime(stepId);
 		rq.setStartTime(startTime);
 		return rq;
 	}
@@ -331,7 +335,7 @@ public class ReportPortalPublisher {
 						background && backgroundId != null ? backgroundId : scenarioIdMap.get(scenarioResult.getScenario().getName()),
 						stepRq
 				);
-		stepStartTimeMap.put(stepId, stepRq.getStartTime().getTime());
+		stepStartTimeMap.put(stepId, (Instant) stepRq.getStartTime());
 		ofNullable(stepRq.getParameters()).filter(params -> !params.isEmpty())
 				.ifPresent(params -> sendLog(stepId, String.format(PARAMETERS_PATTERN, formatParametersAsTable(params)), LogLevel.INFO));
 		ofNullable(step.getTable()).ifPresent(table -> sendLog(stepId, "Table:\n\n" + formatDataTable(table.getRows()), LogLevel.INFO));
@@ -351,7 +355,7 @@ public class ReportPortalPublisher {
 	@Nonnull
 	@SuppressWarnings("unused")
 	protected FinishTestItemRQ buildFinishStepRq(@Nonnull StepResult stepResult, @Nonnull ScenarioResult scenarioResult) {
-		return buildFinishTestItemRq(Calendar.getInstance().getTime(), getStepStatus(stepResult.getResult().getStatus()));
+		return buildFinishTestItemRq(Instant.now(), getStepStatus(stepResult.getResult().getStatus()));
 	}
 
 	@SuppressWarnings("unused")

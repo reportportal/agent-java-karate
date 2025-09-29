@@ -28,6 +28,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -79,13 +80,13 @@ public class SimpleTimingTest {
 
 		assertThat(
 				"Launch start time is greater than Feature start time.",
-				featureRq.getStartTime(),
-				greaterThanOrEqualTo(launchRq.getStartTime())
+				(Date) featureRq.getStartTime(),
+				greaterThanOrEqualTo((Date) launchRq.getStartTime())
 		);
 		assertThat(
 				"Feature start time is greater than Scenario start time.",
-				scenarioRq.getStartTime(),
-				greaterThanOrEqualTo(featureRq.getStartTime())
+				(Date) scenarioRq.getStartTime(),
+				greaterThanOrEqualTo((Date) featureRq.getStartTime())
 		);
 
 		List<StartTestItemRQ> steps = stepCaptor.getAllValues();
@@ -98,18 +99,18 @@ public class SimpleTimingTest {
 
 		assertThat(
 				"Scenario start time is greater than Step start time.",
-				firstStep.getStartTime(),
-				greaterThanOrEqualTo(scenarioRq.getStartTime())
+				(Date) firstStep.getStartTime(),
+				greaterThanOrEqualTo((Date) scenarioRq.getStartTime())
 		);
 		assertThat(
 				"First Step start time is greater or equal than Second Step start time.",
-				secondStep.getStartTime(),
-				greaterThan(firstStep.getStartTime())
+				(Date) secondStep.getStartTime(),
+				greaterThan((Date) firstStep.getStartTime())
 		);
 		assertThat(
 				"Second Step start time is greater or equal than Third Step start time.",
-				thirdStep.getStartTime(),
-				greaterThan(secondStep.getStartTime())
+				(Date) thirdStep.getStartTime(),
+				greaterThan((Date) secondStep.getStartTime())
 		);
 	}
 }

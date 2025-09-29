@@ -42,8 +42,8 @@ import java.util.stream.Stream;
 import static com.epam.reportportal.karate.utils.TestUtils.*;
 import static java.util.stream.Stream.ofNullable;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.startsWith;
 import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.*;
 
@@ -115,7 +115,8 @@ public class ExamplesStepParametersTest {
 		List<String> stepIdList = stepIds.stream().flatMap(e -> e.getValue().stream()).collect(Collectors.toList());
 		assertThat(logs.keySet(), hasSize(stepIdList.size()));
 		stepIdList.forEach(id -> assertThat(logs, hasKey(id)));
-		assertThat(logs.values().stream().map(SaveLogRQ::getMessage).collect(Collectors.toList()),
+		assertThat(
+				logs.values().stream().map(SaveLogRQ::getMessage).collect(Collectors.toList()),
 				everyItem(startsWith("Parameters:\n\n"))
 		);
 	}

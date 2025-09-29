@@ -36,8 +36,8 @@ import java.util.stream.Stream;
 import static com.epam.reportportal.karate.utils.TestUtils.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
-import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
 
 public class RetryFailedTest {
 	private static final String TEST_FEATURE = "classpath:feature/simple_failed.feature";
@@ -46,7 +46,8 @@ public class RetryFailedTest {
 	private final List<String> scenarioIds = Stream.generate(() -> CommonUtils.namedId("scenario_")).limit(2).collect(Collectors.toList());
 	private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_")).limit(6).collect(Collectors.toList());
 
-	private final List<Pair<String, List<String>>> scenarioSteps = Stream.of(Pair.of(scenarioIds.get(0), stepIds.subList(0, 3)),
+	private final List<Pair<String, List<String>>> scenarioSteps = Stream.of(
+					Pair.of(scenarioIds.get(0), stepIds.subList(0, 3)),
 					Pair.of(scenarioIds.get(1), stepIds.subList(3, 6))
 			)
 			.collect(Collectors.toList());
