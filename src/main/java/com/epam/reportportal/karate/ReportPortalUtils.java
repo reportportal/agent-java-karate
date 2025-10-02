@@ -477,7 +477,7 @@ public class ReportPortalUtils {
 			rq.setItemUuid(id);
 			rq.setLevel(LogLevel.INFO.name());
 			rq.setLogTime(Instant.now());
-			rq.setMessage("Attachment: " + embed.getFile().getName());
+			rq.setMessage("Attachment: " + embed.getResourceType().contentType);
 
 			SaveLogRQ.File file = new SaveLogRQ.File();
 			file.setName(embed.getFile().getName());

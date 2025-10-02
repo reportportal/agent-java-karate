@@ -26,6 +26,7 @@ import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.utils.MemoizingSupplier;
 import com.epam.reportportal.utils.StatusEvaluation;
 import com.epam.reportportal.utils.formatting.MarkdownUtils;
+import com.epam.reportportal.utils.reflect.Accessible;
 import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
@@ -44,10 +45,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
@@ -322,6 +320,16 @@ public class ReportPortalHook implements RuntimeHook {
 		}
 	}
 
+	/**
+	 * Embed an attachment to ReportPortal.
+	 *
+	 * @param itemId item ID future
+	 * @param embed  Karate's Embed object
+	 */
+	protected void embedAttachment(Maybe<String> itemId, Embed embed) {
+		ReportPortalUtils.embedAttachment(itemId, embed);
+	}
+
 	@Override
 	public void afterScenario(ScenarioRuntime sr) {
 		Maybe<String> scenarioId = scenarioIdMap.get(sr.scenario.getUniqueId());
@@ -330,6 +338,15 @@ public class ReportPortalHook implements RuntimeHook {
 		}
 
 		finishBackground(null, sr);
+
+		try {
+			@SuppressWarnings("unchecked")
+			List<Embed> embeddedEntities = (List<Embed>) new Accessible(sr).field("embeds").getValue();
+			ofNullable(embeddedEntities).ifPresent(embeds -> embeds.forEach(embed -> embedAttachment(scenarioId, embed)));
+		} catch (Exception e) {
+			LOGGER.warn("Unable to get scenario embeddings", e);
+		}
+
 		FinishTestItemRQ rq = buildFinishScenarioRq(sr);
 		//noinspection ReactiveStreamsUnusedPublisher
 		launch.get().finishTestItem(scenarioId, rq);
@@ -406,16 +423,6 @@ public class ReportPortalHook implements RuntimeHook {
 	}
 
 	/**
-	 * Embed an attachment to ReportPortal.
-	 *
-	 * @param itemId     item ID future
-	 * @param embed      Karate's Embed object
-	 */
-	protected void embedAttachment(Maybe<String> itemId, Embed embed) {
-		ReportPortalUtils.embedAttachment(itemId, embed);
-	}
-
-	/**
 	 * Send Step execution results to ReportPortal.
 	 *
 	 * @param stepResult step execution results
@@ -426,7 +433,6 @@ public class ReportPortalHook implements RuntimeHook {
 		Step step = stepResult.getStep();
 		Result result = stepResult.getResult();
 
-		// Embed attachments before failure logging
 		ofNullable(stepResult.getEmbeds()).ifPresent(embeds -> embeds.forEach(embed -> embedAttachment(stepId, embed)));
 
 		if (result.isFailed()) {
