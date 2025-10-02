@@ -326,23 +326,34 @@ public class ReportPortalHook implements RuntimeHook {
 	 * @param itemId item ID future
 	 * @param embed  Karate's Embed object
 	 */
-	protected void embedAttachment(Maybe<String> itemId, Embed embed) {
+	protected void embedAttachment(@Nonnull Maybe<String> itemId, @Nonnull Embed embed) {
 		ReportPortalUtils.embedAttachment(itemId, embed);
+	}
+
+	/**
+	 * Embed an attachment to ReportPortal.
+	 *
+	 * @param itemId           item ID future
+	 * @param embeddedEntities a list of Karate's Embed object
+	 */
+	protected void embedAttachments(@Nonnull Maybe<String> itemId, @Nullable List<Embed> embeddedEntities) {
+		ofNullable(embeddedEntities).ifPresent(embeds -> embeds.forEach(embed -> embedAttachment(itemId, embed)));
 	}
 
 	@Override
 	public void afterScenario(ScenarioRuntime sr) {
 		Maybe<String> scenarioId = scenarioIdMap.get(sr.scenario.getUniqueId());
+		finishBackground(null, sr);
+
 		if (scenarioId == null) {
 			LOGGER.error("ERROR: Trying to finish unspecified scenario.");
+			return;
 		}
-
-		finishBackground(null, sr);
 
 		try {
 			@SuppressWarnings("unchecked")
 			List<Embed> embeddedEntities = (List<Embed>) new Accessible(sr).field("embeds").getValue();
-			ofNullable(embeddedEntities).ifPresent(embeds -> embeds.forEach(embed -> embedAttachment(scenarioId, embed)));
+			embedAttachments(scenarioId, embeddedEntities);
 		} catch (Exception e) {
 			LOGGER.warn("Unable to get scenario embeddings", e);
 		}

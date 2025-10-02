@@ -471,7 +471,7 @@ public class ReportPortalUtils {
 	 * @param itemId item ID future
 	 * @param embed  Karate's Embed object
 	 */
-	public static void embedAttachment(Maybe<String> itemId, Embed embed) {
+	public static void embedAttachment(@Nonnull Maybe<String> itemId, @Nonnull Embed embed) {
 		ReportPortal.emitLog(itemId, id -> {
 			SaveLogRQ rq = new SaveLogRQ();
 			rq.setItemUuid(id);

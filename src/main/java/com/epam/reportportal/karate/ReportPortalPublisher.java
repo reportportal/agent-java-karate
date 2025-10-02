@@ -411,6 +411,16 @@ public class ReportPortalPublisher {
 	}
 
 	/**
+	 * Embed an attachment to ReportPortal.
+	 *
+	 * @param itemId           item ID future
+	 * @param embeddedEntities a list of Karate's Embed object
+	 */
+	protected void embedAttachments(@Nonnull Maybe<String> itemId, @Nullable List<Embed> embeddedEntities) {
+		ofNullable(embeddedEntities).ifPresent(embeds -> embeds.forEach(embed -> embedAttachment(itemId, embed)));
+	}
+
+	/**
 	 * Send Step execution results to ReportPortal.
 	 *
 	 * @param stepResult step execution results
@@ -423,8 +433,7 @@ public class ReportPortalPublisher {
 			sendLog(stepId, stepLog, LogLevel.DEBUG);
 		}
 
-		// Embed attachments before failure logging
-		ofNullable(stepResult.getEmbeds()).ifPresent(embeds -> embeds.forEach(embed -> embedAttachment(stepId, embed)));
+		embedAttachments(stepId, stepResult.getEmbeds());
 
 		if (result.isFailed()) {
 			String fullErrorMessage = step.getPrefix() + " " + step.getText();
