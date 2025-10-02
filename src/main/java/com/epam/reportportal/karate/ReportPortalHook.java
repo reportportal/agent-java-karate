@@ -355,7 +355,7 @@ public class ReportPortalHook implements RuntimeHook {
 			List<Embed> embeddedEntities = (List<Embed>) new Accessible(sr).field("embeds").getValue();
 			embedAttachments(scenarioId, embeddedEntities);
 		} catch (Exception e) {
-			LOGGER.warn("Unable to get scenario embeddings", e);
+			LOGGER.warn("Unable to retrieve scenario embeddings; attachments (such as screenshots or logs) will not be reported for this scenario. Test execution and reporting will continue. Exception details:", e);
 		}
 
 		FinishTestItemRQ rq = buildFinishScenarioRq(sr);
