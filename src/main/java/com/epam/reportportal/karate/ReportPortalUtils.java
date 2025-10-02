@@ -466,6 +466,30 @@ public class ReportPortalUtils {
 	}
 
 	/**
+	 * Embed an attachment to ReportPortal.
+	 *
+	 * @param itemId item ID future
+	 * @param embed  Karate's Embed object
+	 */
+	public static void embedAttachment(@Nonnull Maybe<String> itemId, @Nonnull Embed embed) {
+		ReportPortal.emitLog(itemId, id -> {
+			SaveLogRQ rq = new SaveLogRQ();
+			rq.setItemUuid(id);
+			rq.setLevel(LogLevel.INFO.name());
+			rq.setLogTime(Instant.now());
+			rq.setMessage("Attachment: " + embed.getResourceType().contentType);
+
+			SaveLogRQ.File file = new SaveLogRQ.File();
+			file.setName(embed.getFile().getName());
+			file.setContent(embed.getBytes());
+			file.setContentType(embed.getResourceType().contentType);
+			rq.setFile(file);
+
+			return rq;
+		});
+	}
+
+	/**
 	 * Finish sending Launch data to ReportPortal.
 	 *
 	 * @param launch       Launch object to finish

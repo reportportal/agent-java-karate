@@ -35,6 +35,7 @@ import com.intuit.karate.Runner;
 import io.reactivex.Maybe;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okio.Buffer;
 import org.apache.commons.lang3.tuple.Pair;
@@ -230,6 +231,23 @@ public class TestUtils {
 					}
 				})
 				.flatMap(Collection::stream)
+				.collect(Collectors.toList());
+	}
+
+	public static List<Pair<String, byte[]>> extractBinaryParts(List<MultipartBody.Part> parts) {
+		return parts.stream()
+				.filter(p -> ofNullable(p.headers()).map(headers -> headers.get("Content-Disposition"))
+						.map(h -> h.contains(Constants.LOG_REQUEST_BINARY_PART))
+						.orElse(false))
+				.map(MultipartBody.Part::body)
+				.map(b -> {
+					Buffer buf = new Buffer();
+					try {
+						b.writeTo(buf);
+					} catch (IOException ignore) {
+					}
+					return Pair.of(ofNullable(b.contentType()).map(MediaType::toString).orElse(null), buf.readByteArray());
+				})
 				.collect(Collectors.toList());
 	}
 }

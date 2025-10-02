@@ -401,6 +401,26 @@ public class ReportPortalPublisher {
 	}
 
 	/**
+	 * Embed an attachment to ReportPortal.
+	 *
+	 * @param itemId item ID future
+	 * @param embed  Karate's Embed object
+	 */
+	protected void embedAttachment(Maybe<String> itemId, Embed embed) {
+		ReportPortalUtils.embedAttachment(itemId, embed);
+	}
+
+	/**
+	 * Embed an attachment to ReportPortal.
+	 *
+	 * @param itemId           item ID future
+	 * @param embeddedEntities a list of Karate's Embed object
+	 */
+	protected void embedAttachments(@Nonnull Maybe<String> itemId, @Nullable List<Embed> embeddedEntities) {
+		ofNullable(embeddedEntities).ifPresent(embeds -> embeds.forEach(embed -> embedAttachment(itemId, embed)));
+	}
+
+	/**
 	 * Send Step execution results to ReportPortal.
 	 *
 	 * @param stepResult step execution results
@@ -412,6 +432,9 @@ public class ReportPortalPublisher {
 		if (isNotBlank(stepLog)) {
 			sendLog(stepId, stepLog, LogLevel.DEBUG);
 		}
+
+		embedAttachments(stepId, stepResult.getEmbeds());
+
 		if (result.isFailed()) {
 			String fullErrorMessage = step.getPrefix() + " " + step.getText();
 			String errorMessage = result.getErrorMessage();

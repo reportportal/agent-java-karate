@@ -26,6 +26,7 @@ import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.utils.MemoizingSupplier;
 import com.epam.reportportal.utils.StatusEvaluation;
 import com.epam.reportportal.utils.formatting.MarkdownUtils;
+import com.epam.reportportal.utils.reflect.Accessible;
 import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
@@ -44,10 +45,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
@@ -322,14 +320,47 @@ public class ReportPortalHook implements RuntimeHook {
 		}
 	}
 
+	/**
+	 * Embed an attachment to ReportPortal.
+	 *
+	 * @param itemId item ID future
+	 * @param embed  Karate's Embed object
+	 */
+	protected void embedAttachment(@Nonnull Maybe<String> itemId, @Nonnull Embed embed) {
+		ReportPortalUtils.embedAttachment(itemId, embed);
+	}
+
+	/**
+	 * Embed an attachment to ReportPortal.
+	 *
+	 * @param itemId           item ID future
+	 * @param embeddedEntities a list of Karate's Embed object
+	 */
+	protected void embedAttachments(@Nonnull Maybe<String> itemId, @Nullable List<Embed> embeddedEntities) {
+		ofNullable(embeddedEntities).ifPresent(embeds -> embeds.forEach(embed -> embedAttachment(itemId, embed)));
+	}
+
 	@Override
 	public void afterScenario(ScenarioRuntime sr) {
 		Maybe<String> scenarioId = scenarioIdMap.get(sr.scenario.getUniqueId());
+		finishBackground(null, sr);
+
 		if (scenarioId == null) {
 			LOGGER.error("ERROR: Trying to finish unspecified scenario.");
+			return;
 		}
 
-		finishBackground(null, sr);
+		try {
+			@SuppressWarnings("unchecked")
+			List<Embed> embeddedEntities = (List<Embed>) new Accessible(sr).field("embeds").getValue();
+			embedAttachments(scenarioId, embeddedEntities);
+		} catch (Exception e) {
+			LOGGER.warn(
+					"Unable to retrieve scenario embeddings; attachments (such as screenshots or logs) will not be reported for this" //
+							+ " scenario. Test execution and reporting will continue. Exception details:", e
+			);
+		}
+
 		FinishTestItemRQ rq = buildFinishScenarioRq(sr);
 		//noinspection ReactiveStreamsUnusedPublisher
 		launch.get().finishTestItem(scenarioId, rq);
@@ -415,6 +446,9 @@ public class ReportPortalHook implements RuntimeHook {
 		Maybe<String> stepId = stepIdMap.get(sr.scenario.getUniqueId());
 		Step step = stepResult.getStep();
 		Result result = stepResult.getResult();
+
+		ofNullable(stepResult.getEmbeds()).ifPresent(embeds -> embeds.forEach(embed -> embedAttachment(stepId, embed)));
+
 		if (result.isFailed()) {
 			String fullErrorMessage = step.getPrefix() + " " + step.getText();
 			String errorMessage = result.getErrorMessage();
