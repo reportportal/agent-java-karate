@@ -406,6 +406,16 @@ public class ReportPortalHook implements RuntimeHook {
 	}
 
 	/**
+	 * Embed an attachment to ReportPortal.
+	 *
+	 * @param itemId     item ID future
+	 * @param embed      Karate's Embed object
+	 */
+	protected void embedAttachment(Maybe<String> itemId, Embed embed) {
+		ReportPortalUtils.embedAttachment(itemId, embed);
+	}
+
+	/**
 	 * Send Step execution results to ReportPortal.
 	 *
 	 * @param stepResult step execution results
@@ -415,6 +425,10 @@ public class ReportPortalHook implements RuntimeHook {
 		Maybe<String> stepId = stepIdMap.get(sr.scenario.getUniqueId());
 		Step step = stepResult.getStep();
 		Result result = stepResult.getResult();
+
+		// Embed attachments before failure logging
+		ofNullable(stepResult.getEmbeds()).ifPresent(embeds -> embeds.forEach(embed -> embedAttachment(stepId, embed)));
+
 		if (result.isFailed()) {
 			String fullErrorMessage = step.getPrefix() + " " + step.getText();
 			String errorMessage = result.getErrorMessage();
