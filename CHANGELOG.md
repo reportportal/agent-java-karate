@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+## [5.3.1]
 ### Added
 - Attachment logging, by @HardNorth
 
