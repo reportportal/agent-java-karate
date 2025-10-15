@@ -200,7 +200,7 @@ public class ReportPortalHook implements RuntimeHook {
 
 	@Override
 	public void afterFeature(FeatureRuntime fr) {
-		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.remove(getFeatureNameForReport(fr))).map(Supplier::get);
+		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.get(getFeatureNameForReport(fr))).map(Supplier::get);
 		if (optionalId.isEmpty()) {
 			LOGGER.error("ERROR: Trying to finish unspecified feature.");
 		}
@@ -342,7 +342,7 @@ public class ReportPortalHook implements RuntimeHook {
 
 	@Override
 	public void afterScenario(ScenarioRuntime sr) {
-		Maybe<String> scenarioId = scenarioIdMap.remove(sr.scenario.getUniqueId());
+		Maybe<String> scenarioId = scenarioIdMap.get(sr.scenario.getUniqueId());
 		finishBackground(null, sr);
 
 		if (scenarioId == null) {
@@ -490,7 +490,7 @@ public class ReportPortalHook implements RuntimeHook {
 		}
 
 		sendStepResults(stepResult, sr);
-		Maybe<String> stepId = stepIdMap.remove(sr.scenario.getUniqueId());
+		Maybe<String> stepId = stepIdMap.get(sr.scenario.getUniqueId());
 		if (stepId == null) {
 			LOGGER.error("ERROR: Trying to finish unspecified step.");
 			return;
