@@ -43,6 +43,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -472,21 +473,23 @@ public class ReportPortalUtils {
 	 * @param embed  Karate's Embed object
 	 */
 	public static void embedAttachment(@Nonnull Maybe<String> itemId, @Nonnull Embed embed) {
-		ReportPortal.emitLog(itemId, id -> {
-			SaveLogRQ rq = new SaveLogRQ();
-			rq.setItemUuid(id);
-			rq.setLevel(LogLevel.INFO.name());
-			rq.setLogTime(Instant.now());
-			rq.setMessage("Attachment: " + embed.getResourceType().contentType);
+		ReportPortal.emitLog(
+				itemId, id -> {
+					SaveLogRQ rq = new SaveLogRQ();
+					rq.setItemUuid(id);
+					rq.setLevel(LogLevel.INFO.name());
+					rq.setLogTime(Instant.now());
+					rq.setMessage("Attachment: " + embed.getResourceType().contentType);
 
-			SaveLogRQ.File file = new SaveLogRQ.File();
-			file.setName(embed.getFile().getName());
-			file.setContent(embed.getBytes());
-			file.setContentType(embed.getResourceType().contentType);
-			rq.setFile(file);
+					SaveLogRQ.File file = new SaveLogRQ.File();
+					file.setName(embed.getFile().getName());
+					file.setContent(embed.getBytes());
+					file.setContentType(embed.getResourceType().contentType);
+					rq.setFile(file);
 
-			return rq;
-		});
+					return rq;
+				}
+		);
 	}
 
 	/**
@@ -538,5 +541,37 @@ public class ReportPortalUtils {
 	 */
 	public static String getInnerFeatureName(String name) {
 		return FEATURE_TAG + name;
+	}
+
+	/**
+	 * Get step start time. To keep the steps order in case previous step startTime == current step startTime or
+	 * previous step startTime > current step startTime.
+	 *
+	 * @param scenarioUniqueId Karate's Scenario Unique ID, a key for stepStartTimeMap
+	 * @param stepStartTimeMap a holder for start times for every particular scenario
+	 * @param useMicroseconds  if server supports microseconds
+	 * @return step new startTime in Instant format.
+	 */
+	public static Instant getStepStartTime(@Nullable String scenarioUniqueId, Map<String, Instant> stepStartTimeMap,
+			boolean useMicroseconds) {
+		Instant currentStepStartTime = Instant.now();
+		if (scenarioUniqueId == null || stepStartTimeMap.isEmpty()) {
+			stepStartTimeMap.put(scenarioUniqueId, currentStepStartTime);
+			return currentStepStartTime;
+		}
+		Instant lastStepStartTime = stepStartTimeMap.get(scenarioUniqueId);
+		if (lastStepStartTime == null) {
+			stepStartTimeMap.put(scenarioUniqueId, currentStepStartTime);
+			return currentStepStartTime;
+		}
+		if (lastStepStartTime.compareTo(currentStepStartTime) >= 0) {
+			if (useMicroseconds) {
+				currentStepStartTime = lastStepStartTime.plus(1, ChronoUnit.MICROS);
+			} else {
+				currentStepStartTime = lastStepStartTime.plus(1, ChronoUnit.MILLIS);
+			}
+		}
+		stepStartTimeMap.put(scenarioUniqueId, currentStepStartTime);
+		return currentStepStartTime;
 	}
 }

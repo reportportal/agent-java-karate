@@ -44,7 +44,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
@@ -66,7 +65,7 @@ public class ReportPortalHook implements RuntimeHook {
 	private final Map<String, Maybe<String>> backgroundIdMap = new ConcurrentHashMap<>();
 	private final Map<String, ItemStatus> backgroundStatusMap = new ConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> stepIdMap = new ConcurrentHashMap<>();
-	private final Map<Maybe<String>, Instant> stepStartTimeMap = new ConcurrentHashMap<>();
+	private final Map<String, Instant> stepStartTimeMap = new ConcurrentHashMap<>();
 	private final Set<Maybe<String>> innerFeatures = Collections.newSetFromMap(new ConcurrentHashMap<>());
 	private volatile Thread shutDownHook;
 
@@ -343,6 +342,7 @@ public class ReportPortalHook implements RuntimeHook {
 	@Override
 	public void afterScenario(ScenarioRuntime sr) {
 		Maybe<String> scenarioId = scenarioIdMap.get(sr.scenario.getUniqueId());
+		stepStartTimeMap.remove(sr.scenario.getUniqueId());
 		finishBackground(null, sr);
 
 		if (scenarioId == null) {
@@ -370,20 +370,12 @@ public class ReportPortalHook implements RuntimeHook {
 	 * Get step start time. To keep the steps order in case previous step startTime == current step startTime or
 	 * previous step startTime > current step startTime.
 	 *
-	 * @param stepId step ID.
+	 * @param scenarioUniqueId Karate's Scenario Unique ID
 	 * @return step new startTime in Instant format.
 	 */
 	@Nonnull
-	private Instant getStepStartTime(@Nullable Maybe<String> stepId) {
-		Instant currentStepStartTime = Instant.now();
-		if (stepId == null || stepStartTimeMap.isEmpty()) {
-			return currentStepStartTime;
-		}
-		Instant lastStepStartTime = stepStartTimeMap.get(stepId);
-		if (lastStepStartTime.compareTo(currentStepStartTime) >= 0) {
-			currentStepStartTime = lastStepStartTime.plus(1, ChronoUnit.MICROS);
-		}
-		return currentStepStartTime;
+	private Instant getStepStartTime(@Nullable String scenarioUniqueId) {
+		return ReportPortalUtils.getStepStartTime(scenarioUniqueId, stepStartTimeMap, launch.get().useMicroseconds());
 	}
 
 	/**
@@ -396,8 +388,7 @@ public class ReportPortalHook implements RuntimeHook {
 	@Nonnull
 	protected StartTestItemRQ buildStartStepRq(@Nonnull Step step, @Nonnull ScenarioRuntime sr) {
 		StartTestItemRQ rq = ReportPortalUtils.buildStartStepRq(step, sr.scenario);
-		Maybe<String> stepId = stepIdMap.get(sr.scenario.getUniqueId());
-		Instant startTime = getStepStartTime(stepId);
+		Instant startTime = getStepStartTime(sr.scenario.getUniqueId());
 		rq.setStartTime(startTime);
 		return rq;
 	}
@@ -424,7 +415,6 @@ public class ReportPortalHook implements RuntimeHook {
 
 		String scenarioId = sr.scenario.getUniqueId();
 		Maybe<String> stepId = launch.get().startTestItem(background ? backgroundId : scenarioIdMap.get(scenarioId), stepRq);
-		stepStartTimeMap.put(stepId, (Instant) stepRq.getStartTime());
 		stepIdMap.put(scenarioId, stepId);
 		ofNullable(stepRq.getParameters()).filter(params -> !params.isEmpty())
 				.ifPresent(params -> sendLog(stepId, String.format(PARAMETERS_PATTERN, formatParametersAsTable(params)), LogLevel.INFO));
@@ -490,7 +480,7 @@ public class ReportPortalHook implements RuntimeHook {
 		}
 
 		sendStepResults(stepResult, sr);
-		Maybe<String> stepId = stepIdMap.get(sr.scenario.getUniqueId());
+		Maybe<String> stepId = stepIdMap.remove(sr.scenario.getUniqueId());
 		if (stepId == null) {
 			LOGGER.error("ERROR: Trying to finish unspecified step.");
 			return;
