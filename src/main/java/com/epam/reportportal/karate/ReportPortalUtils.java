@@ -564,10 +564,12 @@ public class ReportPortalUtils {
 			stepStartTimeMap.put(scenarioUniqueId, currentStepStartTime);
 			return currentStepStartTime;
 		}
-		if (lastStepStartTime.compareTo(currentStepStartTime) >= 0) {
-			if (useMicroseconds) {
+		if (useMicroseconds) {
+			if (lastStepStartTime.compareTo(currentStepStartTime) >= 0) {
 				currentStepStartTime = lastStepStartTime.plus(1, ChronoUnit.MICROS);
-			} else {
+			}
+		} else {
+			if (lastStepStartTime.truncatedTo(ChronoUnit.MILLIS).compareTo(currentStepStartTime.truncatedTo(ChronoUnit.MILLIS)) >= 0) {
 				currentStepStartTime = lastStepStartTime.plus(1, ChronoUnit.MILLIS);
 			}
 		}
