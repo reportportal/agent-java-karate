@@ -545,7 +545,7 @@ public class ReportPortalUtils {
 
 	/**
 	 * Get step start time. To keep the steps order in case previous step startTime == current step startTime or
-	 * previous step startTime > current step startTime.
+	 * previous step startTime &gt; current step startTime.
 	 *
 	 * @param scenarioUniqueId Karate's Scenario Unique ID, a key for stepStartTimeMap
 	 * @param stepStartTimeMap a holder for start times for every particular scenario
