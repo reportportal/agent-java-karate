@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### Fixed
+- Some data cleanup in `ReportPortalHook` class, by @HardNorth
 
 ## [5.3.1]
 ### Added
