@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+### Fixed
+- Some data cleanup in `ReportPortalHook` class, by @HardNorth
+- Some step order issues in rare cases, by @HardNorth
 
 ## [5.3.1]
 ### Added
