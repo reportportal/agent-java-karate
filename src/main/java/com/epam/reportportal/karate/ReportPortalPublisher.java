@@ -35,7 +35,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,7 +54,7 @@ public class ReportPortalPublisher {
 	protected final MemoizingSupplier<Launch> launch;
 	private final Map<String, Maybe<String>> featureIdMap = new HashMap<>();
 	private final Map<String, Maybe<String>> scenarioIdMap = new HashMap<>();
-	private final Map<Maybe<String>, Instant> stepStartTimeMap = new HashMap<>();
+	private final Map<String, Instant> stepStartTimeMap = new HashMap<>();
 	private Maybe<String> backgroundId;
 	private ItemStatus backgroundStatus;
 	private Maybe<String> stepId;
@@ -164,7 +163,6 @@ public class ReportPortalPublisher {
 				finishStep(stepResult, scenarioResult);
 			}
 
-			stepStartTimeMap.clear();
 			finishScenario(scenarioResult);
 		}
 
@@ -220,6 +218,7 @@ public class ReportPortalPublisher {
 
 		FinishTestItemRQ rq = buildFinishScenarioRq(scenarioResult);
 		Maybe<String> removedScenarioId = scenarioIdMap.remove(scenarioResult.getScenario().getName());
+		stepStartTimeMap.remove(scenarioResult.getScenario().getUniqueId());
 		//noinspection ReactiveStreamsUnusedPublisher
 		launch.get().finishTestItem(removedScenarioId, rq);
 		finishBackground(null, scenarioResult);
@@ -285,20 +284,12 @@ public class ReportPortalPublisher {
 	 * Get step start time. To keep the steps order in case previous step startTime == current step startTime or
 	 * previous step startTime > current step startTime.
 	 *
-	 * @param stepId step ID.
+	 * @param scenarioUniqueId Karate's Scenario Unique ID
 	 * @return step new startTime in Instant format.
 	 */
-	private Instant getStepStartTime(@Nonnull Maybe<String> stepId) {
-		Instant currentStepStartTime = Instant.now();
-
-		if (!stepStartTimeMap.isEmpty()) {
-			Instant lastStepStartTime = stepStartTimeMap.get(stepId);
-
-			if (lastStepStartTime.compareTo(currentStepStartTime) >= 0) {
-				currentStepStartTime = lastStepStartTime.plus(1, ChronoUnit.MICROS);
-			}
-		}
-		return currentStepStartTime;
+	@Nonnull
+	private Instant getStepStartTime(@Nullable String scenarioUniqueId) {
+		return ReportPortalUtils.getStepStartTime(scenarioUniqueId, stepStartTimeMap, launch.get().useMicroseconds());
 	}
 
 	/**
@@ -311,7 +302,7 @@ public class ReportPortalPublisher {
 	@Nonnull
 	protected StartTestItemRQ buildStartStepRq(@Nonnull StepResult stepResult, @Nonnull ScenarioResult scenarioResult) {
 		StartTestItemRQ rq = ReportPortalUtils.buildStartStepRq(stepResult.getStep(), scenarioResult.getScenario());
-		Instant startTime = getStepStartTime(stepId);
+		Instant startTime = getStepStartTime(scenarioResult.getScenario().getUniqueId());
 		rq.setStartTime(startTime);
 		return rq;
 	}
@@ -335,7 +326,6 @@ public class ReportPortalPublisher {
 						background && backgroundId != null ? backgroundId : scenarioIdMap.get(scenarioResult.getScenario().getName()),
 						stepRq
 				);
-		stepStartTimeMap.put(stepId, (Instant) stepRq.getStartTime());
 		ofNullable(stepRq.getParameters()).filter(params -> !params.isEmpty())
 				.ifPresent(params -> sendLog(stepId, String.format(PARAMETERS_PATTERN, formatParametersAsTable(params)), LogLevel.INFO));
 		ofNullable(step.getTable()).ifPresent(table -> sendLog(stepId, "Table:\n\n" + formatDataTable(table.getRows()), LogLevel.INFO));

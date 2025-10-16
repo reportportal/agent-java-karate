@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+### Changed
+- Client version updated on [5.4.4](https://github.com/reportportal/client-java/releases/tag/5.4.4), by @HardNorth
+### Fixed
+- Some data cleanup in `ReportPortalHook` class, by @HardNorth
+- Some step order issues in rare cases, by @HardNorth
 
 ## [5.3.1]
 ### Added

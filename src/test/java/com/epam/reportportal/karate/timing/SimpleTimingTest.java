@@ -23,12 +23,13 @@ import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.epam.ta.reportportal.ws.model.launch.StartLaunchRQ;
 import com.intuit.karate.Results;
+import io.reactivex.Maybe;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 
-import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -54,13 +55,29 @@ public class SimpleTimingTest {
 		mockBatchLogging(client);
 	}
 
+	public static Stream<Arguments> testCases() {
+		return Stream.of( //
+				Arguments.of(false, false), //
+				Arguments.of(false, true), //
+				Arguments.of(true, false), //
+				Arguments.of(true, true) //
+		);
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@ParameterizedTest
-	@ValueSource(booleans = { true, false })
-	public void test_each_item_has_correct_start_date(boolean report) {
+	@MethodSource("testCases")
+	public void test_each_item_has_correct_start_date(boolean report, boolean useMicroseconds) {
 		Results results;
 		if (report) {
+			if (useMicroseconds) {
+				when(client.getApiInfo()).thenReturn(Maybe.just(TestUtils.testApiInfo()));
+			}
 			results = TestUtils.runAsReport(rp, TEST_FEATURE);
 		} else {
+			if (useMicroseconds) {
+				when(client.getApiInfo()).thenReturn(Maybe.just(TestUtils.testApiInfo()));
+			}
 			results = TestUtils.runAsHook(rp, TEST_FEATURE);
 		}
 		assertThat(results.getFailCount(), equalTo(0));
@@ -80,13 +97,13 @@ public class SimpleTimingTest {
 
 		assertThat(
 				"Launch start time is greater than Feature start time.",
-				(Date) featureRq.getStartTime(),
-				greaterThanOrEqualTo((Date) launchRq.getStartTime())
+				(Comparable) featureRq.getStartTime(),
+				greaterThanOrEqualTo((Comparable) launchRq.getStartTime())
 		);
 		assertThat(
 				"Feature start time is greater than Scenario start time.",
-				(Date) scenarioRq.getStartTime(),
-				greaterThanOrEqualTo((Date) featureRq.getStartTime())
+				(Comparable) scenarioRq.getStartTime(),
+				greaterThanOrEqualTo((Comparable) featureRq.getStartTime())
 		);
 
 		List<StartTestItemRQ> steps = stepCaptor.getAllValues();
@@ -98,19 +115,19 @@ public class SimpleTimingTest {
 				.orElseThrow();
 
 		assertThat(
-				"Scenario start time is greater than Step start time.",
-				(Date) firstStep.getStartTime(),
-				greaterThanOrEqualTo((Date) scenarioRq.getStartTime())
+				"First Step start time is greater or equal than Scenario start time.",
+				(Comparable) firstStep.getStartTime(),
+				greaterThanOrEqualTo((Comparable) scenarioRq.getStartTime())
 		);
 		assertThat(
-				"First Step start time is greater or equal than Second Step start time.",
-				(Date) secondStep.getStartTime(),
-				greaterThan((Date) firstStep.getStartTime())
+				"Second Step start time is greater than First Step start time.",
+				(Comparable) secondStep.getStartTime(),
+				greaterThan((Comparable) firstStep.getStartTime())
 		);
 		assertThat(
-				"Second Step start time is greater or equal than Third Step start time.",
-				(Date) thirdStep.getStartTime(),
-				greaterThan((Date) secondStep.getStartTime())
+				"Third Step start time is greater than Second Step start time.",
+				(Comparable) thirdStep.getStartTime(),
+				greaterThan((Comparable) secondStep.getStartTime())
 		);
 	}
 }
