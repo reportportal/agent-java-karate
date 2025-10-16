@@ -554,7 +554,7 @@ public class ReportPortalUtils {
 	 */
 	public static Instant getStepStartTime(@Nullable String scenarioUniqueId, Map<String, Instant> stepStartTimeMap,
 			boolean useMicroseconds) {
-		Instant currentStepStartTime = Instant.now();
+		Instant currentStepStartTime = Instant.now().truncatedTo(ChronoUnit.MICROS);
 		if (scenarioUniqueId == null || stepStartTimeMap.isEmpty()) {
 			stepStartTimeMap.put(scenarioUniqueId, currentStepStartTime);
 			return currentStepStartTime;
