@@ -103,17 +103,24 @@ E.G.:
 
 ```java
 import com.epam.reportportal.karate.ReportPortalHook;
+import com.intuit.karate.Results;
 import com.intuit.karate.Runner;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 class ScenarioRunnerTest {
 	@Test
 	void testParallel() {
-		return Runner
-                .path("classpath:examples")
-                .hook(new ReportPortalHook())
-                .outputCucumberJson(true)
-                .tags("~@ignore")
-                .parallel(1);
+		ReportPortalHook karateRuntimeHook = new ReportPortalHook(); // Initialize ReportPortal runtime Karate hook
+		Results results = Runner // Regular Karate runner
+				.path("classpath:features") // Path with feature files
+				.hook(karateRuntimeHook) // Add Karate hook
+				.outputCucumberJson(true) // Generate cucumber report
+				.tags("~@ignore") // Ignore tests marked with the tag
+				.parallel(2); // Run in 2 Threads
+		// Here you can additionally run tests, retries, etc.
+		karateRuntimeHook.finishLaunch(); // Finish execution on ReportPortal
+		Assertions.assertEquals(0, results.getFailCount(), "Non-zero fail count.\n Errors:\n" + results.getErrorMessages());
 	}
 }
 ```
@@ -127,15 +134,20 @@ E.G.:
 
 ```java
 import com.epam.reportportal.karate.KarateReportPortalRunner;
+import com.intuit.karate.Results;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
-class ScenarioRunnerTest {
+public class KarateRunnerTest {
+
 	@Test
-	void testParallel() {
-		KarateReportPortalRunner
-                .path("classpath:examples")
-                .outputCucumberJson(true)
-                .tags("~@ignore")
-                .parallel(1);
+	public void testAll() {
+		Results results = KarateReportPortalRunner // Our runner with a Karate Publisher
+				.path("classpath:features") // Path with feature files
+				.outputCucumberJson(true) // Generate cucumber report
+				.tags("~@ignore") // Ignore tests marked with the tag
+				.parallel(2); // Run in 2 Threads
+		Assertions.assertEquals(0, results.getFailCount(), "Non-zero fail count.\n Errors:\n" + results.getErrorMessages());
 	}
 }
 ```
