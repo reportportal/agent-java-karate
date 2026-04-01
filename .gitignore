@@ -27,6 +27,7 @@ hs_err_pid*
 build/
 test-output/
 target/
+bin/
 
 # IntelliJ Idea files
 .idea/
