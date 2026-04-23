@@ -30,8 +30,8 @@ project.ext.limits = [
         'class'      : 83
 ]
 
-sourceCompatibility = JavaVersion.VERSION_11
-targetCompatibility = JavaVersion.VERSION_11
+sourceCompatibility = JavaVersion.VERSION_17
+targetCompatibility = JavaVersion.VERSION_17
 
 compileJava.options.encoding = 'UTF-8'
 compileTestJava.options.encoding = 'UTF-8'
@@ -42,11 +42,11 @@ repositories {
 
 dependencies {
     api "com.epam.reportportal:client-java:${client_version}"
-    compileOnly "com.intuit.karate:karate-core:${karate_version}"
+    compileOnly "io.karatelabs:karate-core:${karate_version}"
     implementation "org.slf4j:slf4j-api:${slf4j_api_version}"
     implementation "org.apache.commons:commons-lang3:3.19.0"
 
-    testImplementation "com.intuit.karate:karate-core:${karate_version}"
+    testImplementation "io.karatelabs:karate-core:${karate_version}"
     testImplementation "com.epam.reportportal:logger-java-logback:${logger_version}"
     testImplementation "com.epam.reportportal:agent-java-test-utils:${test_utils_version}"
     testImplementation "org.junit.jupiter:junit-jupiter-api:${junit_version}"
