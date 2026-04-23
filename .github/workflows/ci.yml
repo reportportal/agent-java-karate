@@ -32,5 +32,7 @@ on:
 jobs:
   build:
     uses: reportportal/.github/.github/workflows/agent-java-ci.yml@main
+    with:
+      java-version: '17'
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
