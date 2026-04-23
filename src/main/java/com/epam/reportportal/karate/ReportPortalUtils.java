@@ -509,7 +509,7 @@ public class ReportPortalUtils {
 	}
 
 	/**
-	 * Builds markdown representation of some code or script to be logged to ReportPortal
+	 * Builds Markdown representation of some code or script to be logged to ReportPortal
 	 *
 	 * @param code Code or Script
 	 * @return Message to be sent to ReportPortal
