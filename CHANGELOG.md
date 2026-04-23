@@ -1,6 +1,13 @@
 # Changelog
+### Changed
+- Client version updated to [5.4.14](https://github.com/reportportal/client-java/releases/tag/5.4.14), by @HardNorth
+- Karate dependency version updated to `1.5.2`, by @HardNorth
+### Removed
+- Java 11-16 support, by @HardNorth
 
 ## [Unreleased]
+### Changed
+- Client version updated to [5.4.13](https://github.com/reportportal/client-java/releases/tag/5.4.13), by @HardNorth
 
 ## [5.3.7]
 ### Changed

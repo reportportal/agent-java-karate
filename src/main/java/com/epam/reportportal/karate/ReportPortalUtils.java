@@ -357,7 +357,7 @@ public class ReportPortalUtils {
 	}
 
 	private static void appendWithDelimiter(StringBuilder builder, String text) {
-		if (builder.length() > 0) {
+		if (!builder.isEmpty()) {
 			builder.append(MARKDOWN_DELIMITER);
 		}
 		builder.append(text);
@@ -415,23 +415,18 @@ public class ReportPortalUtils {
 	 * @return ReportPortal status
 	 */
 	public static ItemStatus getStepStatus(String status) {
-		switch (status) {
-			case "failed":
-				return ItemStatus.FAILED;
-			case "passed":
-				return ItemStatus.PASSED;
-			case "skipped":
-				return ItemStatus.SKIPPED;
-			case "stopped":
-				return ItemStatus.STOPPED;
-			case "interrupted":
-				return ItemStatus.INTERRUPTED;
-			case "cancelled":
-				return ItemStatus.CANCELLED;
-			default:
+		return switch (status) {
+			case "failed" -> ItemStatus.FAILED;
+			case "passed" -> ItemStatus.PASSED;
+			case "skipped" -> ItemStatus.SKIPPED;
+			case "stopped" -> ItemStatus.STOPPED;
+			case "interrupted" -> ItemStatus.INTERRUPTED;
+			case "cancelled" -> ItemStatus.CANCELLED;
+			default -> {
 				LOGGER.warn("Unknown step status received! Set it as SKIPPED");
-				return ItemStatus.SKIPPED;
-		}
+				yield ItemStatus.SKIPPED;
+			}
+		};
 	}
 
 	/**
@@ -514,7 +509,7 @@ public class ReportPortalUtils {
 	}
 
 	/**
-	 * Builds markdown representation of some code or script to be logged to ReportPortal
+	 * Builds Markdown representation of some code or script to be logged to ReportPortal
 	 *
 	 * @param code Code or Script
 	 * @return Message to be sent to ReportPortal
