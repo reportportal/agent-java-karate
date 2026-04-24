@@ -22,8 +22,8 @@ import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
-import com.intuit.karate.Results;
-import com.intuit.karate.core.Background;
+import io.karatelabs.core.SuiteResult;
+import io.karatelabs.gherkin.Background;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -68,13 +68,13 @@ public class BackgroundExamplesTest {
 	@ParameterizedTest
 	@ValueSource(booleans = { true, false })
 	public void test_background_steps(boolean report) {
-		Results results;
+		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+			results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
 		} else {
-			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
-		assertThat(results.getFailCount(), equalTo(0));
+		assertThat(results.getFeatureFailedCount(), equalTo(0));
 
 		ArgumentCaptor<StartTestItemRQ> captor = ArgumentCaptor.forClass(StartTestItemRQ.class);
 		verify(client).startTestItem(captor.capture());

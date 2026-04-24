@@ -16,8 +16,7 @@
 
 package com.epam.reportportal.karate.utils;
 
-import com.epam.reportportal.karate.KarateReportPortalRunner;
-import com.epam.reportportal.karate.ReportPortalHook;
+import com.epam.reportportal.karate.ReportPortalResultListener;
 import com.epam.reportportal.listeners.ListenerParameters;
 import com.epam.reportportal.service.LaunchImpl;
 import com.epam.reportportal.service.ReportPortal;
@@ -32,8 +31,8 @@ import com.epam.ta.reportportal.ws.model.item.ItemCreatedRS;
 import com.epam.ta.reportportal.ws.model.launch.StartLaunchRS;
 import com.epam.ta.reportportal.ws.model.log.SaveLogRQ;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.intuit.karate.Results;
-import com.intuit.karate.Runner;
+import io.karatelabs.core.Runner;
+import io.karatelabs.core.SuiteResult;
 import io.reactivex.Maybe;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -68,24 +67,28 @@ public class TestUtils {
 		});
 	}
 
-	public static Results runAsReport(ReportPortal reportPortal, List<String> tags, String... paths) {
-		return KarateReportPortalRunner.path(paths).withReportPortal(reportPortal).outputCucumberJson(false).tags(tags).parallel(1);
-	}
-
-	public static Results runAsReport(ReportPortal reportPortal, String... paths) {
-		return runAsReport(reportPortal, Collections.emptyList(), paths);
-	}
-
-	public static Results runAsHook(ReportPortal reportPortal, List<String> tags, String... paths) {
-		ReportPortalHook hook = new ReportPortalHook(reportPortal);
-		Runner.Builder<?> path = Runner.path(paths).hook(hook).outputCucumberJson(false);
-		Results result = path.tags(tags).parallel(1);
-		hook.finishLaunch();
+	public static SuiteResult runAsReportListener(ReportPortal reportPortal, List<String> tags, String... paths) {
+		ReportPortalResultListener listener = new ReportPortalResultListener(reportPortal);
+		Runner.Builder path = Runner.path(paths).resultListener(listener).outputCucumberJson(false);
+		SuiteResult result = path.tags(tags.toArray(new String[0])).parallel(1);
+		listener.finishLaunch();
 		return result;
 	}
 
-	public static Results runAsHook(ReportPortal reportPortal, String... paths) {
-		return runAsHook(reportPortal, Collections.emptyList(), paths);
+	public static SuiteResult runAsReportListener(ReportPortal reportPortal, String... paths) {
+		return runAsReportListener(reportPortal, Collections.emptyList(), paths);
+	}
+
+	public static SuiteResult runAsEventListener(ReportPortal reportPortal, List<String> tags, String... paths) {
+		ReportPortalResultListener listener = new ReportPortalResultListener(reportPortal);
+		Runner.Builder path = Runner.path(paths).resultListener(listener).outputCucumberJson(false);
+		SuiteResult result = path.tags(tags.toArray(new String[0])).parallel(1);
+		listener.finishLaunch();
+		return result;
+	}
+
+	public static SuiteResult runAsEventListener(ReportPortal reportPortal, String... paths) {
+		return runAsEventListener(reportPortal, Collections.emptyList(), paths);
 	}
 
 	public static ListenerParameters standardParameters() {

@@ -25,17 +25,15 @@ import com.epam.reportportal.service.Launch;
 import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.utils.MemoizingSupplier;
 import com.epam.reportportal.utils.StatusEvaluation;
-import com.epam.reportportal.utils.formatting.MarkdownUtils;
-import com.epam.reportportal.utils.reflect.Accessible;
 import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.epam.ta.reportportal.ws.model.launch.StartLaunchRQ;
-import com.intuit.karate.RuntimeHook;
-import com.intuit.karate.Suite;
-import com.intuit.karate.core.*;
-import com.intuit.karate.http.HttpRequest;
-import com.intuit.karate.http.Response;
+import io.karatelabs.core.*;
+import io.karatelabs.gherkin.Feature;
+import io.karatelabs.gherkin.Scenario;
+import io.karatelabs.gherkin.Step;
+import io.karatelabs.output.ResultListener;
 import io.reactivex.Maybe;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -55,18 +53,18 @@ import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 /**
- * ReportPortal test results reporting hook for Karate. This class publish results in the process of test pass.
+ * ReportPortal test results reporting listener for Karate.
  */
-public class ReportPortalHook implements RuntimeHook {
-	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalHook.class);
+public class ReportPortalResultListener implements ResultListener {
+	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalResultListener.class);
 	protected final MemoizingSupplier<Launch> launch;
 	private final BlockingConcurrentHashMap<String, Supplier<Maybe<String>>> featureIdMap = new BlockingConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> scenarioIdMap = new ConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> backgroundIdMap = new ConcurrentHashMap<>();
 	private final Map<String, ItemStatus> backgroundStatusMap = new ConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> stepIdMap = new ConcurrentHashMap<>();
-	private final Map<String, Instant> stepStartTimeMap = new ConcurrentHashMap<>();
 	private final Set<Maybe<String>> innerFeatures = Collections.newSetFromMap(new ConcurrentHashMap<>());
+	private final ThreadLocal<Deque<Scenario>> parentScenarios = ThreadLocal.withInitial(LinkedList::new);
 	private volatile Thread shutDownHook;
 
 	/**
@@ -74,7 +72,7 @@ public class ReportPortalHook implements RuntimeHook {
 	 *
 	 * @param reportPortal the ReportPortal instance
 	 */
-	public ReportPortalHook(ReportPortal reportPortal) {
+	public ReportPortalResultListener(ReportPortal reportPortal) {
 		ListenerParameters params = reportPortal.getParameters();
 		StartLaunchRQ rq = buildStartLaunchRq(params);
 		launch = new MemoizingSupplier<>(() -> {
@@ -90,12 +88,12 @@ public class ReportPortalHook implements RuntimeHook {
 	 * Default constructor. Create a new instance of the ReportPortalHook with default ReportPortal instance.
 	 */
 	@SuppressWarnings("unused")
-	public ReportPortalHook() {
+	public ReportPortalResultListener() {
 		this(ReportPortal.builder().build());
 	}
 
 	@SuppressWarnings("unused")
-	public ReportPortalHook(Supplier<Launch> launchSupplier) {
+	public ReportPortalResultListener(Supplier<Launch> launchSupplier) {
 		launch = new MemoizingSupplier<>(launchSupplier);
 	}
 
@@ -134,39 +132,24 @@ public class ReportPortalHook implements RuntimeHook {
 	 * @return request to ReportPortal
 	 */
 	@Nonnull
-	@SuppressWarnings("unchecked")
-	protected StartTestItemRQ buildStartFeatureRq(@Nonnull FeatureRuntime fr) {
-		StartTestItemRQ rq = ReportPortalUtils.buildStartFeatureRq(fr.featureCall.feature);
-		ofNullable(fr.caller).map(c -> c.arg)
-				.map(a -> (Map<String, Object>) a.getValue())
-				.filter(args -> !args.isEmpty())
-				.ifPresent(args -> {
-					// TODO: cover with tests
-					String parameters = String.format(PARAMETERS_PATTERN, formatParametersAsTable(getParameters(args)));
-					String description = rq.getDescription();
-					if (isNotBlank(description)) {
-						rq.setDescription(MarkdownUtils.asTwoParts(parameters, description));
-					} else {
-						rq.setDescription(parameters);
-					}
-				});
-		return rq;
+	protected StartTestItemRQ buildStartFeatureRq(@Nonnull Feature fr) {
+		return ReportPortalUtils.buildStartFeatureRq(fr);
 	}
 
-	private String getFeatureNameForReport(FeatureRuntime fr) {
-		int callDepth = ofNullable(fr.caller).map(c -> c.depth).orElse(0);
-		return callDepth + ":" + fr.featureCall.feature.getNameForReport();
+	private String getFeatureNameForReport(Feature feature) {
+		return parentScenarios.get().size() + ":" + feature.getNameForReport();
 	}
 
 	@Override
-	public boolean beforeFeature(FeatureRuntime fr) {
-		StartTestItemRQ rq = buildStartFeatureRq(fr);
+	public void onFeatureStart(Feature feature) {
+		Scenario parentScenario = parentScenarios.get().getLast();
+		StartTestItemRQ rq = buildStartFeatureRq(feature);
 		featureIdMap.computeIfAbsent(
-				getFeatureNameForReport(fr), f -> new MemoizingSupplier<>(() -> {
-					if (ofNullable(fr.caller).map(c -> c.depth).orElse(0) == 0) {
+				getFeatureNameForReport(feature), f -> new MemoizingSupplier<>(() -> {
+					if (parentScenario == null) {
 						return launch.get().startTestItem(rq);
 					} else {
-						Maybe<String> scenarioId = scenarioIdMap.get(fr.caller.parentRuntime.scenario.getUniqueId());
+						Maybe<String> scenarioId = scenarioIdMap.get(parentScenario.getUniqueId());
 						if (scenarioId == null) {
 							LOGGER.error("ERROR: Trying to post unspecified scenario.");
 							return launch.get().startTestItem(rq);
@@ -183,7 +166,6 @@ public class ReportPortalHook implements RuntimeHook {
 					}
 				})
 		);
-		return true;
 	}
 
 	/**
@@ -193,13 +175,13 @@ public class ReportPortalHook implements RuntimeHook {
 	 * @return request to ReportPortal
 	 */
 	@Nonnull
-	protected FinishTestItemRQ buildFinishFeatureRq(@Nonnull FeatureRuntime fr) {
-		return buildFinishTestItemRq(Instant.now(), fr.result.isFailed() ? ItemStatus.FAILED : ItemStatus.PASSED);
+	protected FinishTestItemRQ buildFinishFeatureRq(@Nonnull FeatureResult fr) {
+		return buildFinishTestItemRq(Instant.now(), fr.isFailed() ? ItemStatus.FAILED : ItemStatus.PASSED);
 	}
 
 	@Override
-	public void afterFeature(FeatureRuntime fr) {
-		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.get(getFeatureNameForReport(fr))).map(Supplier::get);
+	public void onFeatureEnd(FeatureResult fr) {
+		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.get(getFeatureNameForReport(fr.getFeature()))).map(Supplier::get);
 		if (optionalId.isEmpty()) {
 			LOGGER.error("ERROR: Trying to finish unspecified feature.");
 		}
@@ -217,9 +199,9 @@ public class ReportPortalHook implements RuntimeHook {
 	 * @return request to ReportPortal
 	 */
 	@Nonnull
-	protected StartTestItemRQ buildStartScenarioRq(@Nonnull ScenarioRuntime sr) {
-		StartTestItemRQ rq = ReportPortalUtils.buildStartScenarioRq(sr.result);
-		ofNullable(featureIdMap.get(getFeatureNameForReport(sr.featureRuntime))).map(Supplier::get)
+	protected StartTestItemRQ buildStartScenarioRq(@Nonnull Scenario sr) {
+		StartTestItemRQ rq = ReportPortalUtils.buildStartScenarioRq(sr);
+		ofNullable(featureIdMap.get(getFeatureNameForReport(sr.getFeature()))).map(Supplier::get)
 				.map(featureId -> innerFeatures.contains(featureId) ? featureId : null)
 				.ifPresent(featureId -> {
 					rq.setType(ItemType.STEP.name());
@@ -230,13 +212,13 @@ public class ReportPortalHook implements RuntimeHook {
 	}
 
 	@Override
-	public boolean beforeScenario(ScenarioRuntime sr) {
-		StartTestItemRQ rq = buildStartScenarioRq(sr);
-		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.get(getFeatureNameForReport(sr.featureRuntime))).map(Supplier::get);
+	public void onScenarioStart(Scenario scenario) {
+		StartTestItemRQ rq = buildStartScenarioRq(scenario);
+		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.get(getFeatureNameForReport(scenario.getFeature()))).map(Supplier::get);
 		if (optionalId.isEmpty()) {
 			LOGGER.error("ERROR: Trying to post unspecified feature.");
 		}
-		ofNullable(scenarioIdMap.get(sr.scenario.getUniqueId())).map(Maybe::blockingGet).ifPresent(id -> {
+		ofNullable(scenarioIdMap.get(scenario.getUniqueId())).map(Maybe::blockingGet).ifPresent(id -> {
 			rq.setRetry(true);
 			rq.setRetryOf(id);
 		});
@@ -245,9 +227,9 @@ public class ReportPortalHook implements RuntimeHook {
 			if (innerFeatures.contains(featureId) && StringUtils.isNotBlank(rq.getDescription())) {
 				ReportPortalUtils.sendLog(scenarioId, rq.getDescription(), LogLevel.INFO);
 			}
-			scenarioIdMap.put(sr.scenario.getUniqueId(), scenarioId);
+			scenarioIdMap.put(scenario.getUniqueId(), scenarioId);
+			parentScenarios.get().add(scenario);
 		});
-		return true;
 	}
 
 	/**
@@ -257,8 +239,8 @@ public class ReportPortalHook implements RuntimeHook {
 	 * @return request to ReportPortal
 	 */
 	@Nonnull
-	protected FinishTestItemRQ buildFinishScenarioRq(@Nonnull ScenarioRuntime sr) {
-		return ReportPortalUtils.buildFinishScenarioRq(sr.result);
+	protected FinishTestItemRQ buildFinishScenarioRq(@Nonnull ScenarioResult sr) {
+		return ReportPortalUtils.buildFinishScenarioRq(sr);
 	}
 
 	/**
@@ -269,9 +251,8 @@ public class ReportPortalHook implements RuntimeHook {
 	 * @return request to ReportPortal
 	 */
 	@Nonnull
-	@SuppressWarnings("unused")
-	protected StartTestItemRQ buildStartBackgroundRq(@Nonnull Step step, @Nonnull ScenarioRuntime sr) {
-		return ReportPortalUtils.buildStartBackgroundRq(step, sr.scenario);
+	protected StartTestItemRQ buildStartBackgroundRq(Instant startTime, @Nonnull Step step, @Nonnull Scenario sr) {
+		return ReportPortalUtils.buildStartBackgroundRq(startTime, step, sr);
 	}
 
 	/**
@@ -281,11 +262,11 @@ public class ReportPortalHook implements RuntimeHook {
 	 * @param sr   Karate's ScenarioRuntime object instance
 	 * @return item ID Future
 	 */
-	public Maybe<String> startBackground(@Nonnull Step step, @Nonnull ScenarioRuntime sr) {
+	public Maybe<String> startBackground(Instant startTime, @Nonnull Step step, @Nonnull Scenario sr) {
 		return backgroundIdMap.computeIfAbsent(
-				sr.scenario.getUniqueId(), k -> {
-					StartTestItemRQ backgroundRq = buildStartBackgroundRq(step, sr);
-					return launch.get().startTestItem(scenarioIdMap.get(sr.scenario.getUniqueId()), backgroundRq);
+				sr.getUniqueId(), k -> {
+					StartTestItemRQ backgroundRq = buildStartBackgroundRq(startTime, step, sr);
+					return launch.get().startTestItem(scenarioIdMap.get(sr.getUniqueId()), backgroundRq);
 				}
 		);
 	}
@@ -299,8 +280,11 @@ public class ReportPortalHook implements RuntimeHook {
 	 */
 	@Nonnull
 	@SuppressWarnings("unused")
-	protected FinishTestItemRQ buildFinishBackgroundRq(@Nullable StepResult stepResult, @Nonnull ScenarioRuntime sr) {
-		return buildFinishTestItemRq(Instant.now(), backgroundStatusMap.remove(sr.scenario.getUniqueId()));
+	protected FinishTestItemRQ buildFinishBackgroundRq(@Nullable StepResult stepResult, @Nonnull ScenarioResult sr) {
+		long duration = ofNullable(stepResult).map(StepResult::getDurationNanos).orElse(0L);
+		Instant startTime = ofNullable(stepResult).map(StepResult::getStartTime).map(Instant::ofEpochMilli).orElseGet(Instant::now);
+		Instant endTime = startTime.plusNanos(duration);
+		return buildFinishTestItemRq(endTime, backgroundStatusMap.remove(sr.getScenario().getUniqueId()));
 	}
 
 	/**
@@ -309,11 +293,12 @@ public class ReportPortalHook implements RuntimeHook {
 	 * @param stepResult Karate's StepResult class instance
 	 * @param sr         Karate's ScenarioRuntime object instance
 	 */
-	public void finishBackground(@Nullable StepResult stepResult, @Nonnull ScenarioRuntime sr) {
-		String uniqueId = sr.scenario.getUniqueId();
+	public void finishBackground(@Nullable StepResult stepResult, @Nonnull ScenarioResult sr) {
+		String uniqueId = sr.getScenario().getUniqueId();
 		Maybe<String> backgroundId = backgroundIdMap.remove(uniqueId);
 		if (backgroundId != null) {
 			FinishTestItemRQ finishRq = buildFinishBackgroundRq(stepResult, sr);
+
 			//noinspection ReactiveStreamsUnusedPublisher
 			launch.get().finishTestItem(backgroundId, finishRq);
 		}
@@ -325,24 +310,14 @@ public class ReportPortalHook implements RuntimeHook {
 	 * @param itemId item ID future
 	 * @param embed  Karate's Embed object
 	 */
-	protected void embedAttachment(@Nonnull Maybe<String> itemId, @Nonnull Embed embed) {
-		ReportPortalUtils.embedAttachment(itemId, embed);
-	}
-
-	/**
-	 * Embed an attachment to ReportPortal.
-	 *
-	 * @param itemId           item ID future
-	 * @param embeddedEntities a list of Karate's Embed object
-	 */
-	protected void embedAttachments(@Nonnull Maybe<String> itemId, @Nullable List<Embed> embeddedEntities) {
-		ofNullable(embeddedEntities).ifPresent(embeds -> embeds.forEach(embed -> embedAttachment(itemId, embed)));
+	protected void embedAttachment(@Nonnull Instant time, @Nonnull Maybe<String> itemId, @Nonnull StepResult.Embed embed) {
+		ReportPortalUtils.embedAttachment(time, itemId, embed);
 	}
 
 	@Override
-	public void afterScenario(ScenarioRuntime sr) {
-		Maybe<String> scenarioId = scenarioIdMap.get(sr.scenario.getUniqueId());
-		stepStartTimeMap.remove(sr.scenario.getUniqueId());
+	public void onScenarioEnd(ScenarioResult sr) {
+		Scenario scenario = sr.getScenario();
+		Maybe<String> scenarioId = scenarioIdMap.get(scenario.getUniqueId());
 		finishBackground(null, sr);
 
 		if (scenarioId == null) {
@@ -350,32 +325,15 @@ public class ReportPortalHook implements RuntimeHook {
 			return;
 		}
 
-		try {
-			@SuppressWarnings("unchecked")
-			List<Embed> embeddedEntities = (List<Embed>) new Accessible(sr).field("embeds").getValue();
-			embedAttachments(scenarioId, embeddedEntities);
-		} catch (Exception e) {
-			LOGGER.warn(
-					"Unable to retrieve scenario embeddings; attachments (such as screenshots or logs) will not be reported for this" //
-							+ " scenario. Test execution and reporting will continue. Exception details:", e
-			);
-		}
+		sr.getStepResults().forEach(stepResult -> {
+			beforeStep(stepResult, sr);
+			afterStep(stepResult, sr);
+		});
 
 		FinishTestItemRQ rq = buildFinishScenarioRq(sr);
 		//noinspection ReactiveStreamsUnusedPublisher
 		launch.get().finishTestItem(scenarioId, rq);
-	}
-
-	/**
-	 * Get step start time. To keep the steps order in case previous step startTime == current step startTime or
-	 * previous step startTime > current step startTime.
-	 *
-	 * @param scenarioUniqueId Karate's Scenario Unique ID
-	 * @return step new startTime in Instant format.
-	 */
-	@Nonnull
-	private Instant getStepStartTime(@Nullable String scenarioUniqueId) {
-		return ReportPortalUtils.getStepStartTime(scenarioUniqueId, stepStartTimeMap, launch.get().useMicroseconds());
+		parentScenarios.get().removeFirst();
 	}
 
 	/**
@@ -386,9 +344,8 @@ public class ReportPortalHook implements RuntimeHook {
 	 * @return request to ReportPortal
 	 */
 	@Nonnull
-	protected StartTestItemRQ buildStartStepRq(@Nonnull Step step, @Nonnull ScenarioRuntime sr) {
-		StartTestItemRQ rq = ReportPortalUtils.buildStartStepRq(step, sr.scenario);
-		Instant startTime = getStepStartTime(sr.scenario.getUniqueId());
+	protected StartTestItemRQ buildStartStepRq(Instant startTime, @Nonnull Step step, @Nonnull Scenario sr) {
+		StartTestItemRQ rq = ReportPortalUtils.buildStartStepRq(step, sr);
 		rq.setStartTime(startTime);
 		return rq;
 	}
@@ -400,30 +357,42 @@ public class ReportPortalHook implements RuntimeHook {
 	 * @param message log message to send
 	 * @param level   log level
 	 */
-	protected void sendLog(Maybe<String> itemId, String message, LogLevel level) {
-		ReportPortalUtils.sendLog(itemId, message, level);
+	protected void sendLog(Instant time, Maybe<String> itemId, String message, LogLevel level) {
+		ReportPortalUtils.sendLog(itemId, message, level, time);
 	}
 
-	@Override
-	public boolean beforeStep(Step step, ScenarioRuntime sr) {
+	public void beforeStep(StepResult stepResult, ScenarioResult sr) {
+		Step step = stepResult.getStep();
+		Scenario scenario = sr.getScenario();
+		Instant startTime = Instant.ofEpochMilli(stepResult.getStartTime());
+
 		boolean background = step.isBackground();
 		Maybe<String> backgroundId = null;
 		if (background) {
-			backgroundId = startBackground(step, sr);
+			backgroundId = startBackground(startTime, step, scenario);
 		}
-		StartTestItemRQ stepRq = buildStartStepRq(step, sr);
+		StartTestItemRQ stepRq = buildStartStepRq(startTime, step, scenario);
 
-		String scenarioId = sr.scenario.getUniqueId();
+		String scenarioId = scenario.getUniqueId();
 		Maybe<String> stepId = launch.get().startTestItem(background ? backgroundId : scenarioIdMap.get(scenarioId), stepRq);
 		stepIdMap.put(scenarioId, stepId);
 		ofNullable(stepRq.getParameters()).filter(params -> !params.isEmpty())
-				.ifPresent(params -> sendLog(stepId, String.format(PARAMETERS_PATTERN, formatParametersAsTable(params)), LogLevel.INFO));
-		ofNullable(step.getTable()).ifPresent(table -> sendLog(stepId, "Table:\n\n" + formatDataTable(table.getRows()), LogLevel.INFO));
+				.ifPresent(params -> sendLog(
+						startTime.plusMillis(1),
+						stepId,
+						String.format(PARAMETERS_PATTERN, formatParametersAsTable(params)),
+						LogLevel.INFO
+				));
+		ofNullable(step.getTable()).ifPresent(table -> sendLog(
+				startTime.plusMillis(2),
+				stepId,
+				"Table:\n\n" + formatDataTable(table.getRows()),
+				LogLevel.INFO
+		));
 		String docString = step.getDocString();
 		if (isNotBlank(docString)) {
-			sendLog(stepId, "Docstring:\n\n" + asMarkdownCode(step.getDocString()), LogLevel.INFO);
+			sendLog(startTime.plusMillis(3), stepId, "Docstring:\n\n" + asMarkdownCode(step.getDocString()), LogLevel.INFO);
 		}
-		return true;
 	}
 
 	/**
@@ -432,20 +401,36 @@ public class ReportPortalHook implements RuntimeHook {
 	 * @param stepResult step execution results
 	 * @param sr         Karate's ScenarioRuntime object instance
 	 */
-	public void sendStepResults(StepResult stepResult, ScenarioRuntime sr) {
-		Maybe<String> stepId = stepIdMap.get(sr.scenario.getUniqueId());
+	public void sendStepResults(StepResult stepResult, ScenarioResult sr) {
+		List<StepResult.Embed> embeds = ofNullable(stepResult.getEmbeds()).orElse(Collections.emptyList());
+		String log = ofNullable(stepResult.getLog()).filter(logs -> !logs.isBlank()).orElse(null);
+
+		Instant itemTime = Instant.ofEpochMilli(stepResult.getStartTime());
+		long stepDuration = stepResult.getDurationNanos();
+		int numberOfArtefacts = embeds.size() + (log != null ? 1 : 0) + (stepResult.isFailed() ? 1 : 0);
+		int numberOfSteps = numberOfArtefacts + 1; // To always log a little bit after step start time
+		long duration = stepDuration / numberOfSteps;
+
+		Maybe<String> stepId = stepIdMap.get(sr.getScenario().getUniqueId());
 		Step step = stepResult.getStep();
-		Result result = stepResult.getResult();
+		for (var embed : embeds) {
+			itemTime = itemTime.plusNanos(duration);
+			embedAttachment(itemTime, stepId, embed);
+		}
 
-		ofNullable(stepResult.getEmbeds()).ifPresent(embeds -> embeds.forEach(embed -> embedAttachment(stepId, embed)));
+		if (log != null) {
+			itemTime = itemTime.plusNanos(duration);
+			sendLog(itemTime, stepId, log, LogLevel.INFO);
+		}
 
-		if (result.isFailed()) {
+		if (stepResult.isFailed()) {
 			String fullErrorMessage = step.getPrefix() + " " + step.getText();
-			String errorMessage = result.getErrorMessage();
+			String errorMessage = stepResult.getErrorMessage();
 			if (isNotBlank(errorMessage)) {
 				fullErrorMessage = fullErrorMessage + "\n" + errorMessage;
 			}
-			sendLog(stepId, fullErrorMessage, LogLevel.ERROR);
+			itemTime = itemTime.plusNanos(duration);
+			sendLog(itemTime, stepId, fullErrorMessage, LogLevel.ERROR);
 		}
 	}
 
@@ -458,29 +443,28 @@ public class ReportPortalHook implements RuntimeHook {
 	 */
 	@Nonnull
 	@SuppressWarnings("unused")
-	protected FinishTestItemRQ buildFinishStepRq(@Nonnull StepResult stepResult, @Nonnull ScenarioRuntime sr) {
-		return buildFinishTestItemRq(Instant.now(), getStepStatus(stepResult.getResult().getStatus()));
+	protected FinishTestItemRQ buildFinishStepRq(@Nonnull StepResult stepResult, @Nonnull ScenarioResult sr) {
+		Instant endTime = Instant.ofEpochMilli(stepResult.getStartTime()).plusNanos(stepResult.getDurationNanos());
+		return buildFinishTestItemRq(endTime, getStepStatus(stepResult.getStatus()));
 	}
 
-	private void saveBackgroundStatus(@Nonnull StepResult stepResult, @Nonnull ScenarioRuntime sr) {
+	private void saveBackgroundStatus(@Nonnull StepResult stepResult, @Nonnull ScenarioResult sr) {
 		backgroundStatusMap.put(
-				sr.scenario.getUniqueId(),
+				sr.getScenario().getUniqueId(),
 				StatusEvaluation.evaluateStatus(
-						backgroundStatusMap.get(sr.scenario.getUniqueId()),
-						getStepStatus(stepResult.getResult().getStatus())
+						backgroundStatusMap.get(sr.getScenario().getUniqueId()),
+						getStepStatus(stepResult.getStatus())
 				)
 		);
 	}
 
-	@Override
-	public void afterStep(StepResult stepResult, ScenarioRuntime sr) {
+	public void afterStep(StepResult stepResult, ScenarioResult sr) {
 		boolean background = stepResult.getStep().isBackground();
 		if (!background) {
 			finishBackground(stepResult, sr);
 		}
-
 		sendStepResults(stepResult, sr);
-		Maybe<String> stepId = stepIdMap.remove(sr.scenario.getUniqueId());
+		Maybe<String> stepId = stepIdMap.remove(sr.getScenario().getUniqueId());
 		if (stepId == null) {
 			LOGGER.error("ERROR: Trying to finish unspecified step.");
 			return;
@@ -495,24 +479,12 @@ public class ReportPortalHook implements RuntimeHook {
 	}
 
 	@Override
-	public void beforeHttpCall(HttpRequest request, ScenarioRuntime sr) {
-		// TODO: Implement better HTTP request logging later
-		RuntimeHook.super.beforeHttpCall(request, sr);
-	}
-
-	@Override
-	public void afterHttpCall(HttpRequest request, Response response, ScenarioRuntime sr) {
-		// TODO: Implement better HTTP response logging later
-		RuntimeHook.super.afterHttpCall(request, response, sr);
-	}
-
-	@Override
-	public void beforeSuite(Suite suite) {
+	public void onSuiteStart(Suite suite) {
 		// Omit Suite logic, since there is no Suite names in Karate
 	}
 
 	@Override
-	public void afterSuite(Suite suite) {
+	public void onSuiteEnd(SuiteResult suite) {
 		// Omit Suite logic, since there is no Suite names in Karate
 	}
 }

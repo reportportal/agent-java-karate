@@ -24,7 +24,7 @@ import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.ParameterResource;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.epam.ta.reportportal.ws.model.log.SaveLogRQ;
-import com.intuit.karate.Results;
+import io.karatelabs.core.SuiteResult;
 import okhttp3.MultipartBody;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
@@ -72,13 +72,13 @@ public class ExamplesStepParametersTest {
 	@ValueSource(booleans = { true, false })
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public void test_examples_parameters_for_steps(boolean report) {
-		Results results;
+		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+			results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
 		} else {
-			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
-		assertThat(results.getFailCount(), equalTo(0));
+		assertThat(results.getFeatureFailedCount(), equalTo(0));
 
 		ArgumentCaptor<StartTestItemRQ> captor = ArgumentCaptor.forClass(StartTestItemRQ.class);
 		verify(client).startTestItem(captor.capture());
@@ -112,7 +112,7 @@ public class ExamplesStepParametersTest {
 				.filter(rq -> LogLevel.INFO.name().equals(rq.getLevel()))
 				.collect(Collectors.toMap(SaveLogRQ::getItemUuid, v -> v));
 
-		List<String> stepIdList = stepIds.stream().flatMap(e -> e.getValue().stream()).collect(Collectors.toList());
+		List<String> stepIdList = stepIds.stream().flatMap(e -> e.getValue().stream()).toList();
 		assertThat(logs.keySet(), hasSize(stepIdList.size()));
 		stepIdList.forEach(id -> assertThat(logs, hasKey(id)));
 		assertThat(

@@ -22,7 +22,7 @@ import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
-import com.intuit.karate.Results;
+import io.karatelabs.core.SuiteResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -56,13 +56,13 @@ public class ScenarioCodeRefTest {
 	@ParameterizedTest
 	@ValueSource(booleans = { true, false })
 	public void test_scenario_code_reference(boolean report) {
-		Results results;
+		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+			results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
 		} else {
-			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
-		assertThat(results.getFailCount(), equalTo(0));
+		assertThat(results.getFeatureFailedCount(), equalTo(0));
 
 		ArgumentCaptor<StartTestItemRQ> featureCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
 		verify(client).startTestItem(featureCaptor.capture());

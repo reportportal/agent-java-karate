@@ -22,7 +22,7 @@ import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.launch.StartLaunchRQ;
-import com.intuit.karate.Results;
+import io.karatelabs.core.SuiteResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -66,13 +66,13 @@ public class NoLaunchDescriptionTest {
 		ListenerParameters parameters = standardParameters();
 		parameters.setDescription(description);
 		ReportPortal rp = ReportPortal.create(client, parameters, testExecutor());
-		Results results;
+		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+			results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
 		} else {
-			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
-		assertThat(results.getFailCount(), equalTo(0));
+		assertThat(results.getFeatureFailedCount(), equalTo(0));
 
 		ArgumentCaptor<StartLaunchRQ> startCaptor = ArgumentCaptor.forClass(StartLaunchRQ.class);
 		verify(client).startLaunch(startCaptor.capture());

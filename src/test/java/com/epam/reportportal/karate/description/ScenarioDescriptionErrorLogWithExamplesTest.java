@@ -25,7 +25,7 @@ import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.reportportal.utils.formatting.MarkdownUtils;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.epam.ta.reportportal.ws.model.log.SaveLogRQ;
-import com.intuit.karate.Results;
+import io.karatelabs.core.SuiteResult;
 import okhttp3.MultipartBody;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
@@ -82,15 +82,15 @@ public class ScenarioDescriptionErrorLogWithExamplesTest {
 	@ParameterizedTest
 	@ValueSource(booleans = { true, false })
 	public void test_error_log_and_examples_in_description(boolean report) {
-		Results results;
+		SuiteResult results;
 
 		if (report) {
-			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+			results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
 		} else {
-			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
 
-		assertThat(results.getFailCount(), equalTo(1));
+		assertThat(results.getFeatureFailedCount(), equalTo(1));
 
 		@SuppressWarnings("unchecked")
 		ArgumentCaptor<List<MultipartBody.Part>> logCaptor = ArgumentCaptor.forClass(List.class);

@@ -21,7 +21,7 @@ import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
-import com.intuit.karate.Results;
+import io.karatelabs.core.SuiteResult;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -81,8 +81,8 @@ public class CallTheSameFeatureWithParametersHookTest {
 	@Test
 	@Timeout(value = 30, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
 	public void test_call_feature_with_parameters_hook_reporting() {
-		Results results = TestUtils.runAsHook(rp, TEST_FEATURE);
-		assertThat(results.getFailCount(), equalTo(0));
+		SuiteResult results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
+		assertThat(results.getFeatureFailedCount(), equalTo(0));
 
 		ArgumentCaptor<StartTestItemRQ> featureCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
 		verify(client, times(1)).startTestItem(featureCaptor.capture());

@@ -23,7 +23,7 @@ import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
-import com.intuit.karate.Results;
+import io.karatelabs.core.SuiteResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -61,13 +61,13 @@ public class SimpleTagInclusionTest {
 	@ValueSource(booleans = { true, false })
 	public void test_simple_all_passed(boolean report) {
 		List<String> tagsToRun = Collections.singletonList("scope=smoke");
-		Results results;
+		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReport(rp, tagsToRun, TEST_FEATURES);
+			results = TestUtils.runAsReportListener(rp, tagsToRun, TEST_FEATURES);
 		} else {
-			results = TestUtils.runAsHook(rp, tagsToRun, TEST_FEATURES);
+			results = TestUtils.runAsEventListener(rp, tagsToRun, TEST_FEATURES);
 		}
-		assertThat(results.getFailCount(), equalTo(0));
+		assertThat(results.getFeatureFailedCount(), equalTo(0));
 
 		ArgumentCaptor<StartTestItemRQ> featureCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
 		verify(client).startTestItem(featureCaptor.capture());

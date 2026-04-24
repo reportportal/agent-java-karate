@@ -35,7 +35,9 @@ import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.epam.ta.reportportal.ws.model.attribute.ItemAttributesRQ;
 import com.epam.ta.reportportal.ws.model.launch.StartLaunchRQ;
 import com.epam.ta.reportportal.ws.model.log.SaveLogRQ;
-import com.intuit.karate.core.*;
+import io.karatelabs.core.ScenarioResult;
+import io.karatelabs.core.StepResult;
+import io.karatelabs.gherkin.*;
 import io.reactivex.Maybe;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -43,7 +45,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -306,18 +307,17 @@ public class ReportPortalUtils {
 	/**
 	 * Build ReportPortal request for start Scenario event
 	 *
-	 * @param result Karate's ScenarioResult object instance
+	 * @param scenario Karate's Scenario object instance
 	 * @return request to ReportPortal
 	 */
 	@Nonnull
-	public static StartTestItemRQ buildStartScenarioRq(@Nonnull ScenarioResult result) {
-		Scenario scenario = result.getScenario();
+	public static StartTestItemRQ buildStartScenarioRq(@Nonnull Scenario scenario) {
 		StartTestItemRQ rq = buildStartTestItemRq(scenario.getName(), Instant.now(), ItemType.STEP);
 		rq.setCodeRef(getCodeRef(scenario));
 		rq.setTestCaseId(ofNullable(getTestCaseId(scenario)).map(TestCaseIdEntry::getId).orElse(null));
 		rq.setAttributes(toAttributes(scenario.getTags()));
 		rq.setParameters(getParameters(scenario));
-		rq.setDescription(buildDescription(scenario, result.getErrorMessage(), getParameters(scenario)));
+		rq.setDescription(buildDescription(scenario, null, getParameters(scenario)));
 		return rq;
 	}
 
@@ -334,7 +334,7 @@ public class ReportPortalUtils {
 				Instant.now(),
 				result.getFailureMessageForDisplay() == null ? ItemStatus.PASSED : ItemStatus.FAILED
 		);
-		rq.setDescription(buildDescription(scenario, result.getErrorMessage(), getParameters(scenario)));
+		rq.setDescription(buildDescription(scenario, result.getFailureMessageForDisplay(), getParameters(scenario)));
 		return rq;
 	}
 
@@ -366,14 +366,15 @@ public class ReportPortalUtils {
 	/**
 	 * Build ReportPortal request for start Background event.
 	 *
-	 * @param step     Karate's Step object instance
-	 * @param scenario Karate's Scenario object instance
+	 * @param startTime
+	 * @param step      Karate's Step object instance
+	 * @param scenario  Karate's Scenario object instance
 	 * @return request to ReportPortal
 	 */
 	@Nonnull
 	@SuppressWarnings("unused")
-	public static StartTestItemRQ buildStartBackgroundRq(@Nonnull Step step, @Nonnull Scenario scenario) {
-		StartTestItemRQ rq = buildStartTestItemRq(Background.KEYWORD, Instant.now(), ItemType.STEP);
+	public static StartTestItemRQ buildStartBackgroundRq(Instant startTime, @Nonnull Step step, @Nonnull Scenario scenario) {
+		StartTestItemRQ rq = buildStartTestItemRq(Background.KEYWORD, startTime, ItemType.STEP);
 		rq.setHasStats(false);
 		return rq;
 	}
@@ -414,14 +415,12 @@ public class ReportPortalUtils {
 	 * @param status Karate item status
 	 * @return ReportPortal status
 	 */
-	public static ItemStatus getStepStatus(String status) {
+	@SuppressWarnings("UnnecessaryDefault")
+	public static ItemStatus getStepStatus(StepResult.Status status) {
 		return switch (status) {
-			case "failed" -> ItemStatus.FAILED;
-			case "passed" -> ItemStatus.PASSED;
-			case "skipped" -> ItemStatus.SKIPPED;
-			case "stopped" -> ItemStatus.STOPPED;
-			case "interrupted" -> ItemStatus.INTERRUPTED;
-			case "cancelled" -> ItemStatus.CANCELLED;
+			case FAILED -> ItemStatus.FAILED;
+			case PASSED -> ItemStatus.PASSED;
+			case SKIPPED -> ItemStatus.SKIPPED;
 			default -> {
 				LOGGER.warn("Unknown step status received! Set it as SKIPPED");
 				yield ItemStatus.SKIPPED;
@@ -467,19 +466,19 @@ public class ReportPortalUtils {
 	 * @param itemId item ID future
 	 * @param embed  Karate's Embed object
 	 */
-	public static void embedAttachment(@Nonnull Maybe<String> itemId, @Nonnull Embed embed) {
+	public static void embedAttachment(@Nonnull Instant time, @Nonnull Maybe<String> itemId, @Nonnull StepResult.Embed embed) {
 		ReportPortal.emitLog(
 				itemId, id -> {
 					SaveLogRQ rq = new SaveLogRQ();
 					rq.setItemUuid(id);
 					rq.setLevel(LogLevel.INFO.name());
-					rq.setLogTime(Instant.now());
-					rq.setMessage("Attachment: " + embed.getResourceType().contentType);
+					rq.setLogTime(time);
+					rq.setMessage("Attachment: " + embed.getMimeType());
 
 					SaveLogRQ.File file = new SaveLogRQ.File();
-					file.setName(embed.getFile().getName());
-					file.setContent(embed.getBytes());
-					file.setContentType(embed.getResourceType().contentType);
+					file.setName(embed.getFileName());
+					file.setContent(embed.getData());
+					file.setContentType(embed.getMimeType());
 					rq.setFile(file);
 
 					return rq;
@@ -536,39 +535,5 @@ public class ReportPortalUtils {
 	 */
 	public static String getInnerFeatureName(String name) {
 		return FEATURE_TAG + name;
-	}
-
-	/**
-	 * Get step start time. To keep the steps order in case previous step startTime == current step startTime or
-	 * previous step startTime &gt; current step startTime.
-	 *
-	 * @param scenarioUniqueId Karate's Scenario Unique ID, a key for stepStartTimeMap
-	 * @param stepStartTimeMap a holder for start times for every particular scenario
-	 * @param useMicroseconds  if server supports microseconds
-	 * @return step new startTime in Instant format.
-	 */
-	public static Instant getStepStartTime(@Nullable String scenarioUniqueId, Map<String, Instant> stepStartTimeMap,
-			boolean useMicroseconds) {
-		Instant currentStepStartTime = Instant.now().truncatedTo(ChronoUnit.MICROS);
-		if (scenarioUniqueId == null || stepStartTimeMap.isEmpty()) {
-			stepStartTimeMap.put(scenarioUniqueId, currentStepStartTime);
-			return currentStepStartTime;
-		}
-		Instant lastStepStartTime = stepStartTimeMap.get(scenarioUniqueId);
-		if (lastStepStartTime == null) {
-			stepStartTimeMap.put(scenarioUniqueId, currentStepStartTime);
-			return currentStepStartTime;
-		}
-		if (useMicroseconds) {
-			if (lastStepStartTime.compareTo(currentStepStartTime) >= 0) {
-				currentStepStartTime = lastStepStartTime.plus(1, ChronoUnit.MICROS);
-			}
-		} else {
-			if (lastStepStartTime.truncatedTo(ChronoUnit.MILLIS).compareTo(currentStepStartTime.truncatedTo(ChronoUnit.MILLIS)) >= 0) {
-				currentStepStartTime = lastStepStartTime.plus(1, ChronoUnit.MILLIS);
-			}
-		}
-		stepStartTimeMap.put(scenarioUniqueId, currentStepStartTime);
-		return currentStepStartTime;
 	}
 }
