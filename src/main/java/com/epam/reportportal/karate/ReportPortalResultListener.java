@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 EPAM Systems
+ * Copyright 2026 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -480,8 +480,7 @@ public class ReportPortalResultListener implements ResultListener {
 
 	@Override
 	public void onSuiteStart(Suite suite) {
-		// Trigger launch start
-		launch.get();
+		launch.get(); // Trigger launch start
 	}
 
 	@Override
