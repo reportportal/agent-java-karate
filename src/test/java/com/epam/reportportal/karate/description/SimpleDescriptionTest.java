@@ -64,7 +64,7 @@ public class SimpleDescriptionTest {
 	public void test_description_for_all_possible_items(boolean report) {
 		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
 			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
@@ -88,7 +88,7 @@ public class SimpleDescriptionTest {
 				.filter(s -> s.getName().startsWith(Background.KEYWORD))
 				.collect(Collectors.toList());
 		assertThat(backgroundSteps, hasSize(1));
-		StartTestItemRQ backgroundStep = backgroundSteps.get(0);
+		StartTestItemRQ backgroundStep = backgroundSteps.getFirst();
 		assertThat(
 				"No support of Background description in Karate yet. But this is a part of Gherkin standard.",
 				backgroundStep.getDescription(),

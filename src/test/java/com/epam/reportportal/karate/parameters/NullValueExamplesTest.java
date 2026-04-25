@@ -43,7 +43,7 @@ import static org.mockito.Mockito.*;
 public class NullValueExamplesTest {
 	private static final String TEST_FEATURE = "classpath:feature/null_examples.feature";
 	private final String featureId = CommonUtils.namedId("feature_");
-	private final List<String> exampleIds = Stream.generate(() -> CommonUtils.namedId("example_")).limit(1).collect(Collectors.toList());
+	private final List<String> exampleIds = Stream.generate(() -> CommonUtils.namedId("example_")).limit(1).toList();
 	private final List<Pair<String, List<String>>> stepIds = exampleIds.stream()
 			.map(e -> Pair.of(e, Stream.generate(() -> CommonUtils.namedId("step_")).limit(1).collect(Collectors.toList())))
 			.collect(Collectors.toList());
@@ -62,7 +62,7 @@ public class NullValueExamplesTest {
 	public void test_examples_null_value(boolean report) {
 		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
 			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
@@ -71,7 +71,7 @@ public class NullValueExamplesTest {
 		ArgumentCaptor<StartTestItemRQ> captor = ArgumentCaptor.forClass(StartTestItemRQ.class);
 		verify(client, times(1)).startTestItem(captor.capture());
 		verify(client, times(1)).startTestItem(same(featureId), captor.capture());
-		verify(client, times(1)).startTestItem(same(exampleIds.get(0)), captor.capture());
+		verify(client, times(1)).startTestItem(same(exampleIds.getFirst()), captor.capture());
 
 		List<StartTestItemRQ> items = captor.getAllValues();
 		assertThat(items, hasSize(3));

@@ -73,7 +73,7 @@ public class SimpleTimingTest {
 			if (useMicroseconds) {
 				when(client.getApiInfo()).thenReturn(Maybe.just(TestUtils.testApiInfo()));
 			}
-			results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
 			if (useMicroseconds) {
 				when(client.getApiInfo()).thenReturn(Maybe.just(TestUtils.testApiInfo()));

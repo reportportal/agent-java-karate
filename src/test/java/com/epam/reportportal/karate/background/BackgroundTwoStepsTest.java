@@ -67,7 +67,7 @@ public class BackgroundTwoStepsTest {
 	public void test_background_steps(boolean report) {
 		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
 			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
@@ -90,7 +90,7 @@ public class BackgroundTwoStepsTest {
 				.filter(s -> s.getName().startsWith(Background.KEYWORD))
 				.collect(Collectors.toList());
 		assertThat(backgroundSteps, hasSize(1));
-		StartTestItemRQ backgroundStep = backgroundSteps.get(0);
+		StartTestItemRQ backgroundStep = backgroundSteps.getFirst();
 		assertThat(backgroundStep.getName(), equalTo(Background.KEYWORD)); // No name for Background in Karate
 		assertThat(backgroundStep.isHasStats(), equalTo(Boolean.FALSE));
 		assertThat(backgroundStep.getStartTime(), notNullValue());
@@ -101,6 +101,6 @@ public class BackgroundTwoStepsTest {
 		nestedSteps.forEach(step -> assertThat(step.isHasStats(), equalTo(Boolean.FALSE)));
 		Set<String> nestedStepNames = nestedSteps.stream().map(StartTestItemRQ::getName).collect(Collectors.toSet());
 
-		assertThat(nestedStepNames, allOf(hasItem("Given def vara = 2"), hasItem("And def varb = 2")));
+		assertThat(nestedStepNames, allOf(hasItem("Given vara = 2"), hasItem("And varb = 2")));
 	}
 }

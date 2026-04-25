@@ -64,7 +64,7 @@ public class ScenarioDescriptionErrorLogTest {
 	public void test_error_log_in_description(boolean report) {
 		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
 			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
@@ -80,7 +80,7 @@ public class ScenarioDescriptionErrorLogTest {
 				.collect(Collectors.toList());
 
 		assertThat(logs, hasSize(greaterThan(0)));
-		SaveLogRQ log = logs.get(logs.size() - 1);
+		SaveLogRQ log = logs.getLast();
 		assertThat(log.getItemUuid(), oneOf(stepIds.toArray(new String[0])));
 		assertThat(log.getLaunchUuid(), equalTo(launchUuid));
 		assertThat(log.getMessage(), equalTo(ERROR_MESSAGE));
@@ -89,7 +89,7 @@ public class ScenarioDescriptionErrorLogTest {
 		verify(client, times(1)).finishTestItem(same(scenarioId), scenarioCaptorFinish.capture());
 
 		List<FinishTestItemRQ> scenarios = scenarioCaptorFinish.getAllValues();
-		FinishTestItemRQ scenario = scenarios.get(0);
+		FinishTestItemRQ scenario = scenarios.getFirst();
 		assertThat(scenario.getDescription(), allOf(notNullValue(), equalTo(DESCRIPTION_ERROR_LOG)));
 	}
 }

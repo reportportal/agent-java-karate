@@ -60,7 +60,7 @@ public class DifferentAttributesTest {
 	public void test_different_attributes(boolean report) {
 		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
 			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}

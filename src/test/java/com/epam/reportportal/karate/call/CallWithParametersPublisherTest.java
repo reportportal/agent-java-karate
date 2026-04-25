@@ -52,7 +52,7 @@ public class CallWithParametersPublisherTest {
 
 	@Test
 	public void test_call_feature_with_parameters_publisher_reporting() {
-		SuiteResult results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
+		SuiteResult results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		assertThat(results.getFeatureFailedCount(), equalTo(0));
 
 		ArgumentCaptor<StartTestItemRQ> captor = ArgumentCaptor.forClass(StartTestItemRQ.class);

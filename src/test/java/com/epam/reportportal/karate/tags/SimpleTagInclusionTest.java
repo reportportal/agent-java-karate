@@ -63,7 +63,7 @@ public class SimpleTagInclusionTest {
 		List<String> tagsToRun = Collections.singletonList("scope=smoke");
 		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReportListener(rp, tagsToRun, TEST_FEATURES);
+			results = TestUtils.runAsResultListener(rp, tagsToRun, TEST_FEATURES);
 		} else {
 			results = TestUtils.runAsEventListener(rp, tagsToRun, TEST_FEATURES);
 		}
@@ -82,7 +82,7 @@ public class SimpleTagInclusionTest {
 		verify(client).finishTestItem(same(scenarioId), scenarioFinishCaptor.capture());
 		List<ArgumentCaptor<FinishTestItemRQ>> stepFinishCaptors = Stream.generate(() -> ArgumentCaptor.forClass(FinishTestItemRQ.class))
 				.limit(stepIds.size())
-				.collect(Collectors.toList());
+				.toList();
 		IntStream.range(0, stepIds.size())
 				.forEach(i -> verify(client).finishTestItem(same(stepIds.get(i)), stepFinishCaptors.get(i).capture()));
 

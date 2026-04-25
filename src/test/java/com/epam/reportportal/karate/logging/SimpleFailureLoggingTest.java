@@ -60,7 +60,7 @@ public class SimpleFailureLoggingTest {
 	public void test_simple_one_step_failed_error_log(boolean report) {
 		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
 			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
@@ -75,13 +75,14 @@ public class SimpleFailureLoggingTest {
 				.collect(Collectors.toList());
 
 		assertThat(logs, hasSize(greaterThan(0)));
-		SaveLogRQ log = logs.get(logs.size() - 1);
+		SaveLogRQ log = logs.getLast();
 		assertThat(log.getItemUuid(), oneOf(stepIds.toArray(new String[0])));
 		assertThat(log.getLaunchUuid(), equalTo(launchUuid));
 		assertThat(
-				log.getMessage(),
-				equalTo("Then assert actualFour != four\n" + "did not evaluate to 'true': actualFour != four\n"
-						+ "classpath:feature/simple_failed.feature:6")
+				log.getMessage(), equalTo("""
+						Then assert actualFour != four
+						did not evaluate to 'true': actualFour != four
+						classpath:feature/simple_failed.feature:6""")
 		);
 	}
 }

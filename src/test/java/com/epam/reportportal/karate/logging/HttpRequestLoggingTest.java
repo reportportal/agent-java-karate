@@ -60,7 +60,7 @@ public class HttpRequestLoggingTest {
 	public void test_http_request_logging(boolean report) {
 		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
 			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
@@ -78,9 +78,16 @@ public class HttpRequestLoggingTest {
 		List<String> messages = logs.stream().map(SaveLogRQ::getMessage).collect(Collectors.toList());
 		assertThat(
 				messages, hasItems(
-						equalTo("Docstring:\n\n```\n{\n" + "  username: 'user',\n" + "  password: 'password',\n"
-								+ "  grant_type: 'password'\n" + "}\n```"),
-						containsString("{\"username\":\"user\",\"password\":\"password\",\"grant_type\":\"password\"}")
+						equalTo("""
+								Docstring:
+								
+								```
+								{
+								  username: 'user',
+								  password: 'password',
+								  grant_type: 'password'
+								}
+								```"""), containsString("{\"username\":\"user\",\"password\":\"password\",\"grant_type\":\"password\"}")
 				)
 		);
 	}

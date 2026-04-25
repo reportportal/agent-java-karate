@@ -37,7 +37,8 @@ import java.util.stream.Stream;
 import static com.epam.reportportal.karate.utils.TestUtils.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 public class EmbedLoggingTest {
 	private static final String TEST_FEATURE = "classpath:feature/embed.feature";
@@ -61,7 +62,7 @@ public class EmbedLoggingTest {
 	public void test_embed_image_attachment(boolean report) {
 		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
 			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
@@ -84,7 +85,7 @@ public class EmbedLoggingTest {
 		assertThat("Should have one attachment log message", attachmentLogs, hasSize(1));
 
 		// Verify the attachment log properties
-		SaveLogRQ attachmentLog = attachmentLogs.get(0);
+		SaveLogRQ attachmentLog = attachmentLogs.getFirst();
 		assertThat("Attachment log should have INFO level", attachmentLog.getLevel(), equalTo(LogLevel.INFO.name()));
 		assertThat("Attachment log should have item UUID", attachmentLog.getItemUuid(), notNullValue());
 		assertThat("Attachment log should have log time", attachmentLog.getLogTime(), notNullValue());
@@ -95,8 +96,8 @@ public class EmbedLoggingTest {
 				.flatMap(rq -> extractBinaryParts((List<MultipartBody.Part>) rq).stream())
 				.collect(Collectors.toList());
 		assertThat(attachments, hasSize(1));
-		assertThat(attachments.get(0).getKey(), equalTo("image/png"));
-		assertThat(attachments.get(0).getValue().length, greaterThan(0));
+		assertThat(attachments.getFirst().getKey(), equalTo("image/png"));
+		assertThat(attachments.getFirst().getValue().length, greaterThan(0));
 	}
 }
 

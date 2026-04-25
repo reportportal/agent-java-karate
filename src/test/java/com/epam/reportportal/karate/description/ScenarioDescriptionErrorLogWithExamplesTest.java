@@ -65,7 +65,7 @@ public class ScenarioDescriptionErrorLogWithExamplesTest {
 
 	private static final String TEST_FEATURE = "classpath:feature/simple_failed_examples.feature";
 	private final String featureId = CommonUtils.namedId("feature_");
-	private final List<String> exampleIds = Stream.generate(() -> CommonUtils.namedId("example_")).limit(2).collect(Collectors.toList());
+	private final List<String> exampleIds = Stream.generate(() -> CommonUtils.namedId("example_")).limit(2).toList();
 	private final List<Pair<String, List<String>>> stepIds = exampleIds.stream()
 			.map(e -> Pair.of(e, Stream.generate(() -> CommonUtils.namedId("step_")).limit(2).collect(Collectors.toList())))
 			.collect(Collectors.toList());
@@ -85,7 +85,7 @@ public class ScenarioDescriptionErrorLogWithExamplesTest {
 		SuiteResult results;
 
 		if (report) {
-			results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
 			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
@@ -102,7 +102,7 @@ public class ScenarioDescriptionErrorLogWithExamplesTest {
 				.collect(Collectors.toList());
 
 		assertThat(logs, hasSize(greaterThan(0)));
-		SaveLogRQ log = logs.get(logs.size() - 1);
+		SaveLogRQ log = logs.getLast();
 		assertThat(log.getMessage(), equalTo(ERROR_MESSAGE));
 
 		ArgumentCaptor<FinishTestItemRQ> scenarioCaptor = ArgumentCaptor.forClass(FinishTestItemRQ.class);
@@ -113,9 +113,9 @@ public class ScenarioDescriptionErrorLogWithExamplesTest {
 				stepIds.size(),
 				ArgumentCaptor.forClass(FinishTestItemRQ.class)
 		));
-		stepIds.forEach(pair -> pair.getValue().forEach(id -> verify(client).finishTestItem(same(id), stepCaptors.get(0).capture())));
+		stepIds.forEach(pair -> pair.getValue().forEach(id -> verify(client).finishTestItem(same(id), stepCaptors.getFirst().capture())));
 
-		FinishTestItemRQ firstScenarioRq = scenarioCaptor.getAllValues().get(0);
+		FinishTestItemRQ firstScenarioRq = scenarioCaptor.getAllValues().getFirst();
 		assertThat(firstScenarioRq.getStatus(), allOf(notNullValue(), equalTo(ItemStatus.PASSED.name())));
 		assertThat(firstScenarioRq.getDescription(), allOf(notNullValue(), equalTo(FIRST_EXAMPLE_DESCRIPTION)));
 

@@ -55,7 +55,7 @@ public class NoFeatureNameTest {
 	public void test_item_names_simple(boolean report) {
 		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReportListener(rp, TEST_NO_NAME_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_NO_NAME_FEATURE);
 		} else {
 			results = TestUtils.runAsEventListener(rp, TEST_NO_NAME_FEATURE);
 		}

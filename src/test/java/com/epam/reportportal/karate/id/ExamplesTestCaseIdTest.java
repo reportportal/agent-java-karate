@@ -44,7 +44,7 @@ public class ExamplesTestCaseIdTest {
 	private static final String FIRST_EXAMPLE_TEST_CASE_ID = String.format(EXAMPLE_TEST_CASE_ID_PATTERN, "result:4;vara:2;varb:2");
 	private static final String SECOND_EXAMPLE_TEST_CASE_ID = String.format(EXAMPLE_TEST_CASE_ID_PATTERN, "result:3;vara:1;varb:2");
 	private final String featureId = CommonUtils.namedId("feature_");
-	private final List<String> exampleIds = Stream.generate(() -> CommonUtils.namedId("example_")).limit(2).collect(Collectors.toList());
+	private final List<String> exampleIds = Stream.generate(() -> CommonUtils.namedId("example_")).limit(2).toList();
 	private final List<Pair<String, List<String>>> stepIds = exampleIds.stream()
 			.map(e -> Pair.of(e, Stream.generate(() -> CommonUtils.namedId("step_")).limit(2).collect(Collectors.toList())))
 			.collect(Collectors.toList());
@@ -62,7 +62,7 @@ public class ExamplesTestCaseIdTest {
 	public void test_examples_test_case_id(boolean report) {
 		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
 			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}

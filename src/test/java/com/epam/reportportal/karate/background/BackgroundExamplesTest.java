@@ -45,7 +45,7 @@ import static org.mockito.Mockito.*;
 public class BackgroundExamplesTest {
 	private static final String TEST_FEATURE = "classpath:feature/background_examples.feature";
 	private final String featureId = CommonUtils.namedId("feature_");
-	private final List<String> scenarioIds = Stream.generate(() -> CommonUtils.namedId("scenario_")).limit(2).collect(Collectors.toList());
+	private final List<String> scenarioIds = Stream.generate(() -> CommonUtils.namedId("scenario_")).limit(2).toList();
 
 	private final List<Pair<String, List<String>>> scenarioSteps = scenarioIds.stream()
 			.map(s -> Pair.of(s, Stream.generate(() -> CommonUtils.namedId("step_")).limit(3).collect(Collectors.toList())))
@@ -70,7 +70,7 @@ public class BackgroundExamplesTest {
 	public void test_background_steps(boolean report) {
 		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
 			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
@@ -115,6 +115,6 @@ public class BackgroundExamplesTest {
 		Set<String> nestedStepNames = nestedSteps.stream().map(StartTestItemRQ::getName).collect(Collectors.toSet());
 
 		assertThat(nestedStepNames, hasSize(1));
-		assertThat(nestedStepNames, hasItem("Given def varb = 2"));
+		assertThat(nestedStepNames, hasItem("Given varb = 2"));
 	}
 }

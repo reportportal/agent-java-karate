@@ -50,7 +50,7 @@ import static org.mockito.Mockito.*;
 public class ExamplesStepParametersTest {
 	private static final String TEST_FEATURE = "classpath:feature/examples.feature";
 	private final String featureId = CommonUtils.namedId("feature_");
-	private final List<String> exampleIds = Stream.generate(() -> CommonUtils.namedId("example_")).limit(2).collect(Collectors.toList());
+	private final List<String> exampleIds = Stream.generate(() -> CommonUtils.namedId("example_")).limit(2).toList();
 	private final List<Pair<String, List<String>>> stepIds = exampleIds.stream()
 			.map(e -> Pair.of(e, Stream.generate(() -> CommonUtils.namedId("step_")).limit(2).collect(Collectors.toList())))
 			.collect(Collectors.toList());
@@ -74,7 +74,7 @@ public class ExamplesStepParametersTest {
 	public void test_examples_parameters_for_steps(boolean report) {
 		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
 			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
@@ -89,7 +89,7 @@ public class ExamplesStepParametersTest {
 		verify(client, times(2)).startTestItem(same(exampleIds.get(1)), secondExampleCaptor.capture());
 
 		List<StartTestItemRQ> firstSteps = firstExampleCaptor.getAllValues();
-		Set<String> parameterStrings = toParameterStringList(firstSteps.get(0).getParameters());
+		Set<String> parameterStrings = toParameterStringList(firstSteps.getFirst().getParameters());
 		assertThat(parameterStrings, hasSize(2));
 		assertThat(parameterStrings, allOf(hasItem("vara:2"), hasItem("varb:2")));
 		parameterStrings = toParameterStringList(firstSteps.get(1).getParameters());
@@ -97,7 +97,7 @@ public class ExamplesStepParametersTest {
 		assertThat(parameterStrings, hasItem("result:4"));
 
 		List<StartTestItemRQ> secondSteps = secondExampleCaptor.getAllValues();
-		parameterStrings = toParameterStringList(secondSteps.get(0).getParameters());
+		parameterStrings = toParameterStringList(secondSteps.getFirst().getParameters());
 		assertThat(parameterStrings, hasSize(2));
 		assertThat(parameterStrings, allOf(hasItem("vara:1"), hasItem("varb:2")));
 		parameterStrings = toParameterStringList(secondSteps.get(1).getParameters());

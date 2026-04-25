@@ -59,7 +59,7 @@ public class SimpleAllPassedTest {
 	public void test_simple_all_passed(boolean report) {
 		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
 			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
@@ -71,7 +71,7 @@ public class SimpleAllPassedTest {
 		verify(client).finishTestItem(same(scenarioId), scenarioCaptor.capture());
 		List<ArgumentCaptor<FinishTestItemRQ>> stepCaptors = Stream.generate(() -> ArgumentCaptor.forClass(FinishTestItemRQ.class))
 				.limit(stepIds.size())
-				.collect(Collectors.toList());
+				.toList();
 		IntStream.range(0, stepIds.size()).forEach(i -> verify(client).finishTestItem(same(stepIds.get(i)), stepCaptors.get(i).capture()));
 
 		FinishTestItemRQ featureRq = featureCaptor.getValue();

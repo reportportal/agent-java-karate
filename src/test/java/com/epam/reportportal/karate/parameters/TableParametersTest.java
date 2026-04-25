@@ -62,7 +62,7 @@ public class TableParametersTest {
 	public void test_table_parameters_reporting(boolean report) {
 		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
 			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
@@ -85,7 +85,7 @@ public class TableParametersTest {
 				.filter(rq -> LogLevel.INFO.name().equals(rq.getLevel()))
 				.collect(Collectors.toList());
 		assertThat(logs, hasSize(1));
-		assertThat(logs.get(0).getMessage(), startsWith("Table:\n\n"));
-		assertThat(logs.get(0).getItemUuid(), startsWith("step_"));
+		assertThat(logs.getFirst().getMessage(), startsWith("Table:\n\n"));
+		assertThat(logs.getFirst().getItemUuid(), startsWith("step_"));
 	}
 }

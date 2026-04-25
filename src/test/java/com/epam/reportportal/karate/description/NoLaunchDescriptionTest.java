@@ -68,7 +68,7 @@ public class NoLaunchDescriptionTest {
 		ReportPortal rp = ReportPortal.create(client, parameters, testExecutor());
 		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
 			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}

@@ -42,7 +42,7 @@ import static org.mockito.Mockito.*;
 public class OneExampleFailedTest {
 	private static final String TEST_FEATURE = "classpath:feature/examples_one_failed.feature";
 	private final String featureId = CommonUtils.namedId("feature_");
-	private final List<String> exampleIds = Stream.generate(() -> CommonUtils.namedId("example_")).limit(2).collect(Collectors.toList());
+	private final List<String> exampleIds = Stream.generate(() -> CommonUtils.namedId("example_")).limit(2).toList();
 	private final List<Pair<String, List<String>>> stepIds = exampleIds.stream()
 			.map(e -> Pair.of(e, Stream.generate(() -> CommonUtils.namedId("step_")).limit(2).collect(Collectors.toList())))
 			.collect(Collectors.toList());
@@ -71,7 +71,7 @@ public class OneExampleFailedTest {
 	public void test_simple_one_step_failed(boolean report) {
 		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
 			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
@@ -84,7 +84,7 @@ public class OneExampleFailedTest {
 		ArgumentCaptor<FinishTestItemRQ> secondExampleCaptor = ArgumentCaptor.forClass(FinishTestItemRQ.class);
 		verify(client).finishTestItem(same(exampleIds.get(1)), secondExampleCaptor.capture());
 		ArgumentCaptor<FinishTestItemRQ> firstExampleFirstStepCaptor = ArgumentCaptor.forClass(FinishTestItemRQ.class);
-		verify(client).finishTestItem(same(stepIds.get(0).getValue().get(0)), firstExampleFirstStepCaptor.capture());
+		verify(client).finishTestItem(same(stepIds.getFirst().getValue().getFirst()), firstExampleFirstStepCaptor.capture());
 		ArgumentCaptor<FinishTestItemRQ> firstExampleSecondStepCaptor = ArgumentCaptor.forClass(FinishTestItemRQ.class);
 		verify(client).finishTestItem(same(stepIds.get(0).getValue().get(1)), firstExampleSecondStepCaptor.capture());
 		ArgumentCaptor<FinishTestItemRQ> secondExampleFirstStepCaptor = ArgumentCaptor.forClass(FinishTestItemRQ.class);

@@ -60,7 +60,7 @@ public class SimpleOneStepFailedTest {
 	public void test_simple_one_step_failed(boolean report) {
 		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReportListener(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
 			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
@@ -72,7 +72,7 @@ public class SimpleOneStepFailedTest {
 		verify(client).finishTestItem(same(scenarioId), scenarioCaptor.capture());
 		List<ArgumentCaptor<FinishTestItemRQ>> stepCaptors = Stream.generate(() -> ArgumentCaptor.forClass(FinishTestItemRQ.class))
 				.limit(stepIds.size())
-				.collect(Collectors.toList());
+				.toList();
 		IntStream.range(0, stepIds.size()).forEach(i -> verify(client).finishTestItem(same(stepIds.get(i)), stepCaptors.get(i).capture()));
 
 		FinishTestItemRQ featureRq = featureCaptor.getValue();
@@ -86,7 +86,7 @@ public class SimpleOneStepFailedTest {
 		assertThat(scenarioRq.getLaunchUuid(), allOf(notNullValue(), equalTo(launchUuid)));
 		assertThat(scenarioRq.getEndTime(), notNullValue());
 
-		List<FinishTestItemRQ> steps = stepCaptors.stream().map(ArgumentCaptor::getValue).collect(Collectors.toList());
+		List<FinishTestItemRQ> steps = stepCaptors.stream().map(ArgumentCaptor::getValue).toList();
 		steps.forEach(step -> {
 			assertThat(step.getLaunchUuid(), allOf(notNullValue(), equalTo(launchUuid)));
 			assertThat(step.getEndTime(), notNullValue());
