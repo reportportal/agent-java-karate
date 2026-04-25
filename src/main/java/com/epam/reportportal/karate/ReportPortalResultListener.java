@@ -142,7 +142,7 @@ public class ReportPortalResultListener implements ResultListener {
 
 	@Override
 	public void onFeatureStart(Feature feature) {
-		Scenario parentScenario = parentScenarios.get().getLast();
+		Scenario parentScenario = parentScenarios.get().peekLast();
 		StartTestItemRQ rq = buildStartFeatureRq(feature);
 		featureIdMap.computeIfAbsent(
 				getFeatureNameForReport(feature), f -> new MemoizingSupplier<>(() -> {
