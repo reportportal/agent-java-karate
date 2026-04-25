@@ -56,10 +56,13 @@ import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 /**
- * ReportPortal test run reporting listener for Karate. This class publish results in the process of test pass.
+ * ReportPortal run listener for Karate that streams runtime events directly to ReportPortal.
  */
 public class ReportPortalRunListener implements RunListener {
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalRunListener.class);
+	/**
+	 * Lazily initialized ReportPortal launch facade used for all item operations.
+	 */
 	protected final MemoizingSupplier<Launch> launch;
 	private final BlockingConcurrentHashMap<String, Supplier<Maybe<String>>> featureIdMap = new BlockingConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> scenarioIdMap = new ConcurrentHashMap<>();
@@ -71,9 +74,9 @@ public class ReportPortalRunListener implements RunListener {
 	private volatile Thread shutDownHook;
 
 	/**
-	 * Create a new instance of the ReportPortalHook with the specified ReportPortal instance.
+	 * Creates a listener instance backed by the provided ReportPortal client.
 	 *
-	 * @param reportPortal the ReportPortal instance
+	 * @param reportPortal ReportPortal client instance
 	 */
 	public ReportPortalRunListener(ReportPortal reportPortal) {
 		ListenerParameters params = reportPortal.getParameters();
@@ -88,13 +91,18 @@ public class ReportPortalRunListener implements RunListener {
 	}
 
 	/**
-	 * Default constructor. Create a new instance of the ReportPortalHook with default ReportPortal instance.
+	 * Creates a listener with a default ReportPortal client configuration.
 	 */
 	@SuppressWarnings("unused")
 	public ReportPortalRunListener() {
 		this(ReportPortal.builder().build());
 	}
 
+	/**
+	 * Creates a listener with a preconfigured launch supplier.
+	 *
+	 * @param launchSupplier launch supplier used to lazily initialize launch interactions
+	 */
 	@SuppressWarnings("unused")
 	public ReportPortalRunListener(Supplier<Launch> launchSupplier) {
 		launch = new MemoizingSupplier<>(launchSupplier);
@@ -111,9 +119,9 @@ public class ReportPortalRunListener implements RunListener {
 	}
 
 	/**
-	 * Customize start Launch finish event/request.
+	 * Customizes the launch finish request.
 	 *
-	 * @param parameters Launch configuration parameters
+	 * @param parameters launch configuration parameters
 	 * @return request to ReportPortal
 	 */
 	@Nonnull
@@ -149,6 +157,12 @@ public class ReportPortalRunListener implements RunListener {
 		return rq;
 	}
 
+	/**
+	 * Calculates feature nesting depth for called features.
+	 *
+	 * @param fr feature runtime
+	 * @return nesting depth where 0 means a top-level feature
+	 */
 	private int getDepth(FeatureRuntime fr) {
 		var caller = fr.getCallerScenario();
 		if (caller == null) {
@@ -162,11 +176,22 @@ public class ReportPortalRunListener implements RunListener {
 		return depth;
 	}
 
+	/**
+	 * Builds a unique feature key that includes call depth.
+	 *
+	 * @param fr feature runtime
+	 * @return depth-qualified feature name
+	 */
 	private String getFeatureNameForReport(FeatureRuntime fr) {
 		int callDepth = getDepth(fr);
 		return callDepth + ":" + fr.getFeature().getNameForReport();
 	}
 
+	/**
+	 * Starts a feature item in ReportPortal.
+	 *
+	 * @param fr feature runtime
+	 */
 	public void beforeFeature(FeatureRuntime fr) {
 		StartTestItemRQ rq = buildStartFeatureRq(fr);
 		featureIdMap.computeIfAbsent(
@@ -204,6 +229,11 @@ public class ReportPortalRunListener implements RunListener {
 		return buildFinishTestItemRq(Instant.now(), fr.getResult().isFailed() ? ItemStatus.FAILED : ItemStatus.PASSED);
 	}
 
+	/**
+	 * Finishes a feature item in ReportPortal.
+	 *
+	 * @param fr feature runtime
+	 */
 	public void afterFeature(FeatureRuntime fr) {
 		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.get(getFeatureNameForReport(fr))).map(Supplier::get);
 		if (optionalId.isEmpty()) {
@@ -235,6 +265,11 @@ public class ReportPortalRunListener implements RunListener {
 		return rq;
 	}
 
+	/**
+	 * Starts a scenario item in ReportPortal.
+	 *
+	 * @param sr scenario runtime
+	 */
 	public void beforeScenario(ScenarioRuntime sr) {
 		StartTestItemRQ rq = buildStartScenarioRq(sr);
 		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.get(getFeatureNameForReport(sr.getFeatureRuntime()))).map(Supplier::get);
@@ -310,10 +345,10 @@ public class ReportPortalRunListener implements RunListener {
 	}
 
 	/**
-	 * Finish sending Scenario data to ReportPortal.
+	 * Finishes the background item for a scenario, if it was started.
 	 *
-	 * @param stepResult Karate's StepResult class instance
-	 * @param sr         Karate's ScenarioRuntime object instance
+	 * @param stepResult step result that completed the background flow
+	 * @param sr         scenario runtime
 	 */
 	public void finishBackground(@Nullable StepResult stepResult, @Nonnull ScenarioRuntime sr) {
 		String uniqueId = sr.getScenario().getUniqueId();
@@ -335,6 +370,11 @@ public class ReportPortalRunListener implements RunListener {
 		ReportPortalUtils.embedAttachment(Instant.now(), itemId, embed);
 	}
 
+	/**
+	 * Finishes a scenario item in ReportPortal.
+	 *
+	 * @param sr scenario runtime
+	 */
 	public void afterScenario(ScenarioRuntime sr) {
 		String uniqueId = sr.getScenario().getUniqueId();
 		Maybe<String> scenarioId = scenarioIdMap.get(uniqueId);
@@ -389,6 +429,12 @@ public class ReportPortalRunListener implements RunListener {
 		ReportPortalUtils.sendLog(itemId, message, level);
 	}
 
+	/**
+	 * Starts a step item and emits step input details.
+	 *
+	 * @param step step definition
+	 * @param sr   scenario runtime
+	 */
 	public void beforeStep(Step step, ScenarioRuntime sr) {
 		boolean background = step.isBackground();
 		Maybe<String> backgroundId = null;
@@ -443,6 +489,12 @@ public class ReportPortalRunListener implements RunListener {
 		return buildFinishTestItemRq(Instant.now(), getStepStatus(stepResult.getStatus()));
 	}
 
+	/**
+	 * Aggregates background status across background steps.
+	 *
+	 * @param stepResult background step result
+	 * @param sr         scenario runtime
+	 */
 	private void saveBackgroundStatus(@Nonnull StepResult stepResult, @Nonnull ScenarioRuntime sr) {
 		String scenarioId = sr.getScenario().getUniqueId();
 		backgroundStatusMap.put(
@@ -451,6 +503,12 @@ public class ReportPortalRunListener implements RunListener {
 		);
 	}
 
+	/**
+	 * Finishes a step item and sends corresponding step output.
+	 *
+	 * @param stepResult step execution result
+	 * @param sr         scenario runtime
+	 */
 	public void afterStep(StepResult stepResult, ScenarioRuntime sr) {
 		boolean background = stepResult.getStep().isBackground();
 		if (!background) {
@@ -472,29 +530,65 @@ public class ReportPortalRunListener implements RunListener {
 		launch.get().finishTestItem(stepId, rq);
 	}
 
+	/**
+	 * Publishes an unexpected runtime error stack trace to ReportPortal.
+	 *
+	 * @param timestamp error timestamp
+	 * @param error     runtime error
+	 * @param sr        scenario runtime
+	 */
 	@SuppressWarnings("unused")
 	public void sendErrorResults(long timestamp, Throwable error, ScenarioRuntime sr) {
 		ReportPortal.sendStackTraceToRP(error);
 	}
 
+	/**
+	 * Karate HTTP callback executed before HTTP invocation.
+	 *
+	 * @param request HTTP request
+	 * @param sr      scenario runtime
+	 */
 	@SuppressWarnings("unused")
 	public void beforeHttpCall(HttpRequest request, ScenarioRuntime sr) {
 	}
 
+	/**
+	 * Karate HTTP callback executed after HTTP invocation.
+	 *
+	 * @param request  HTTP request
+	 * @param response HTTP response
+	 * @param sr       scenario runtime
+	 */
 	@SuppressWarnings("unused")
 	public void afterHttpCall(HttpRequest request, HttpResponse response, ScenarioRuntime sr) {
 	}
 
+	/**
+	 * Karate suite callback before execution.
+	 *
+	 * @param suite suite descriptor
+	 */
 	@SuppressWarnings("unused")
 	public void beforeSuite(Suite suite) {
 		// Omit Suite logic, since there is no Suite names in Karate
 	}
 
+	/**
+	 * Karate suite callback after execution.
+	 *
+	 * @param suite suite result
+	 */
 	@SuppressWarnings("unused")
 	public void afterSuite(SuiteResult suite) {
 		// Omit Suite logic, since there is no Suite names in Karate
 	}
 
+	/**
+	 * Handles Karate runtime events and delegates to ReportPortal lifecycle methods.
+	 *
+	 * @param event Karate runtime event
+	 * @return {@code true} to keep event processing active
+	 */
 	@Override
 	@SuppressWarnings("UnnecessaryDefault")
 	public boolean onEvent(RunEvent event) {

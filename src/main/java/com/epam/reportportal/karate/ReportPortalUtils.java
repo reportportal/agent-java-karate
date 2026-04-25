@@ -56,19 +56,52 @@ import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 /**
- * Set of useful utils related to Karate -&gt; ReportPortal integration
+ * Utility methods for mapping Karate runtime entities to ReportPortal API requests.
  */
 public class ReportPortalUtils {
+	/**
+	 * Markdown template for rendering code blocks.
+	 */
 	public static final String MARKDOWN_CODE_PATTERN = "```\n%s\n```";
+	/**
+	 * Markdown template for rendering parameter tables.
+	 */
 	public static final String PARAMETERS_PATTERN = "Parameters:\n\n%s";
+	/**
+	 * Regex template used to match Karate outline variable placeholders in a step.
+	 */
 	public static final String VARIABLE_PATTERN = "(?:(?<=#\\()%1$s(?=\\)))|(?:(?<=[\\s=+-/*<>(]|^)%1$s(?=[\\s=+-/*<>)]|(?:\\r?\\n)|$))";
+	/**
+	 * Agent properties file name used to enrich launch/system attributes.
+	 */
 	public static final String AGENT_PROPERTIES_FILE = "agent.properties";
+	/**
+	 * System attribute key that controls skipped issue behavior in ReportPortal.
+	 */
 	public static final String SKIPPED_ISSUE_KEY = "skippedIssue";
+	/**
+	 * Code reference template for a concrete scenario.
+	 */
 	public static final String SCENARIO_CODE_REFERENCE_PATTERN = "%s/[SCENARIO:%s]";
+	/**
+	 * Code reference template for a scenario outline example.
+	 */
 	public static final String EXAMPLE_CODE_REFERENCE_PATTERN = "%s/[EXAMPLE:%s%s]";
+	/**
+	 * Markdown delimiter used to join logical description sections.
+	 */
 	public static final String MARKDOWN_DELIMITER = MarkdownUtils.LOGICAL_SEPARATOR;
+	/**
+	 * Pattern for joining two text blocks with a markdown delimiter.
+	 */
 	public static final String MARKDOWN_DELIMITER_PATTERN = "%s" + MARKDOWN_DELIMITER + "%s";
+	/**
+	 * Prefix used for naming called (inner) feature items.
+	 */
 	public static final String FEATURE_TAG = "Feature: ";
+	/**
+	 * Prefix used for naming called (inner) scenario items.
+	 */
 	public static final String SCENARIO_TAG = "Scenario: ";
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalUtils.class);
 	private static final String PARAMETER_ITEMS_START = "[";
@@ -174,6 +207,12 @@ public class ReportPortalUtils {
 		return rq;
 	}
 
+	/**
+	 * Returns a feature file code reference.
+	 *
+	 * @param feature Karate feature
+	 * @return feature-relative code reference
+	 */
 	@Nonnull
 	public static String getCodeRef(@Nonnull Feature feature) {
 		return feature.getResource().getRelativePath();
@@ -232,6 +271,12 @@ public class ReportPortalUtils {
 		return rq;
 	}
 
+	/**
+	 * Converts Karate tags to ReportPortal attributes.
+	 *
+	 * @param tags Karate tags
+	 * @return ReportPortal attributes or {@code null} when there are no tags
+	 */
 	@Nullable
 	public static Set<ItemAttributesRQ> toAttributes(@Nullable List<Tag> tags) {
 		Set<ItemAttributesRQ> attributes = ofNullable(tags).orElse(Collections.emptyList()).stream().flatMap(tag -> {
@@ -339,6 +384,14 @@ public class ReportPortalUtils {
 		return rq;
 	}
 
+	/**
+	 * Builds scenario description from parameters, scenario description and optional error details.
+	 *
+	 * @param scenario     scenario descriptor
+	 * @param errorMessage optional error message
+	 * @param parameters   optional outline parameters
+	 * @return formatted Markdown description
+	 */
 	@Nonnull
 	private static String buildDescription(@Nonnull Scenario scenario, @Nullable String errorMessage,
 			@Nullable List<ParameterResource> parameters) {
@@ -357,6 +410,12 @@ public class ReportPortalUtils {
 		return descriptionBuilder.toString();
 	}
 
+	/**
+	 * Appends text using the configured Markdown delimiter when needed.
+	 *
+	 * @param builder destination description builder
+	 * @param text    text block to append
+	 */
 	private static void appendWithDelimiter(StringBuilder builder, String text) {
 		if (!builder.isEmpty()) {
 			builder.append(MARKDOWN_DELIMITER);
@@ -367,7 +426,7 @@ public class ReportPortalUtils {
 	/**
 	 * Build ReportPortal request for start Background event.
 	 *
-	 * @param startTime
+	 * @param startTime background start time
 	 * @param step      Karate's Step object instance
 	 * @param scenario  Karate's Scenario object instance
 	 * @return request to ReportPortal
@@ -464,6 +523,7 @@ public class ReportPortalUtils {
 	/**
 	 * Embed an attachment to ReportPortal.
 	 *
+	 * @param time   log time
 	 * @param itemId item ID future
 	 * @param embed  Karate's Embed object
 	 */
