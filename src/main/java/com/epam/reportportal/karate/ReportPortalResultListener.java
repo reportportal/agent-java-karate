@@ -480,7 +480,8 @@ public class ReportPortalResultListener implements ResultListener {
 
 	@Override
 	public void onSuiteStart(Suite suite) {
-		// Omit Suite logic, since there is no Suite names in Karate
+		// Trigger launch start
+		launch.get();
 	}
 
 	@Override
