@@ -45,6 +45,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -535,5 +536,39 @@ public class ReportPortalUtils {
 	 */
 	public static String getInnerFeatureName(String name) {
 		return FEATURE_TAG + name;
+	}
+
+	/**
+	 * Get step start time. To keep the steps order in case previous step startTime == current step startTime or
+	 * previous step startTime &gt; current step startTime.
+	 *
+	 * @param scenarioUniqueId Karate's Scenario Unique ID, a key for stepStartTimeMap
+	 * @param stepStartTimeMap a holder for start times for every particular scenario
+	 * @param useMicroseconds  if server supports microseconds
+	 * @return step new startTime in Instant format.
+	 */
+	public static Instant getStepStartTime(@Nullable String scenarioUniqueId, Map<String, Instant> stepStartTimeMap,
+			boolean useMicroseconds) {
+		Instant currentStepStartTime = Instant.now().truncatedTo(ChronoUnit.MICROS);
+		if (scenarioUniqueId == null || stepStartTimeMap.isEmpty()) {
+			stepStartTimeMap.put(scenarioUniqueId, currentStepStartTime);
+			return currentStepStartTime;
+		}
+		Instant lastStepStartTime = stepStartTimeMap.get(scenarioUniqueId);
+		if (lastStepStartTime == null) {
+			stepStartTimeMap.put(scenarioUniqueId, currentStepStartTime);
+			return currentStepStartTime;
+		}
+		if (useMicroseconds) {
+			if (lastStepStartTime.compareTo(currentStepStartTime) >= 0) {
+				currentStepStartTime = lastStepStartTime.plus(1, ChronoUnit.MICROS);
+			}
+		} else {
+			if (lastStepStartTime.truncatedTo(ChronoUnit.MILLIS).compareTo(currentStepStartTime.truncatedTo(ChronoUnit.MILLIS)) >= 0) {
+				currentStepStartTime = lastStepStartTime.plus(1, ChronoUnit.MILLIS);
+			}
+		}
+		stepStartTimeMap.put(scenarioUniqueId, currentStepStartTime);
+		return currentStepStartTime;
 	}
 }

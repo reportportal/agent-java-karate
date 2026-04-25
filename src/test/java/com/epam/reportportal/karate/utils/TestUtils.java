@@ -17,6 +17,7 @@
 package com.epam.reportportal.karate.utils;
 
 import com.epam.reportportal.karate.ReportPortalResultListener;
+import com.epam.reportportal.karate.ReportPortalRunListener;
 import com.epam.reportportal.listeners.ListenerParameters;
 import com.epam.reportportal.service.LaunchImpl;
 import com.epam.reportportal.service.ReportPortal;
@@ -80,8 +81,8 @@ public class TestUtils {
 	}
 
 	public static SuiteResult runAsEventListener(ReportPortal reportPortal, List<String> tags, String... paths) {
-		ReportPortalResultListener listener = new ReportPortalResultListener(reportPortal);
-		Runner.Builder path = Runner.path(paths).resultListener(listener).outputCucumberJson(false);
+		ReportPortalRunListener listener = new ReportPortalRunListener(reportPortal);
+		Runner.Builder path = Runner.path(paths).listener(listener).outputCucumberJson(false);
 		SuiteResult result = path.tags(tags.toArray(new String[0])).parallel(1);
 		listener.finishLaunch();
 		return result;
