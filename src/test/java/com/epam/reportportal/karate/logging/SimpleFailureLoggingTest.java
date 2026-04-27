@@ -80,9 +80,8 @@ public class SimpleFailureLoggingTest {
 		assertThat(log.getLaunchUuid(), equalTo(launchUuid));
 		assertThat(
 				log.getMessage(), equalTo("""
-						Then assert actualFour != four
-						did not evaluate to 'true': actualFour != four
-						classpath:feature/simple_failed.feature:6""")
+						Then actualFour != four
+						assert failed: actualFour != four""")
 		);
 	}
 }

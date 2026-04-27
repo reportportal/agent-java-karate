@@ -37,14 +37,18 @@ import java.util.stream.Stream;
 import static com.epam.reportportal.karate.utils.TestUtils.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.endsWith;
+import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.*;
 
 public class ScenarioDescriptionErrorLogTest {
 
-	public static final String ERROR = "did not evaluate to 'true': actualFour != four\nclasspath:feature/simple_failed.feature:6";
-	public static final String ERROR_MESSAGE = "Then assert actualFour != four\n" + ERROR;
-	public static final String DESCRIPTION_ERROR_LOG = "Error:\n" + ERROR;
+	public static final String ERROR = "/feature/simple_failed.feature:6 actualFour != four";
+	public static final String ERROR_MESSAGE = """
+			Then actualFour != four
+			assert failed: actualFour != four""";
+	public static final String DESCRIPTION_ERROR_LOG = "Error:\n";
 	private static final String TEST_FEATURE = "classpath:feature/simple_failed.feature";
 	private final String launchUuid = CommonUtils.namedId("launch_");
 	private final String featureId = CommonUtils.namedId("feature_");
@@ -90,6 +94,6 @@ public class ScenarioDescriptionErrorLogTest {
 
 		List<FinishTestItemRQ> scenarios = scenarioCaptorFinish.getAllValues();
 		FinishTestItemRQ scenario = scenarios.getFirst();
-		assertThat(scenario.getDescription(), allOf(notNullValue(), equalTo(DESCRIPTION_ERROR_LOG)));
+		assertThat(scenario.getDescription(), allOf(notNullValue(), startsWith(DESCRIPTION_ERROR_LOG), endsWith(ERROR)));
 	}
 }

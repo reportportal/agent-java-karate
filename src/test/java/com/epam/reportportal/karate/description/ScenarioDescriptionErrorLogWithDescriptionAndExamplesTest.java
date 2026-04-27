@@ -39,37 +39,27 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.epam.reportportal.karate.ReportPortalUtils.MARKDOWN_DELIMITER_PATTERN;
 import static com.epam.reportportal.karate.utils.TestUtils.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.endsWith;
+import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.*;
 
 public class ScenarioDescriptionErrorLogWithDescriptionAndExamplesTest {
 
-	public static final String MARKDOWN_DELIMITER_PATTERN_THREE_ARGS = "%s\n\n---\n\n%s\n\n---\n\n%s";
-	public static final String ERROR = "did not evaluate to 'true': mathResult == 5\nclasspath:feature/simple_failed_description_examples.feature:8";
-	public static final String ERROR_MESSAGE = "Then assert mathResult == 5\n" + ERROR;
-	public static final String DESCRIPTION_ERROR_LOG = "Error:\n" + ERROR;
-	public static final String DESCRIPTION = "This is my Scenario description.";
+	public static final String ERROR_END = "feature/simple_failed_description_examples.feature:8 mathResult == 5";
+	public static final String ERROR_MESSAGE = """
+			Then mathResult == 5
+			assert failed: mathResult == 5""";
+	public static final String DESCRIPTION_STRING = "This is my Scenario description.";
+	public static final String ERROR = "Error:\n";
 	private static final String EXAMPLE_PARAMETERS_DESCRIPTION_PATTERN =
 			"Parameters:\n\n" + MarkdownUtils.TABLE_INDENT + "| vara | varb | result |\n" + MarkdownUtils.TABLE_INDENT
 					+ "|------|------|--------|\n" + MarkdownUtils.TABLE_INDENT;
 	public static final String FIRST_EXAMPLE_DESCRIPTION = EXAMPLE_PARAMETERS_DESCRIPTION_PATTERN + "|  2   |  2   |   4    |";
 	public static final String SECOND_EXAMPLE_DESCRIPTION = EXAMPLE_PARAMETERS_DESCRIPTION_PATTERN + "|  1   |  2   |   5    |";
-
-	public static final String FIRST_EXAMPLE_DESCRIPTION_WITHOUT_ERROR_LOG = String.format(
-			MARKDOWN_DELIMITER_PATTERN,
-			FIRST_EXAMPLE_DESCRIPTION,
-			DESCRIPTION
-	);
-	public static final String SECOND_EXAMPLE_DESCRIPTION_WITH_ERROR_LOG = String.format(
-			MARKDOWN_DELIMITER_PATTERN_THREE_ARGS,
-			SECOND_EXAMPLE_DESCRIPTION,
-			DESCRIPTION,
-			DESCRIPTION_ERROR_LOG
-	);
 
 	private static final String TEST_FEATURE = "classpath:feature/simple_failed_description_examples.feature";
 	private final String featureId = CommonUtils.namedId("feature_");
@@ -125,10 +115,22 @@ public class ScenarioDescriptionErrorLogWithDescriptionAndExamplesTest {
 
 		FinishTestItemRQ firstScenarioRq = scenarioCaptor.getAllValues().getFirst();
 		assertThat(firstScenarioRq.getStatus(), allOf(notNullValue(), equalTo(ItemStatus.PASSED.name())));
-		assertThat(firstScenarioRq.getDescription(), allOf(notNullValue(), equalTo(FIRST_EXAMPLE_DESCRIPTION_WITHOUT_ERROR_LOG)));
+		assertThat(
+				firstScenarioRq.getDescription(),
+				allOf(notNullValue(), equalTo(MarkdownUtils.asTwoParts(FIRST_EXAMPLE_DESCRIPTION, DESCRIPTION_STRING)))
+		);
 
 		FinishTestItemRQ secondScenarioRq = scenarioCaptor.getAllValues().get(1);
 		assertThat(secondScenarioRq.getStatus(), allOf(notNullValue(), equalTo(ItemStatus.FAILED.name())));
-		assertThat(secondScenarioRq.getDescription(), allOf(notNullValue(), equalTo(SECOND_EXAMPLE_DESCRIPTION_WITH_ERROR_LOG)));
+		assertThat(
+				secondScenarioRq.getDescription(), allOf(
+						notNullValue(),
+						startsWith(MarkdownUtils.asTwoParts(
+								SECOND_EXAMPLE_DESCRIPTION,
+								MarkdownUtils.asTwoParts(DESCRIPTION_STRING, ERROR)
+						)),
+						endsWith(ERROR_END)
+				)
+		);
 	}
 }

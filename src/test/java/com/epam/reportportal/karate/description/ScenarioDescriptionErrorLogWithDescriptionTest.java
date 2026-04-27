@@ -21,6 +21,7 @@ import com.epam.reportportal.listeners.LogLevel;
 import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
+import com.epam.reportportal.utils.formatting.MarkdownUtils;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.epam.ta.reportportal.ws.model.log.SaveLogRQ;
 import io.karatelabs.core.SuiteResult;
@@ -34,24 +35,22 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.epam.reportportal.karate.ReportPortalUtils.MARKDOWN_DELIMITER_PATTERN;
 import static com.epam.reportportal.karate.utils.TestUtils.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.startsWith;
+import static org.hamcrest.Matchers.endsWith;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.*;
 
 public class ScenarioDescriptionErrorLogWithDescriptionTest {
 
-	public static final String ERROR = "did not evaluate to 'true': actualFour != four\nclasspath:feature/simple_failed_description.feature:9";
-	public static final String ERROR_MESSAGE = "Then assert actualFour != four\n" + ERROR;
-	public static final String DESCRIPTION_ERROR_LOG = "Error:\n" + ERROR;
+	public static final String ERROR = "/feature/simple_failed_description.feature:9 actualFour != four";
+	public static final String ERROR_MESSAGE = """
+			Then actualFour != four
+			assert failed: actualFour != four""";
+	public static final String DESCRIPTION_ERROR_LOG = "Error:\n";
 	public static final String DESCRIPTION = "This is my Scenario description.";
-	public static final String DESCRIPTION_ERROR_LOG_WITH_DESCRIPTION = String.format(
-			MARKDOWN_DELIMITER_PATTERN,
-			DESCRIPTION,
-			DESCRIPTION_ERROR_LOG
-	);
 	private static final String TEST_FEATURE = "classpath:feature/simple_failed_description.feature";
 	private final String launchUuid = CommonUtils.namedId("launch_");
 	private final String featureId = CommonUtils.namedId("feature_");
@@ -98,6 +97,9 @@ public class ScenarioDescriptionErrorLogWithDescriptionTest {
 		List<FinishTestItemRQ> scenarios = scenarioCaptorFinish.getAllValues();
 		FinishTestItemRQ scenario = scenarios.getFirst();
 
-		assertThat(scenario.getDescription(), allOf(notNullValue(), equalTo(DESCRIPTION_ERROR_LOG_WITH_DESCRIPTION)));
+		assertThat(
+				scenario.getDescription(),
+				allOf(notNullValue(), startsWith(MarkdownUtils.asTwoParts(DESCRIPTION, DESCRIPTION_ERROR_LOG)), endsWith(ERROR))
+		);
 	}
 }
