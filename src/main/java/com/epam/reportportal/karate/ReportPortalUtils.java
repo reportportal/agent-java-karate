@@ -602,14 +602,14 @@ public class ReportPortalUtils {
 	 * Get step start time. To keep the steps order in case previous step startTime == current step startTime or
 	 * previous step startTime &gt; current step startTime.
 	 *
-	 * @param scenarioUniqueId Karate's Scenario Unique ID, a key for stepStartTimeMap
-	 * @param stepStartTimeMap a holder for start times for every particular scenario
-	 * @param useMicroseconds  if server supports microseconds
+	 * @param scenarioUniqueId     Karate's Scenario Unique ID, a key for stepStartTimeMap
+	 * @param stepStartTimeMap     a holder for start times for every particular scenario
+	 * @param currentStepStartTime scenario start time to use as baseline
+	 * @param useMicroseconds      if server supports microseconds
 	 * @return step new startTime in Instant format.
 	 */
 	public static Instant getStepStartTime(@Nullable String scenarioUniqueId, Map<String, Instant> stepStartTimeMap,
-			boolean useMicroseconds) {
-		Instant currentStepStartTime = Instant.now().truncatedTo(ChronoUnit.MICROS);
+			Instant currentStepStartTime, boolean useMicroseconds) {
 		if (scenarioUniqueId == null || stepStartTimeMap.isEmpty()) {
 			stepStartTimeMap.put(scenarioUniqueId, currentStepStartTime);
 			return currentStepStartTime;
@@ -630,5 +630,20 @@ public class ReportPortalUtils {
 		}
 		stepStartTimeMap.put(scenarioUniqueId, currentStepStartTime);
 		return currentStepStartTime;
+	}
+
+	/**
+	 * Get step start time. To keep the steps order in case previous step startTime == current step startTime or
+	 * previous step startTime &gt; current step startTime.
+	 *
+	 * @param scenarioUniqueId Karate's Scenario Unique ID, a key for stepStartTimeMap
+	 * @param stepStartTimeMap a holder for start times for every particular scenario
+	 * @param useMicroseconds  if server supports microseconds
+	 * @return step new startTime in Instant format.
+	 */
+	public static Instant getStepStartTime(@Nullable String scenarioUniqueId, Map<String, Instant> stepStartTimeMap,
+			boolean useMicroseconds) {
+		Instant currentStepStartTime = Instant.now().truncatedTo(ChronoUnit.MICROS);
+		return getStepStartTime(scenarioUniqueId, stepStartTimeMap, currentStepStartTime, useMicroseconds);
 	}
 }

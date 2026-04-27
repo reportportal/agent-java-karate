@@ -63,6 +63,7 @@ public class ReportPortalResultListener implements ResultListener {
 	protected final MemoizingSupplier<Launch> launch;
 	private final BlockingConcurrentHashMap<String, Supplier<Maybe<String>>> featureIdMap = new BlockingConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> scenarioIdMap = new ConcurrentHashMap<>();
+	private final Map<String, Instant> stepStartTimeMap = new HashMap<>();
 	private final Map<String, Maybe<String>> backgroundIdMap = new ConcurrentHashMap<>();
 	private final Map<String, ItemStatus> backgroundStatusMap = new ConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> stepIdMap = new ConcurrentHashMap<>();
@@ -238,7 +239,7 @@ public class ReportPortalResultListener implements ResultListener {
 	/**
 	 * Starts a scenario item in ReportPortal.
 	 *
-	 * @param scenario scenario descriptor
+	 * @param scenario Karate scenario descriptor
 	 */
 	@Override
 	public void onScenarioStart(Scenario scenario) {
@@ -353,8 +354,9 @@ public class ReportPortalResultListener implements ResultListener {
 	 */
 	@Override
 	public void onScenarioEnd(ScenarioResult sr) {
-		Scenario scenario = sr.getScenario();
-		Maybe<String> scenarioId = scenarioIdMap.get(scenario.getUniqueId());
+		String scenarioUniqueId = sr.getScenario().getUniqueId();
+		Maybe<String> scenarioId = scenarioIdMap.get(scenarioUniqueId);
+		stepStartTimeMap.remove(scenarioUniqueId);
 		finishBackground(null, sr);
 
 		if (scenarioId == null) {
@@ -374,6 +376,18 @@ public class ReportPortalResultListener implements ResultListener {
 	}
 
 	/**
+	 * Get step start time. To keep the steps order in case previous step startTime == current step startTime or
+	 * previous step startTime > current step startTime.
+	 *
+	 * @param scenarioUniqueId Karate's Scenario Unique ID
+	 * @return step new startTime in Instant format.
+	 */
+	@Nonnull
+	private Instant getStepStartTime(@Nullable String scenarioUniqueId, Instant stepStartTime) {
+		return ReportPortalUtils.getStepStartTime(scenarioUniqueId, stepStartTimeMap, stepStartTime, launch.get().useMicroseconds());
+	}
+
+	/**
 	 * Customize start Step test item event/request.
 	 *
 	 * @param startTime step start time
@@ -384,7 +398,8 @@ public class ReportPortalResultListener implements ResultListener {
 	@Nonnull
 	protected StartTestItemRQ buildStartStepRq(Instant startTime, @Nonnull Step step, @Nonnull Scenario sr) {
 		StartTestItemRQ rq = ReportPortalUtils.buildStartStepRq(step, sr);
-		rq.setStartTime(startTime);
+		Instant newStartTime = getStepStartTime(sr.getUniqueId(), startTime);
+		rq.setStartTime(newStartTime);
 		return rq;
 	}
 
