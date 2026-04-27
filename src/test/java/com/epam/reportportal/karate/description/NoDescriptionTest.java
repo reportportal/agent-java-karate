@@ -72,7 +72,7 @@ public class NoDescriptionTest {
 		verify(client, times(3)).startTestItem(same(scenarioId), stepCaptor.capture());
 
 		StartTestItemRQ featureStart = featureCaptor.getValue();
-		assertThat(featureStart.getDescription(), endsWith("feature/simple.feature"));
+		assertThat(featureStart.getDescription(), endsWith("build/resources/test/feature/simple.feature"));
 
 		StartTestItemRQ scenarioStart = scenarioCaptor.getValue();
 		assertThat(scenarioStart.getDescription(), emptyString());

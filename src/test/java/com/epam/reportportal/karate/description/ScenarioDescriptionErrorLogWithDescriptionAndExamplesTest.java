@@ -49,7 +49,7 @@ import static org.mockito.Mockito.*;
 
 public class ScenarioDescriptionErrorLogWithDescriptionAndExamplesTest {
 
-	public static final String ERROR_END = "feature/simple_failed_description_examples.feature:8 mathResult == 5";
+	public static final String ERROR_END = "build/resources/test/feature/simple_failed_description_examples.feature:8 mathResult == 5";
 	public static final String ERROR_MESSAGE = """
 			Then mathResult == 5
 			assert failed: mathResult == 5""";

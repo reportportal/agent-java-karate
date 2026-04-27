@@ -65,6 +65,6 @@ public class NoFeatureNameTest {
 		verify(client, times(1)).startTestItem(featureCaptor.capture());
 
 		StartTestItemRQ featureRq = featureCaptor.getValue();
-		assertThat(featureRq.getName(), allOf(notNullValue(), equalTo("feature/no_name_feature.feature")));
+		assertThat(featureRq.getName(), allOf(notNullValue(), equalTo("build/resources/test/feature/no_name_feature.feature")));
 	}
 }

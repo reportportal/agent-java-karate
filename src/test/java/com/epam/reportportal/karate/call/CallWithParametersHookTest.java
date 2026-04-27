@@ -102,6 +102,6 @@ public class CallWithParametersHookTest {
 				.findAny()
 				.orElseThrow();
 
-		assertThat(calledFeature.getDescription(), allOf(endsWith("feature/called.feature"), startsWith(PARAMETERS_DESCRIPTION_PATTERN)));
+		assertThat(calledFeature.getDescription(), allOf(endsWith("build/resources/test/feature/called.feature"), startsWith(PARAMETERS_DESCRIPTION_PATTERN)));
 	}
 }

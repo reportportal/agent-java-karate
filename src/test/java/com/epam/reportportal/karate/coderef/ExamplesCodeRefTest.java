@@ -41,7 +41,7 @@ import static org.mockito.Mockito.*;
 
 public class ExamplesCodeRefTest {
 	private static final String TEST_FEATURE = "classpath:feature/examples.feature";
-	private static final String EXAMPLE_CODE_REFERENCE_PATTERN = "feature/examples.feature/[EXAMPLE:Verify different maths[%s]]";
+	private static final String EXAMPLE_CODE_REFERENCE_PATTERN = "build/resources/test/feature/examples.feature/[EXAMPLE:Verify different maths[%s]]";
 	private static final String FIRST_EXAMPLE_CODE_REFERENCE = String.format(EXAMPLE_CODE_REFERENCE_PATTERN, "result:4;vara:2;varb:2");
 	private static final String SECOND_EXAMPLE_CODE_REFERENCE = String.format(EXAMPLE_CODE_REFERENCE_PATTERN, "result:3;vara:1;varb:2");
 	private final String featureId = CommonUtils.namedId("feature_");
