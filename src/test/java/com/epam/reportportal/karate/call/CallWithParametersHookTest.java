@@ -56,7 +56,7 @@ public class CallWithParametersHookTest {
 	private final String innerScenarioId = CommonUtils.namedId("scenario_step_");
 	private final List<String> innerStepIds = Stream.generate(() -> CommonUtils.namedId("inner_step_"))
 			.limit(3)
-			.collect(Collectors.toList());
+			.toList();
 
 	private final List<Pair<String, Collection<Pair<String, List<String>>>>> features = Stream.of(Pair.of(
 					featureId,

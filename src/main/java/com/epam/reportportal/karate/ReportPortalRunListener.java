@@ -145,15 +145,17 @@ public class ReportPortalRunListener implements RunListener {
 	@Nonnull
 	protected StartTestItemRQ buildStartFeatureRq(@Nonnull FeatureRuntime fr) {
 		StartTestItemRQ rq = ReportPortalUtils.buildStartFeatureRq(fr.getFeature());
-		ofNullable(fr.getCaller()).map(FeatureRuntime::getCallArg).filter(args -> !args.isEmpty()).ifPresent(args -> {
-			String parameters = String.format(PARAMETERS_PATTERN, formatParametersAsTable(getParameters(args)));
-			String description = rq.getDescription();
-			if (isNotBlank(description)) {
-				rq.setDescription(MarkdownUtils.asTwoParts(parameters, description));
-			} else {
-				rq.setDescription(parameters);
-			}
-		});
+		ofNullable(fr.getCallArg())
+				.filter(args -> !args.isEmpty())
+				.ifPresent(args -> {
+					String parameters = String.format(PARAMETERS_PATTERN, formatParametersAsTable(getParameters(args)));
+					String description = rq.getDescription();
+					if (isNotBlank(description)) {
+						rq.setDescription(MarkdownUtils.asTwoParts(parameters, description));
+					} else {
+						rq.setDescription(parameters);
+					}
+				});
 		return rq;
 	}
 
@@ -171,7 +173,11 @@ public class ReportPortalRunListener implements RunListener {
 		int depth = 0;
 		while (caller != null) {
 			depth++;
-			caller = caller.getFeatureRuntime().getCallerScenario();
+			FeatureRuntime myFr = caller.getFeatureRuntime();
+			if (myFr == null) {
+				break;
+			}
+			caller = myFr.getCallerScenario();
 		}
 		return depth;
 	}
@@ -199,7 +205,7 @@ public class ReportPortalRunListener implements RunListener {
 					if (getDepth(fr) == 0) {
 						return launch.get().startTestItem(rq);
 					} else {
-						Maybe<String> scenarioId = scenarioIdMap.get(fr.getCaller().getCallerScenario().getScenario().getUniqueId());
+						Maybe<String> scenarioId = scenarioIdMap.get(fr.getCallerScenario().getScenario().getUniqueId());
 						if (scenarioId == null) {
 							LOGGER.error("ERROR: Trying to post unspecified scenario.");
 							return launch.get().startTestItem(rq);

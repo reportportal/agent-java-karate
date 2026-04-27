@@ -10,4 +10,4 @@ Feature: the very basic test to run by Karate
   Scenario: Verify math
     * def expectedValue = 4
     * def testValue = 2
-    * call read('@execute-test') { expectedValue: #(expectedValue), testValue: #(testValue) }
+    * call read('@execute-test') { expectedValue: expectedValue, testValue: testValue }
