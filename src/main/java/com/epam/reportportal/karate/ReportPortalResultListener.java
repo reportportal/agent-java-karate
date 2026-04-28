@@ -61,7 +61,7 @@ public class ReportPortalResultListener implements ResultListener {
 	 * Lazily initialized ReportPortal launch facade used for all item operations.
 	 */
 	protected final MemoizingSupplier<Launch> launch;
-	private final BlockingConcurrentHashMap<String, Supplier<Maybe<String>>> featureIdMap = new BlockingConcurrentHashMap<>();
+	private final BlockingConcurrentHashMap<String, MemoizingSupplier<Maybe<String>>> featureIdMap = new BlockingConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> scenarioIdMap = new ConcurrentHashMap<>();
 	private final Map<String, Instant> stepStartTimeMap = new HashMap<>();
 	private final Map<String, Maybe<String>> backgroundIdMap = new ConcurrentHashMap<>();
@@ -206,15 +206,14 @@ public class ReportPortalResultListener implements ResultListener {
 	 */
 	@Override
 	public void onFeatureEnd(FeatureResult fr) {
-		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.get(getFeatureNameForReport(fr.getFeature()))).map(Supplier::get);
-		if (optionalId.isEmpty()) {
-			LOGGER.error("ERROR: Trying to finish unspecified feature.");
+		MemoizingSupplier<Maybe<String>> supplier = featureIdMap.get(getFeatureNameForReport(fr.getFeature()));
+		if (supplier == null || !supplier.isInitialized()) {
+			return;
 		}
-		optionalId.ifPresent(featureId -> {
-			//noinspection ReactiveStreamsUnusedPublisher
-			launch.get().finishTestItem(featureId, buildFinishFeatureRq(fr));
-			innerFeatures.remove(featureId);
-		});
+		Maybe<String> featureId = supplier.get();
+		//noinspection ReactiveStreamsUnusedPublisher
+		launch.get().finishTestItem(featureId, buildFinishFeatureRq(fr));
+		innerFeatures.remove(featureId);
 	}
 
 	/**
@@ -277,8 +276,8 @@ public class ReportPortalResultListener implements ResultListener {
 	 * Build ReportPortal request for start Background event.
 	 *
 	 * @param startTime background start time
-	 * @param step Karate step descriptor
-	 * @param sr   Karate scenario descriptor
+	 * @param step      Karate step descriptor
+	 * @param sr        Karate scenario descriptor
 	 * @return request to ReportPortal
 	 */
 	@Nonnull
@@ -290,8 +289,8 @@ public class ReportPortalResultListener implements ResultListener {
 	 * Start sending Background data to ReportPortal.
 	 *
 	 * @param startTime background start time
-	 * @param step Karate step descriptor
-	 * @param sr   Karate scenario descriptor
+	 * @param step      Karate step descriptor
+	 * @param sr        Karate scenario descriptor
 	 * @return item ID Future
 	 */
 	public Maybe<String> startBackground(Instant startTime, @Nonnull Step step, @Nonnull Scenario sr) {
@@ -391,8 +390,8 @@ public class ReportPortalResultListener implements ResultListener {
 	 * Customize start Step test item event/request.
 	 *
 	 * @param startTime step start time
-	 * @param step Karate step descriptor
-	 * @param sr   Karate scenario descriptor
+	 * @param step      Karate step descriptor
+	 * @param sr        Karate scenario descriptor
 	 * @return request to ReportPortal
 	 */
 	@Nonnull

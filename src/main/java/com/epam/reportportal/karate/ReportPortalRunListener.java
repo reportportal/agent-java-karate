@@ -64,7 +64,7 @@ public class ReportPortalRunListener implements RunListener {
 	 * Lazily initialized ReportPortal launch facade used for all item operations.
 	 */
 	protected final MemoizingSupplier<Launch> launch;
-	private final BlockingConcurrentHashMap<String, Supplier<Maybe<String>>> featureIdMap = new BlockingConcurrentHashMap<>();
+	private final BlockingConcurrentHashMap<String, MemoizingSupplier<Maybe<String>>> featureIdMap = new BlockingConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> scenarioIdMap = new ConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> backgroundIdMap = new ConcurrentHashMap<>();
 	private final Map<String, ItemStatus> backgroundStatusMap = new ConcurrentHashMap<>();
@@ -145,17 +145,15 @@ public class ReportPortalRunListener implements RunListener {
 	@Nonnull
 	protected StartTestItemRQ buildStartFeatureRq(@Nonnull FeatureRuntime fr) {
 		StartTestItemRQ rq = ReportPortalUtils.buildStartFeatureRq(fr.getFeature());
-		ofNullable(fr.getCallArg())
-				.filter(args -> !args.isEmpty())
-				.ifPresent(args -> {
-					String parameters = String.format(PARAMETERS_PATTERN, formatParametersAsTable(getParameters(args)));
-					String description = rq.getDescription();
-					if (isNotBlank(description)) {
-						rq.setDescription(MarkdownUtils.asTwoParts(parameters, description));
-					} else {
-						rq.setDescription(parameters);
-					}
-				});
+		ofNullable(fr.getCallArg()).filter(args -> !args.isEmpty()).ifPresent(args -> {
+			String parameters = String.format(PARAMETERS_PATTERN, formatParametersAsTable(getParameters(args)));
+			String description = rq.getDescription();
+			if (isNotBlank(description)) {
+				rq.setDescription(MarkdownUtils.asTwoParts(parameters, description));
+			} else {
+				rq.setDescription(parameters);
+			}
+		});
 		return rq;
 	}
 
@@ -241,15 +239,14 @@ public class ReportPortalRunListener implements RunListener {
 	 * @param fr feature runtime
 	 */
 	public void afterFeature(FeatureRuntime fr) {
-		Optional<Maybe<String>> optionalId = ofNullable(featureIdMap.get(getFeatureNameForReport(fr))).map(Supplier::get);
-		if (optionalId.isEmpty()) {
-			LOGGER.error("ERROR: Trying to finish unspecified feature.");
+		MemoizingSupplier<Maybe<String>> supplier = featureIdMap.get(getFeatureNameForReport(fr));
+		if (supplier == null || !supplier.isInitialized()) {
+			return;
 		}
-		optionalId.ifPresent(featureId -> {
-			//noinspection ReactiveStreamsUnusedPublisher
-			launch.get().finishTestItem(featureId, buildFinishFeatureRq(fr));
-			innerFeatures.remove(featureId);
-		});
+		Maybe<String> featureId = supplier.get();
+		//noinspection ReactiveStreamsUnusedPublisher
+		launch.get().finishTestItem(featureId, buildFinishFeatureRq(fr));
+		innerFeatures.remove(featureId);
 	}
 
 	/**
