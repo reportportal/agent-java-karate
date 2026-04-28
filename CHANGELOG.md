@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+## [5.5.0]
 ### Added
 - Karate 2.x support, by @HardNorth
 - Fancy HTTP logging, by @HardNorth
