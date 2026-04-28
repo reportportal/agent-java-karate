@@ -556,6 +556,7 @@ public class ReportPortalRunListener implements RunListener {
 	 */
 	@SuppressWarnings("unused")
 	public void beforeHttpCall(HttpRequest request, ScenarioRuntime sr) {
+
 	}
 
 	/**
@@ -567,6 +568,7 @@ public class ReportPortalRunListener implements RunListener {
 	 */
 	@SuppressWarnings("unused")
 	public void afterHttpCall(HttpRequest request, HttpResponse response, ScenarioRuntime sr) {
+
 	}
 
 	/**

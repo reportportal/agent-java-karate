@@ -40,7 +40,7 @@ import static org.mockito.Mockito.*;
 
 public class ExamplesTestCaseIdTest {
 	private static final String TEST_FEATURE = "classpath:feature/examples.feature";
-	private static final String EXAMPLE_TEST_CASE_ID_PATTERN = "build/resources/test/feature/examples.feature/[EXAMPLE:Verify different maths[%s]]";
+	private static final String EXAMPLE_TEST_CASE_ID_PATTERN = "feature/examples.feature/[EXAMPLE:Verify different maths[%s]]";
 	private static final String FIRST_EXAMPLE_TEST_CASE_ID = String.format(EXAMPLE_TEST_CASE_ID_PATTERN, "result:4;vara:2;varb:2");
 	private static final String SECOND_EXAMPLE_TEST_CASE_ID = String.format(EXAMPLE_TEST_CASE_ID_PATTERN, "result:3;vara:1;varb:2");
 	private final String featureId = CommonUtils.namedId("feature_");

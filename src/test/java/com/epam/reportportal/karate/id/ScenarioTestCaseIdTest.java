@@ -39,7 +39,7 @@ import static org.mockito.Mockito.*;
 
 public class ScenarioTestCaseIdTest {
 	private static final String TEST_FEATURE = "classpath:feature/simple.feature";
-	private static final String SIMPLE_TEST_CASE_ID = "build/resources/test/feature/simple.feature/[SCENARIO:Verify math]";
+	private static final String SIMPLE_TEST_CASE_ID = "feature/simple.feature/[SCENARIO:Verify math]";
 	private final String featureId = CommonUtils.namedId("feature_");
 	private final String scenarioId = CommonUtils.namedId("scenario_");
 	private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_")).limit(3).collect(Collectors.toList());
