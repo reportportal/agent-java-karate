@@ -16,7 +16,16 @@
 
 package com.epam.reportportal.karate;
 
+import com.epam.reportportal.formatting.AbstractHttpFormatter;
+import com.epam.reportportal.formatting.http.converters.DefaultCookieConverter;
+import com.epam.reportportal.formatting.http.converters.DefaultFormParamConverter;
+import com.epam.reportportal.formatting.http.converters.DefaultHttpHeaderConverter;
+import com.epam.reportportal.formatting.http.converters.DefaultUriConverter;
+import com.epam.reportportal.formatting.http.entities.Cookie;
+import com.epam.reportportal.formatting.http.entities.Header;
+import com.epam.reportportal.formatting.http.entities.Param;
 import com.epam.reportportal.karate.utils.BlockingConcurrentHashMap;
+import com.epam.reportportal.karate.utils.HttpEntityFactory;
 import com.epam.reportportal.listeners.ItemStatus;
 import com.epam.reportportal.listeners.ItemType;
 import com.epam.reportportal.listeners.ListenerParameters;
@@ -31,6 +40,7 @@ import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.epam.ta.reportportal.ws.model.launch.StartLaunchRQ;
 import io.karatelabs.core.*;
+import io.karatelabs.gherkin.Scenario;
 import io.karatelabs.gherkin.Step;
 import io.karatelabs.http.HttpRequest;
 import io.karatelabs.http.HttpResponse;
@@ -47,6 +57,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static com.epam.reportportal.karate.ReportPortalUtils.*;
@@ -58,12 +69,17 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 /**
  * ReportPortal run listener for Karate that streams runtime events directly to ReportPortal.
  */
-public class ReportPortalRunListener implements RunListener {
+public class ReportPortalRunListener extends AbstractHttpFormatter<ReportPortalRunListener> implements RunListener {
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalRunListener.class);
+	private static final String NULL_RESPONSE = "NULL response from Karate";
 	/**
 	 * Lazily initialized ReportPortal launch facade used for all item operations.
 	 */
 	protected final MemoizingSupplier<Launch> launch;
+	/**
+	 * Converter used to render Karate form parameters for HTTP logging.
+	 */
+	protected final Function<Param, String> paramConverter;
 	private final BlockingConcurrentHashMap<String, MemoizingSupplier<Maybe<String>>> featureIdMap = new BlockingConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> scenarioIdMap = new ConcurrentHashMap<>();
 	private final Map<String, Maybe<String>> backgroundIdMap = new ConcurrentHashMap<>();
@@ -74,11 +90,27 @@ public class ReportPortalRunListener implements RunListener {
 	private volatile Thread shutDownHook;
 
 	/**
-	 * Creates a listener instance backed by the provided ReportPortal client.
+	 * Creates a Karate run listener with configurable HTTP converters.
 	 *
-	 * @param reportPortal ReportPortal client instance
+	 * @param reportPortal              ReportPortal client instance
+	 * @param defaultLogLevel           log level on which Karate HTTP requests/responses will appear in ReportPortal
+	 * @param headerConvertFunction     if you want to preprocess your HTTP Headers before they appear on Report Portal
+	 *                                  provide this custom function for the class, default function formats it like
+	 *                                  that: <code>header.getName() + ": " + header.getValue()</code>
+	 * @param partHeaderConvertFunction the same as for HTTP headers, but for parts in multipart requests
+	 * @param cookieConvertFunction     the same as 'headerConvertFunction' param but for Cookies, default function
+	 *                                  formats Cookies with <code>toString</code> method
+	 * @param uriConverterFunction      the same as 'headerConvertFunction' param but for URI, default function returns
+	 *                                  URI "as is"
+	 * @param paramConverter            the same as 'headerConvertFunction' param but for Web Form Params, default function returns
+	 *                                  <code>param.getName() + ": " + param.getValue()</code>
 	 */
-	public ReportPortalRunListener(ReportPortal reportPortal) {
+	public ReportPortalRunListener(ReportPortal reportPortal, @Nonnull LogLevel defaultLogLevel,
+			@Nullable Function<Header, String> headerConvertFunction, @Nullable Function<Header, String> partHeaderConvertFunction,
+			@Nullable Function<Cookie, String> cookieConvertFunction, @Nullable Function<String, String> uriConverterFunction,
+			@Nullable Function<Param, String> paramConverter) {
+		super(defaultLogLevel, headerConvertFunction, partHeaderConvertFunction, cookieConvertFunction, uriConverterFunction);
+		this.paramConverter = paramConverter != null ? paramConverter : DefaultFormParamConverter.INSTANCE;
 		ListenerParameters params = reportPortal.getParameters();
 		StartLaunchRQ rq = buildStartLaunchRq(params);
 		launch = new MemoizingSupplier<>(() -> {
@@ -91,11 +123,201 @@ public class ReportPortalRunListener implements RunListener {
 	}
 
 	/**
+	 * Creates a Karate run listener with configurable HTTP converters.
+	 *
+	 * @param reportPortal              ReportPortal client instance
+	 * @param defaultLogLevel           log level on which Karate HTTP requests/responses will appear in ReportPortal
+	 * @param headerConvertFunction     if you want to preprocess your HTTP Headers before they appear on Report Portal
+	 *                                  provide this custom function for the class, default function formats it like
+	 *                                  that: <code>header.getName() + ": " + header.getValue()</code>
+	 * @param partHeaderConvertFunction the same as for HTTP headers, but for parts in multipart requests
+	 * @param cookieConvertFunction     the same as 'headerConvertFunction' param but for Cookies, default function
+	 *                                  formats Cookies with <code>toString</code> method
+	 * @param uriConverterFunction      the same as 'headerConvertFunction' param but for URI, default function returns
+	 *                                  URI "as is"
+	 */
+	public ReportPortalRunListener(ReportPortal reportPortal, @Nonnull LogLevel defaultLogLevel,
+			@Nullable Function<Header, String> headerConvertFunction, @Nullable Function<Header, String> partHeaderConvertFunction,
+			@Nullable Function<Cookie, String> cookieConvertFunction, @Nullable Function<String, String> uriConverterFunction) {
+		this(
+				reportPortal,
+				defaultLogLevel,
+				headerConvertFunction,
+				partHeaderConvertFunction,
+				cookieConvertFunction,
+				uriConverterFunction,
+				DefaultFormParamConverter.INSTANCE
+		);
+	}
+
+	/**
+	 * Creates a Karate run listener with configurable HTTP converters.
+	 *
+	 * @param reportPortal              ReportPortal client instance
+	 * @param defaultLogLevel           log level on which Karate HTTP requests/responses will appear in ReportPortal
+	 * @param headerConvertFunction     if you want to preprocess your HTTP Headers before they appear on Report Portal
+	 *                                  provide this custom function for the class, default function formats it like
+	 *                                  that: <code>header.getName() + ": " + header.getValue()</code>
+	 * @param partHeaderConvertFunction the same as for HTTP headers, but for parts in multipart requests
+	 * @param cookieConvertFunction     the same as 'headerConvertFunction' param but for Cookies, default function
+	 *                                  formats Cookies with <code>toString</code> method
+	 */
+	public ReportPortalRunListener(ReportPortal reportPortal, @Nonnull LogLevel defaultLogLevel,
+			@Nullable Function<Header, String> headerConvertFunction, @Nullable Function<Header, String> partHeaderConvertFunction,
+			@Nullable Function<Cookie, String> cookieConvertFunction) {
+		this(
+				reportPortal,
+				defaultLogLevel,
+				headerConvertFunction,
+				partHeaderConvertFunction,
+				cookieConvertFunction,
+				DefaultUriConverter.INSTANCE
+		);
+	}
+
+	/**
+	 * Creates a Karate run listener with configurable header converters.
+	 *
+	 * @param reportPortal              ReportPortal client instance
+	 * @param defaultLogLevel           log level on which Karate HTTP requests/responses will appear in ReportPortal
+	 * @param headerConvertFunction     if you want to preprocess your HTTP Headers before they appear on Report Portal
+	 *                                  provide this custom function for the class, default function formats it like
+	 *                                  that: <code>header.getName() + ": " + header.getValue()</code>
+	 * @param partHeaderConvertFunction the same as for HTTP headers, but for parts in multipart requests
+	 */
+	public ReportPortalRunListener(ReportPortal reportPortal, @Nonnull LogLevel defaultLogLevel,
+			@Nullable Function<Header, String> headerConvertFunction, @Nullable Function<Header, String> partHeaderConvertFunction) {
+		this(reportPortal, defaultLogLevel, headerConvertFunction, partHeaderConvertFunction, DefaultCookieConverter.INSTANCE);
+	}
+
+	/**
+	 * Creates a Karate run listener with the specified HTTP log level.
+	 *
+	 * @param reportPortal ReportPortal client instance
+	 * @param httpLogLevel log level on which Karate HTTP requests/responses will appear in ReportPortal
+	 */
+	public ReportPortalRunListener(ReportPortal reportPortal, @Nonnull LogLevel httpLogLevel) {
+		this(reportPortal, httpLogLevel, DefaultHttpHeaderConverter.INSTANCE, DefaultHttpHeaderConverter.INSTANCE);
+	}
+
+	/**
+	 * Creates a listener instance backed by the provided ReportPortal client.
+	 *
+	 * @param reportPortal ReportPortal client instance
+	 */
+	public ReportPortalRunListener(ReportPortal reportPortal) {
+		this(reportPortal, LogLevel.INFO);
+	}
+
+	/**
 	 * Creates a listener with a default ReportPortal client configuration.
 	 */
 	@SuppressWarnings("unused")
 	public ReportPortalRunListener() {
 		this(ReportPortal.builder().build());
+	}
+
+	/**
+	 * Creates a Karate run listener with configurable HTTP converters.
+	 *
+	 * @param launchSupplier            launch supplier used to lazily initialize launch interactions
+	 * @param defaultLogLevel           log level on which Karate HTTP requests/responses will appear in ReportPortal
+	 * @param headerConvertFunction     if you want to preprocess your HTTP Headers before they appear on Report Portal
+	 *                                  provide this custom function for the class, default function formats it like
+	 *                                  that: <code>header.getName() + ": " + header.getValue()</code>
+	 * @param partHeaderConvertFunction the same as for HTTP headers, but for parts in multipart requests
+	 * @param cookieConvertFunction     the same as 'headerConvertFunction' param but for Cookies, default function
+	 *                                  formats Cookies with <code>toString</code> method
+	 * @param uriConverterFunction      the same as 'headerConvertFunction' param but for URI, default function returns
+	 *                                  URI "as is"
+	 * @param paramConverter            the same as 'headerConvertFunction' param but for Web Form Params, default function returns
+	 *                                  <code>param.getName() + ": " + param.getValue()</code>
+	 */
+	public ReportPortalRunListener(Supplier<Launch> launchSupplier, @Nonnull LogLevel defaultLogLevel,
+			@Nullable Function<Header, String> headerConvertFunction, @Nullable Function<Header, String> partHeaderConvertFunction,
+			@Nullable Function<Cookie, String> cookieConvertFunction, @Nullable Function<String, String> uriConverterFunction,
+			@Nullable Function<Param, String> paramConverter) {
+		super(defaultLogLevel, headerConvertFunction, partHeaderConvertFunction, cookieConvertFunction, uriConverterFunction);
+		this.paramConverter = paramConverter != null ? paramConverter : DefaultFormParamConverter.INSTANCE;
+		launch = new MemoizingSupplier<>(launchSupplier);
+	}
+
+	/**
+	 * Creates a Karate run listener with configurable HTTP converters.
+	 *
+	 * @param launchSupplier            launch supplier used to lazily initialize launch interactions
+	 * @param defaultLogLevel           log level on which Karate HTTP requests/responses will appear in ReportPortal
+	 * @param headerConvertFunction     if you want to preprocess your HTTP Headers before they appear on Report Portal
+	 *                                  provide this custom function for the class, default function formats it like
+	 *                                  that: <code>header.getName() + ": " + header.getValue()</code>
+	 * @param partHeaderConvertFunction the same as for HTTP headers, but for parts in multipart requests
+	 * @param cookieConvertFunction     the same as 'headerConvertFunction' param but for Cookies, default function
+	 *                                  formats Cookies with <code>toString</code> method
+	 * @param uriConverterFunction      the same as 'headerConvertFunction' param but for URI, default function returns
+	 *                                  URI "as is"
+	 */
+	public ReportPortalRunListener(Supplier<Launch> launchSupplier, @Nonnull LogLevel defaultLogLevel,
+			@Nullable Function<Header, String> headerConvertFunction, @Nullable Function<Header, String> partHeaderConvertFunction,
+			@Nullable Function<Cookie, String> cookieConvertFunction, @Nullable Function<String, String> uriConverterFunction) {
+		this(
+				launchSupplier,
+				defaultLogLevel,
+				headerConvertFunction,
+				partHeaderConvertFunction,
+				cookieConvertFunction,
+				uriConverterFunction,
+				DefaultFormParamConverter.INSTANCE
+		);
+	}
+
+	/**
+	 * Creates a Karate run listener with configurable HTTP converters.
+	 *
+	 * @param launchSupplier            launch supplier used to lazily initialize launch interactions
+	 * @param defaultLogLevel           log level on which Karate HTTP requests/responses will appear in ReportPortal
+	 * @param headerConvertFunction     if you want to preprocess your HTTP Headers before they appear on Report Portal
+	 *                                  provide this custom function for the class, default function formats it like
+	 *                                  that: <code>header.getName() + ": " + header.getValue()</code>
+	 * @param partHeaderConvertFunction the same as for HTTP headers, but for parts in multipart requests
+	 * @param cookieConvertFunction     the same as 'headerConvertFunction' param but for Cookies, default function
+	 *                                  formats Cookies with <code>toString</code> method
+	 */
+	public ReportPortalRunListener(Supplier<Launch> launchSupplier, @Nonnull LogLevel defaultLogLevel,
+			@Nullable Function<Header, String> headerConvertFunction, @Nullable Function<Header, String> partHeaderConvertFunction,
+			@Nullable Function<Cookie, String> cookieConvertFunction) {
+		this(
+				launchSupplier,
+				defaultLogLevel,
+				headerConvertFunction,
+				partHeaderConvertFunction,
+				cookieConvertFunction,
+				DefaultUriConverter.INSTANCE
+		);
+	}
+
+	/**
+	 * Creates a Karate run listener with configurable header converters.
+	 *
+	 * @param launchSupplier            launch supplier used to lazily initialize launch interactions
+	 * @param defaultLogLevel           log level on which Karate HTTP requests/responses will appear in ReportPortal
+	 * @param headerConvertFunction     if you want to preprocess your HTTP Headers before they appear on Report Portal
+	 *                                  provide this custom function for the class, default function formats it like
+	 *                                  that: <code>header.getName() + ": " + header.getValue()</code>
+	 * @param partHeaderConvertFunction the same as for HTTP headers, but for parts in multipart requests
+	 */
+	public ReportPortalRunListener(Supplier<Launch> launchSupplier, @Nonnull LogLevel defaultLogLevel,
+			@Nullable Function<Header, String> headerConvertFunction, @Nullable Function<Header, String> partHeaderConvertFunction) {
+		this(launchSupplier, defaultLogLevel, headerConvertFunction, partHeaderConvertFunction, DefaultCookieConverter.INSTANCE);
+	}
+
+	/**
+	 * Creates a Karate run listener with the specified HTTP log level.
+	 *
+	 * @param launchSupplier launch supplier used to lazily initialize launch interactions
+	 * @param httpLogLevel   log level on which Karate HTTP requests/responses will appear in ReportPortal
+	 */
+	public ReportPortalRunListener(Supplier<Launch> launchSupplier, @Nonnull LogLevel httpLogLevel) {
+		this(launchSupplier, httpLogLevel, DefaultHttpHeaderConverter.INSTANCE, DefaultHttpHeaderConverter.INSTANCE);
 	}
 
 	/**
@@ -105,7 +327,7 @@ public class ReportPortalRunListener implements RunListener {
 	 */
 	@SuppressWarnings("unused")
 	public ReportPortalRunListener(Supplier<Launch> launchSupplier) {
-		launch = new MemoizingSupplier<>(launchSupplier);
+		this(launchSupplier, LogLevel.INFO);
 	}
 
 	/**
@@ -553,7 +775,23 @@ public class ReportPortalRunListener implements RunListener {
 	 */
 	@SuppressWarnings("unused")
 	public void beforeHttpCall(HttpRequest request, ScenarioRuntime sr) {
-
+		if (request == null) {
+			return;
+		}
+		try {
+			emitLog(HttpEntityFactory.createHttpRequestFormatter(
+					request,
+					uriConverter,
+					headerConverter,
+					cookieConverter,
+					paramConverter,
+					getContentPrettifiers(),
+					partHeaderConverter,
+					getBodyTypeMap()
+			));
+		} catch (Exception e) {
+			LOGGER.warn("Unable to log HTTP request for scenario '{}'", getScenarioUniqueId(sr), e);
+		}
 	}
 
 	/**
@@ -565,7 +803,26 @@ public class ReportPortalRunListener implements RunListener {
 	 */
 	@SuppressWarnings("unused")
 	public void afterHttpCall(HttpRequest request, HttpResponse response, ScenarioRuntime sr) {
+		if (response == null) {
+			sendLog(stepIdMap.get(sr.getScenario().getUniqueId()), NULL_RESPONSE, LogLevel.WARN);
+			return;
+		}
+		try {
+			emitLog(HttpEntityFactory.createHttpResponseFormatter(
+					response,
+					headerConverter,
+					cookieConverter,
+					getContentPrettifiers(),
+					getBodyTypeMap()
+			));
+		} catch (Exception e) {
+			LOGGER.warn("Unable to log HTTP response for scenario '{}'", getScenarioUniqueId(sr), e);
+		}
+	}
 
+	@Nonnull
+	private String getScenarioUniqueId(@Nullable ScenarioRuntime sr) {
+		return ofNullable(sr).map(ScenarioRuntime::getScenario).map(Scenario::getUniqueId).orElse("unknown");
 	}
 
 	/**

@@ -450,7 +450,7 @@ public class ReportPortalResultListener implements ResultListener {
 		));
 		String docString = step.getDocString();
 		if (isNotBlank(docString)) {
-			sendLog(startTime.plusMillis(3), stepId, "Docstring:\n\n" + asMarkdownCode(step.getDocString()), LogLevel.INFO);
+			sendLog(startTime.plusMillis(3), stepId, "Docstring:\n\n" + asMarkdownCode(docString), LogLevel.INFO);
 		}
 	}
 
@@ -479,7 +479,7 @@ public class ReportPortalResultListener implements ResultListener {
 
 		if (log != null) {
 			itemTime = itemTime.plusNanos(duration);
-			sendLog(itemTime, stepId, log, LogLevel.INFO);
+			sendLog(itemTime, stepId, stripConsoleColors(log), LogLevel.INFO);
 		}
 
 		if (stepResult.isFailed()) {

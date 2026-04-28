@@ -108,6 +108,7 @@ public class ReportPortalUtils {
 	private static final String PARAMETER_ITEMS_END = "]";
 	private static final String PARAMETER_ITEMS_DELIMITER = ";";
 	private static final String KEY_VALUE_SEPARATOR = ":";
+	private static final Pattern CONSOLE_COLORS_PATTERN = Pattern.compile("\\u001B\\[[0-?]*[ -/]*[@-~]");
 
 	private static final List<String> CODE_REF_PREFIXES_TO_REMOVE = List.of(
 			"build/resources/test/",
@@ -589,6 +590,20 @@ public class ReportPortalUtils {
 	 */
 	public static String asMarkdownCode(String code) {
 		return String.format(MARKDOWN_CODE_PATTERN, code);
+	}
+
+	/**
+	 * Remove ANSI color/control escape codes from console output.
+	 *
+	 * @param text text potentially containing ANSI escape codes
+	 * @return plain text without ANSI escape codes
+	 */
+	@Nullable
+	public static String stripConsoleColors(@Nullable String text) {
+		if (text == null) {
+			return null;
+		}
+		return CONSOLE_COLORS_PATTERN.matcher(text).replaceAll("");
 	}
 
 	/**
