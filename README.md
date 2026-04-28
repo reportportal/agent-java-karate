@@ -1,4 +1,4 @@
-# ReportPortal runtime Hook for Karate tests
+# ReportPortal Listeners for Karate tests
 
 Karate reporters which uploads the results to a ReportPortal server.
 
@@ -13,7 +13,7 @@ Karate reporters which uploads the results to a ReportPortal server.
 [![stackoverflow](https://img.shields.io/badge/reportportal-stackoverflow-orange.svg?style=flat)](http://stackoverflow.com/questions/tagged/reportportal)
 [![Build with Love](https://img.shields.io/badge/build%20with-❤%EF%B8%8F%E2%80%8D-lightgrey.svg)](http://reportportal.io?style=flat)
 
-The latest version: 5.4.0. Please use `Maven Central` link above to get the agent.
+The latest version: 5.5.0. Please use `Maven Central` link above to get the agent.
 
 ## Overview: How to Add ReportPortal Logging to Your Project
 
@@ -72,7 +72,7 @@ If your project is Maven-based you need to add dependencies to `pom.xml` file:
     <dependency>
         <groupId>com.epam.reportportal</groupId>
         <artifactId>agent-java-karate</artifactId>
-        <version>5.4.0</version>
+        <version>5.5.0</version>
         <scope>test</scope>
     </dependency>
 
@@ -89,7 +89,7 @@ For Gradle-based projects please update dependencies section in `build.gradle` f
 
 ```groovy
 dependencies {
-    testImplementation 'com.epam.reportportal:agent-java-karate:5.4.0'
+    testImplementation 'com.epam.reportportal:agent-java-karate:5.5.0'
 }
 ```
 
@@ -98,29 +98,30 @@ dependencies {
 ### Runtime
 
 Runtime publisher uploads Karate tests on ReportPortal during the test execution, providing real-time monitoring capabilities. To publish
-test results in this case, the test project should use by `ReportPortalHook` class, an instance of which you should pass to Karate runner.
+test results in this case, the test project should use `ReportPortalRunListener` class, an instance of which you should pass to Karate
+runner.
 E.G.:
 
 ```java
-import com.epam.reportportal.karate.ReportPortalResultListener;
-import com.intuit.karate.Results;
-import com.intuit.karate.Runner;
+import com.epam.reportportal.karate.ReportPortalRunListener;
+import io.karatelabs.core.Runner;
+import io.karatelabs.core.SuiteResult;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 class ScenarioRunnerTest {
 	@Test
 	void testParallel() {
-		ReportPortalHook karateRuntimeHook = new ReportPortalHook(); // Initialize ReportPortal runtime Karate hook
-		Results results = Runner // Regular Karate runner
+		ReportPortalRunListener karateRuntimeListener = new ReportPortalRunListener(); // Initialize ReportPortal runtime Karate listener
+		SuiteResult results = Runner // Regular Karate runner
 				.path("classpath:features") // Path with feature files
-				.hook(karateRuntimeHook) // Add Karate hook
+				.listener(karateRuntimeListener) // Add Karate run listener
 				.outputCucumberJson(true) // Generate cucumber report
 				.tags("~@ignore") // Ignore tests marked with the tag
 				.parallel(2); // Run in 2 Threads
 		// Here you can additionally run tests, retries, etc.
-		karateRuntimeHook.finishLaunch(); // Finish execution on ReportPortal
-		Assertions.assertEquals(0, results.getFailCount(), "Non-zero fail count.\n Errors:\n" + results.getErrorMessages());
+		karateRuntimeListener.finishLaunch(); // Finish execution on ReportPortal
+		Assertions.assertEquals(0, results.getFeatureFailedCount(), "Non-zero fail count.\n Errors:\n" + results.getErrors());
 	}
 }
 ```
@@ -129,12 +130,13 @@ class ScenarioRunnerTest {
 
 Post-running publisher uploads Karate tests on ReportPortal after the test execution. It uses Karate result object to get data about tests.
 It might be useful if your tests make heavy load both on ReportPortal server or on the running node. To publish test results in this case,
-the test project should run by `KarateReportPortalRunner` instead of Karate runner.
+the test project should add `ReportPortalResultListener` to Karate runner.
 E.G.:
 
 ```java
-import com.epam.reportportal.karate.KarateReportPortalRunner;
-import com.intuit.karate.Results;
+import com.epam.reportportal.karate.ReportPortalResultListener;
+import io.karatelabs.core.Runner;
+import io.karatelabs.core.SuiteResult;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -142,12 +144,15 @@ public class KarateRunnerTest {
 
 	@Test
 	public void testAll() {
-		Results results = KarateReportPortalRunner // Our runner with a Karate Publisher
+		ReportPortalResultListener resultListener = new ReportPortalResultListener(); // Initialize ReportPortal result listener
+		SuiteResult results = Runner // Regular Karate runner with ReportPortal result listener
 				.path("classpath:features") // Path with feature files
+				.resultListener(resultListener) // Add Karate result listener
 				.outputCucumberJson(true) // Generate cucumber report
 				.tags("~@ignore") // Ignore tests marked with the tag
 				.parallel(2); // Run in 2 Threads
-		Assertions.assertEquals(0, results.getFailCount(), "Non-zero fail count.\n Errors:\n" + results.getErrorMessages());
+		resultListener.finishLaunch(); // Finish execution on ReportPortal
+		Assertions.assertEquals(0, results.getFeatureFailedCount(), "Non-zero fail count.\n Errors:\n" + results.getErrors());
 	}
 }
 ```
