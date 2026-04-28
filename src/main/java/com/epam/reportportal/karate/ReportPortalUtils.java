@@ -109,7 +109,12 @@ public class ReportPortalUtils {
 	private static final String PARAMETER_ITEMS_DELIMITER = ";";
 	private static final String KEY_VALUE_SEPARATOR = ":";
 
-	private static final List<String> CODE_REF_PREFIXES_TO_REMOVE = List.of("build/resources/test/", "build/resources/main/");
+	private static final List<String> CODE_REF_PREFIXES_TO_REMOVE = List.of(
+			"build/resources/test/",
+			"build/resources/main/",
+			"target/test-classes/",
+			"target/classes/"
+	);
 
 	private ReportPortalUtils() {
 		throw new RuntimeException("No instances should exist for the class!");
