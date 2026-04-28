@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+### Added
+- Karate 2.x support, by @HardNorth
+### Removed
+- Java 17-20 support, by @HardNorth
+- Karate 1.x support, by @HardNorth
 
 ## [5.4.0]
 ### Changed
