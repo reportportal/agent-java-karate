@@ -22,7 +22,7 @@ import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.log.SaveLogRQ;
-import com.intuit.karate.Results;
+import io.karatelabs.core.SuiteResult;
 import okhttp3.MultipartBody;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -58,13 +58,13 @@ public class SimpleFailureLoggingTest {
 	@ValueSource(booleans = { true, false })
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public void test_simple_one_step_failed_error_log(boolean report) {
-		Results results;
+		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
-			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
-		assertThat(results.getFailCount(), equalTo(1));
+		assertThat(results.getFeatureFailedCount(), equalTo(1));
 
 		ArgumentCaptor<List> logCaptor = ArgumentCaptor.forClass(List.class);
 		verify(client, atLeastOnce()).log(logCaptor.capture());
@@ -75,13 +75,13 @@ public class SimpleFailureLoggingTest {
 				.collect(Collectors.toList());
 
 		assertThat(logs, hasSize(greaterThan(0)));
-		SaveLogRQ log = logs.get(logs.size() - 1);
+		SaveLogRQ log = logs.getLast();
 		assertThat(log.getItemUuid(), oneOf(stepIds.toArray(new String[0])));
 		assertThat(log.getLaunchUuid(), equalTo(launchUuid));
 		assertThat(
-				log.getMessage(),
-				equalTo("Then assert actualFour != four\n" + "did not evaluate to 'true': actualFour != four\n"
-						+ "classpath:feature/simple_failed.feature:6")
+				log.getMessage(), equalTo("""
+						Then actualFour != four
+						assert failed: actualFour != four""")
 		);
 	}
 }

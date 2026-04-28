@@ -21,7 +21,7 @@ import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
-import com.intuit.karate.Results;
+import io.karatelabs.core.SuiteResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -52,8 +52,8 @@ public class CallWithParametersPublisherTest {
 
 	@Test
 	public void test_call_feature_with_parameters_publisher_reporting() {
-		Results results = TestUtils.runAsReport(rp, TEST_FEATURE);
-		assertThat(results.getFailCount(), equalTo(0));
+		SuiteResult results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
+		assertThat(results.getFeatureFailedCount(), equalTo(0));
 
 		ArgumentCaptor<StartTestItemRQ> captor = ArgumentCaptor.forClass(StartTestItemRQ.class);
 		verify(client).startTestItem(captor.capture());

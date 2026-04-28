@@ -23,7 +23,7 @@ import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.epam.ta.reportportal.ws.model.log.SaveLogRQ;
-import com.intuit.karate.Results;
+import io.karatelabs.core.SuiteResult;
 import okhttp3.MultipartBody;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -60,13 +60,13 @@ public class TableParametersTest {
 	@ValueSource(booleans = { true, false })
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public void test_table_parameters_reporting(boolean report) {
-		Results results;
+		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
-			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
-		assertThat(results.getFailCount(), equalTo(0));
+		assertThat(results.getFeatureFailedCount(), equalTo(0));
 
 		ArgumentCaptor<StartTestItemRQ> captor = ArgumentCaptor.forClass(StartTestItemRQ.class);
 		verify(client, times(1)).startTestItem(captor.capture());
@@ -85,7 +85,7 @@ public class TableParametersTest {
 				.filter(rq -> LogLevel.INFO.name().equals(rq.getLevel()))
 				.collect(Collectors.toList());
 		assertThat(logs, hasSize(1));
-		assertThat(logs.get(0).getMessage(), startsWith("Table:\n\n"));
-		assertThat(logs.get(0).getItemUuid(), startsWith("step_"));
+		assertThat(logs.getFirst().getMessage(), startsWith("Table:\n\n"));
+		assertThat(logs.getFirst().getItemUuid(), startsWith("step_"));
 	}
 }

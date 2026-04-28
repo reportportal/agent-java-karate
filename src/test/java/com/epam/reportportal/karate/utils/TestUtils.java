@@ -16,8 +16,8 @@
 
 package com.epam.reportportal.karate.utils;
 
-import com.epam.reportportal.karate.KarateReportPortalRunner;
-import com.epam.reportportal.karate.ReportPortalHook;
+import com.epam.reportportal.karate.ReportPortalResultListener;
+import com.epam.reportportal.karate.ReportPortalRunListener;
 import com.epam.reportportal.listeners.ListenerParameters;
 import com.epam.reportportal.service.LaunchImpl;
 import com.epam.reportportal.service.ReportPortal;
@@ -32,8 +32,8 @@ import com.epam.ta.reportportal.ws.model.item.ItemCreatedRS;
 import com.epam.ta.reportportal.ws.model.launch.StartLaunchRS;
 import com.epam.ta.reportportal.ws.model.log.SaveLogRQ;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.intuit.karate.Results;
-import com.intuit.karate.Runner;
+import io.karatelabs.core.Runner;
+import io.karatelabs.core.SuiteResult;
 import io.reactivex.Maybe;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -68,24 +68,28 @@ public class TestUtils {
 		});
 	}
 
-	public static Results runAsReport(ReportPortal reportPortal, List<String> tags, String... paths) {
-		return KarateReportPortalRunner.path(paths).withReportPortal(reportPortal).outputCucumberJson(false).tags(tags).parallel(1);
-	}
-
-	public static Results runAsReport(ReportPortal reportPortal, String... paths) {
-		return runAsReport(reportPortal, Collections.emptyList(), paths);
-	}
-
-	public static Results runAsHook(ReportPortal reportPortal, List<String> tags, String... paths) {
-		ReportPortalHook hook = new ReportPortalHook(reportPortal);
-		Runner.Builder<?> path = Runner.path(paths).hook(hook).outputCucumberJson(false);
-		Results result = path.tags(tags).parallel(1);
-		hook.finishLaunch();
+	public static SuiteResult runAsResultListener(ReportPortal reportPortal, List<String> tags, String... paths) {
+		ReportPortalResultListener listener = new ReportPortalResultListener(reportPortal);
+		Runner.Builder path = Runner.path(paths).resultListener(listener).outputCucumberJson(false);
+		SuiteResult result = path.tags(tags.toArray(new String[0])).parallel(1);
+		listener.finishLaunch();
 		return result;
 	}
 
-	public static Results runAsHook(ReportPortal reportPortal, String... paths) {
-		return runAsHook(reportPortal, Collections.emptyList(), paths);
+	public static SuiteResult runAsResultListener(ReportPortal reportPortal, String... paths) {
+		return runAsResultListener(reportPortal, Collections.emptyList(), paths);
+	}
+
+	public static SuiteResult runAsEventListener(ReportPortal reportPortal, List<String> tags, String... paths) {
+		ReportPortalRunListener listener = new ReportPortalRunListener(reportPortal);
+		Runner.Builder path = Runner.path(paths).listener(listener).outputCucumberJson(false);
+		SuiteResult result = path.tags(tags.toArray(new String[0])).parallel(1);
+		listener.finishLaunch();
+		return result;
+	}
+
+	public static SuiteResult runAsEventListener(ReportPortal reportPortal, String... paths) {
+		return runAsEventListener(reportPortal, Collections.emptyList(), paths);
 	}
 
 	public static ListenerParameters standardParameters() {
@@ -137,7 +141,7 @@ public class TestUtils {
 		if (features.isEmpty()) {
 			return;
 		}
-		String firstFeature = features.get(0).getKey();
+		String firstFeature = features.getFirst().getKey();
 		Maybe<ItemCreatedRS> first = Maybe.just(new ItemCreatedRS(firstFeature, firstFeature));
 		Maybe<ItemCreatedRS>[] other = (Maybe<ItemCreatedRS>[]) features.subList(1, features.size())
 				.stream()
@@ -159,9 +163,9 @@ public class TestUtils {
 		List<Maybe<ItemCreatedRS>> testResponses = scenarioSteps.stream()
 				.map(Pair::getKey)
 				.map(uuid -> Maybe.just(new ItemCreatedRS(uuid, uuid)))
-				.collect(Collectors.toList());
+				.toList();
 
-		Maybe<ItemCreatedRS> first = testResponses.get(0);
+		Maybe<ItemCreatedRS> first = testResponses.getFirst();
 		Maybe<ItemCreatedRS>[] other = testResponses.subList(1, testResponses.size()).toArray(new Maybe[0]);
 		when(client.startTestItem(same(featureUuid), any())).thenReturn(first, other);
 
@@ -170,10 +174,10 @@ public class TestUtils {
 			List<Maybe<ItemCreatedRS>> stepResponses = test.getValue()
 					.stream()
 					.map(uuid -> Maybe.just(new ItemCreatedRS(uuid, uuid)))
-					.collect(Collectors.toList());
+					.toList();
 			when(client.finishTestItem(same(scenarioUuid), any())).thenReturn(Maybe.just(new OperationCompletionRS()));
 			if (!stepResponses.isEmpty()) {
-				Maybe<ItemCreatedRS> myFirst = stepResponses.get(0);
+				Maybe<ItemCreatedRS> myFirst = stepResponses.getFirst();
 				Maybe<ItemCreatedRS>[] myOther = stepResponses.subList(1, stepResponses.size()).toArray(new Maybe[0]);
 				when(client.startTestItem(same(scenarioUuid), any())).thenReturn(myFirst, myOther);
 				new HashSet<>(test.getValue()).forEach(testMethodUuid -> when(client.finishTestItem(
@@ -194,11 +198,9 @@ public class TestUtils {
 		Map<String, List<String>> responseOrders = parentNestedPairs.stream()
 				.collect(Collectors.groupingBy(Pair::getKey, Collectors.mapping(Pair::getValue, Collectors.toList())));
 		responseOrders.forEach((k, v) -> {
-			List<Maybe<ItemCreatedRS>> responses = v.stream()
-					.map(uuid -> Maybe.just(new ItemCreatedRS(uuid, uuid)))
-					.collect(Collectors.toList());
+			List<Maybe<ItemCreatedRS>> responses = v.stream().map(uuid -> Maybe.just(new ItemCreatedRS(uuid, uuid))).toList();
 
-			Maybe<ItemCreatedRS> first = responses.get(0);
+			Maybe<ItemCreatedRS> first = responses.getFirst();
 			Maybe<ItemCreatedRS>[] other = responses.subList(1, responses.size()).toArray(new Maybe[0]);
 			when(client.startTestItem(eq(k), any())).thenReturn(first, other);
 		});

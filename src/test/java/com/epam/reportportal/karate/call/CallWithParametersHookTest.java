@@ -22,7 +22,7 @@ import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.reportportal.utils.formatting.MarkdownUtils;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
-import com.intuit.karate.Results;
+import io.karatelabs.core.SuiteResult;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,7 +56,7 @@ public class CallWithParametersHookTest {
 	private final String innerScenarioId = CommonUtils.namedId("scenario_step_");
 	private final List<String> innerStepIds = Stream.generate(() -> CommonUtils.namedId("inner_step_"))
 			.limit(3)
-			.collect(Collectors.toList());
+			.toList();
 
 	private final List<Pair<String, Collection<Pair<String, List<String>>>>> features = Stream.of(Pair.of(
 					featureId,
@@ -82,8 +82,8 @@ public class CallWithParametersHookTest {
 
 	@Test
 	public void test_call_feature_with_parameters_hook_reporting() {
-		Results results = TestUtils.runAsHook(rp, TEST_FEATURE);
-		assertThat(results.getFailCount(), equalTo(0));
+		SuiteResult results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
+		assertThat(results.getFeatureFailedCount(), equalTo(0));
 
 		ArgumentCaptor<StartTestItemRQ> featureCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
 		verify(client, times(1)).startTestItem(featureCaptor.capture());
@@ -102,6 +102,6 @@ public class CallWithParametersHookTest {
 				.findAny()
 				.orElseThrow();
 
-		assertThat(calledFeature.getDescription(), allOf(endsWith("feature/called.feature"), startsWith(PARAMETERS_DESCRIPTION_PATTERN)));
+		assertThat(calledFeature.getDescription(), allOf(endsWith("build/resources/test/feature/called.feature"), startsWith(PARAMETERS_DESCRIPTION_PATTERN)));
 	}
 }

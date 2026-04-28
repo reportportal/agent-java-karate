@@ -22,8 +22,8 @@ import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
-import com.intuit.karate.Results;
-import com.intuit.karate.core.Background;
+import io.karatelabs.core.SuiteResult;
+import io.karatelabs.gherkin.Background;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -45,7 +45,7 @@ import static org.mockito.Mockito.*;
 public class BackgroundExamplesTest {
 	private static final String TEST_FEATURE = "classpath:feature/background_examples.feature";
 	private final String featureId = CommonUtils.namedId("feature_");
-	private final List<String> scenarioIds = Stream.generate(() -> CommonUtils.namedId("scenario_")).limit(2).collect(Collectors.toList());
+	private final List<String> scenarioIds = Stream.generate(() -> CommonUtils.namedId("scenario_")).limit(2).toList();
 
 	private final List<Pair<String, List<String>>> scenarioSteps = scenarioIds.stream()
 			.map(s -> Pair.of(s, Stream.generate(() -> CommonUtils.namedId("step_")).limit(3).collect(Collectors.toList())))
@@ -68,13 +68,13 @@ public class BackgroundExamplesTest {
 	@ParameterizedTest
 	@ValueSource(booleans = { true, false })
 	public void test_background_steps(boolean report) {
-		Results results;
+		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
-			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
-		assertThat(results.getFailCount(), equalTo(0));
+		assertThat(results.getFeatureFailedCount(), equalTo(0));
 
 		ArgumentCaptor<StartTestItemRQ> captor = ArgumentCaptor.forClass(StartTestItemRQ.class);
 		verify(client).startTestItem(captor.capture());
@@ -115,6 +115,6 @@ public class BackgroundExamplesTest {
 		Set<String> nestedStepNames = nestedSteps.stream().map(StartTestItemRQ::getName).collect(Collectors.toSet());
 
 		assertThat(nestedStepNames, hasSize(1));
-		assertThat(nestedStepNames, hasItem("Given def varb = 2"));
+		assertThat(nestedStepNames, hasItem("Given varb = 2"));
 	}
 }

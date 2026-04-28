@@ -22,7 +22,7 @@ import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
-import com.intuit.karate.Results;
+import io.karatelabs.core.SuiteResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -57,13 +57,13 @@ public class SimpleAllPassedTest {
 	@ParameterizedTest
 	@ValueSource(booleans = { true, false })
 	public void test_simple_all_passed(boolean report) {
-		Results results;
+		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
-			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
-		assertThat(results.getFailCount(), equalTo(0));
+		assertThat(results.getFeatureFailedCount(), equalTo(0));
 
 		ArgumentCaptor<FinishTestItemRQ> featureCaptor = ArgumentCaptor.forClass(FinishTestItemRQ.class);
 		verify(client).finishTestItem(same(featureId), featureCaptor.capture());
@@ -71,7 +71,7 @@ public class SimpleAllPassedTest {
 		verify(client).finishTestItem(same(scenarioId), scenarioCaptor.capture());
 		List<ArgumentCaptor<FinishTestItemRQ>> stepCaptors = Stream.generate(() -> ArgumentCaptor.forClass(FinishTestItemRQ.class))
 				.limit(stepIds.size())
-				.collect(Collectors.toList());
+				.toList();
 		IntStream.range(0, stepIds.size()).forEach(i -> verify(client).finishTestItem(same(stepIds.get(i)), stepCaptors.get(i).capture()));
 
 		FinishTestItemRQ featureRq = featureCaptor.getValue();

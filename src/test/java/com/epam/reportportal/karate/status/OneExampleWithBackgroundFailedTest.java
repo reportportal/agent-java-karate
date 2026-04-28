@@ -23,7 +23,7 @@ import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
-import com.intuit.karate.Results;
+import io.karatelabs.core.SuiteResult;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -45,13 +45,16 @@ import static org.mockito.Mockito.*;
 public class OneExampleWithBackgroundFailedTest {
 	private static final String TEST_FEATURE = "classpath:feature/examples_one_failed_with_background.feature";
 	private final String featureId = CommonUtils.namedId("feature_");
-	private final List<String> exampleIds = Stream.generate(() -> CommonUtils.namedId("example_")).limit(2).collect(Collectors.toList());
+	private final List<String> exampleIds = Stream.generate(() -> CommonUtils.namedId("example_")).limit(2).toList();
 	private final List<Pair<String, List<String>>> stepIds = exampleIds.stream()
 			.map(e -> Pair.of(e, Stream.generate(() -> CommonUtils.namedId("step_")).limit(3).collect(Collectors.toList())))
 			.collect(Collectors.toList());
 	private final List<Pair<String, String>> nestedSteps = Arrays.asList(
-			Pair.of(stepIds.get(0).getValue().get(0), CommonUtils.namedId("nested_step_")),
-			Pair.of(stepIds.get(1).getValue().get(0), CommonUtils.namedId("nested_step_"))
+			Pair.of(
+					stepIds.getFirst().getValue().getFirst(),
+					CommonUtils.namedId("nested_step_")
+			),
+			Pair.of(stepIds.get(1).getValue().getFirst(), CommonUtils.namedId("nested_step_"))
 	);
 
 	private final ReportPortalClient client = mock(ReportPortalClient.class);
@@ -66,7 +69,7 @@ public class OneExampleWithBackgroundFailedTest {
 
 	private static void verifyStatus(List<FinishTestItemRQ> rqs, ItemStatus... statuses) {
 		List<String> actualStatuses = rqs.stream().map(FinishExecutionRQ::getStatus).collect(Collectors.toList());
-		List<String> expectedStatuses = Arrays.stream(statuses).map(ItemStatus::name).collect(Collectors.toList());
+		List<String> expectedStatuses = Arrays.stream(statuses).map(ItemStatus::name).toList();
 		assertThat("Failed verifying status number", actualStatuses, hasSize(rqs.size()));
 
 		// Status for the last item may come in different order, that's OK.
@@ -82,13 +85,13 @@ public class OneExampleWithBackgroundFailedTest {
 	@ParameterizedTest
 	@ValueSource(booleans = { true, false })
 	public void test_simple_one_step_failed(boolean report) {
-		Results results;
+		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
-			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
-		assertThat(results.getFailCount(), equalTo(1));
+		assertThat(results.getFeatureFailedCount(), equalTo(1));
 
 		ArgumentCaptor<FinishTestItemRQ> featureCaptor = ArgumentCaptor.forClass(FinishTestItemRQ.class);
 		verify(client).finishTestItem(same(featureId), featureCaptor.capture());
@@ -97,9 +100,9 @@ public class OneExampleWithBackgroundFailedTest {
 		ArgumentCaptor<FinishTestItemRQ> secondExampleCaptor = ArgumentCaptor.forClass(FinishTestItemRQ.class);
 		verify(client).finishTestItem(same(exampleIds.get(1)), secondExampleCaptor.capture());
 		ArgumentCaptor<FinishTestItemRQ> firstExampleFirstStepCaptor = ArgumentCaptor.forClass(FinishTestItemRQ.class);
-		verify(client).finishTestItem(same(stepIds.get(0).getValue().get(0)), firstExampleFirstStepCaptor.capture());
+		verify(client).finishTestItem(same(stepIds.getFirst().getValue().get(0)), firstExampleFirstStepCaptor.capture());
 		ArgumentCaptor<FinishTestItemRQ> firstExampleSecondStepCaptor = ArgumentCaptor.forClass(FinishTestItemRQ.class);
-		verify(client).finishTestItem(same(stepIds.get(0).getValue().get(1)), firstExampleSecondStepCaptor.capture());
+		verify(client).finishTestItem(same(stepIds.getFirst().getValue().get(1)), firstExampleSecondStepCaptor.capture());
 		ArgumentCaptor<FinishTestItemRQ> firstExampleThirdStepCaptor = ArgumentCaptor.forClass(FinishTestItemRQ.class);
 		verify(client).finishTestItem(same(stepIds.get(0).getValue().get(2)), firstExampleThirdStepCaptor.capture());
 		ArgumentCaptor<FinishTestItemRQ> secondExampleFirstStepCaptor = ArgumentCaptor.forClass(FinishTestItemRQ.class);

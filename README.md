@@ -102,7 +102,7 @@ test results in this case, the test project should use by `ReportPortalHook` cla
 E.G.:
 
 ```java
-import com.epam.reportportal.karate.ReportPortalHook;
+import com.epam.reportportal.karate.ReportPortalResultListener;
 import com.intuit.karate.Results;
 import com.intuit.karate.Runner;
 import org.junit.jupiter.api.Assertions;

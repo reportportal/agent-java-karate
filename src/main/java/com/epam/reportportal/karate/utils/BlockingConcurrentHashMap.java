@@ -76,10 +76,28 @@ public class BlockingConcurrentHashMap<K, V> {
 
 	private final Map<K, BlockingReference<V>> map = new ConcurrentHashMap<>();
 
+	/**
+	 * Creates an empty blocking concurrent map wrapper.
+	 */
+	public BlockingConcurrentHashMap() {
+	}
+
+	/**
+	 * Computes and stores a value for the key if it is absent.
+	 *
+	 * @param key             map key
+	 * @param mappingFunction function used to compute the value
+	 */
 	public void computeIfAbsent(@Nonnull K key, Function<K, V> mappingFunction) {
 		map.computeIfAbsent(key, k -> new BlockingReference<>()).set(mappingFunction);
 	}
 
+	/**
+	 * Returns a value for the key, waiting until it is available or timeout expires.
+	 *
+	 * @param key map key
+	 * @return stored value or {@code null} on timeout/interruption
+	 */
 	@Nullable
 	public V get(@Nonnull K key) {
 		try {
@@ -90,6 +108,12 @@ public class BlockingConcurrentHashMap<K, V> {
 		return null;
 	}
 
+	/**
+	 * Removes and returns a value for the key, waiting for pending computation if needed.
+	 *
+	 * @param key map key
+	 * @return removed value or {@code null} on timeout/interruption
+	 */
 	@Nullable
 	public V remove(@Nonnull K key) {
 		try {

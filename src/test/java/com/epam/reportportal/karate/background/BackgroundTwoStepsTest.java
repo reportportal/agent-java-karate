@@ -22,8 +22,8 @@ import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
-import com.intuit.karate.Results;
-import com.intuit.karate.core.Background;
+import io.karatelabs.core.SuiteResult;
+import io.karatelabs.gherkin.Background;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -65,13 +65,13 @@ public class BackgroundTwoStepsTest {
 	@ParameterizedTest
 	@ValueSource(booleans = { true, false })
 	public void test_background_steps(boolean report) {
-		Results results;
+		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
-			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
-		assertThat(results.getFailCount(), equalTo(0));
+		assertThat(results.getFeatureFailedCount(), equalTo(0));
 
 		ArgumentCaptor<StartTestItemRQ> captor = ArgumentCaptor.forClass(StartTestItemRQ.class);
 		verify(client).startTestItem(captor.capture());
@@ -90,7 +90,7 @@ public class BackgroundTwoStepsTest {
 				.filter(s -> s.getName().startsWith(Background.KEYWORD))
 				.collect(Collectors.toList());
 		assertThat(backgroundSteps, hasSize(1));
-		StartTestItemRQ backgroundStep = backgroundSteps.get(0);
+		StartTestItemRQ backgroundStep = backgroundSteps.getFirst();
 		assertThat(backgroundStep.getName(), equalTo(Background.KEYWORD)); // No name for Background in Karate
 		assertThat(backgroundStep.isHasStats(), equalTo(Boolean.FALSE));
 		assertThat(backgroundStep.getStartTime(), notNullValue());
@@ -101,6 +101,6 @@ public class BackgroundTwoStepsTest {
 		nestedSteps.forEach(step -> assertThat(step.isHasStats(), equalTo(Boolean.FALSE)));
 		Set<String> nestedStepNames = nestedSteps.stream().map(StartTestItemRQ::getName).collect(Collectors.toSet());
 
-		assertThat(nestedStepNames, allOf(hasItem("Given def vara = 2"), hasItem("And def varb = 2")));
+		assertThat(nestedStepNames, allOf(hasItem("Given vara = 2"), hasItem("And varb = 2")));
 	}
 }

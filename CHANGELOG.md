@@ -1,15 +1,19 @@
 # Changelog
+
+## [Unreleased]
+### Added
+- Karate 2.x support, by @HardNorth
+- Fancy HTTP logging, by @HardNorth
+### Removed
+- Java 17-20 support, by @HardNorth
+- Karate 1.x support, by @HardNorth
+
+## [5.4.0]
 ### Changed
 - Client version updated to [5.4.14](https://github.com/reportportal/client-java/releases/tag/5.4.14), by @HardNorth
 - Karate dependency version updated to `1.5.2`, by @HardNorth
 ### Removed
 - Java 11-16 support, by @HardNorth
-
-## [Unreleased]
-
-## [5.4.0]
-### Changed
-- Client version updated to [5.4.13](https://github.com/reportportal/client-java/releases/tag/5.4.13), by @HardNorth
 
 ## [5.3.7]
 ### Changed

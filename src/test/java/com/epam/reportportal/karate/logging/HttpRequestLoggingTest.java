@@ -22,11 +22,10 @@ import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.log.SaveLogRQ;
-import com.intuit.karate.Results;
+import io.karatelabs.core.SuiteResult;
 import okhttp3.MultipartBody;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.util.List;
@@ -40,6 +39,16 @@ import static org.mockito.Mockito.*;
 
 public class HttpRequestLoggingTest {
 	private static final String TEST_FEATURE = "classpath:feature/http_request.feature";
+	private static final String DOCSTRING_LOG_ENTRY = """
+			Docstring:
+			
+			```
+			{
+			  username: 'user',
+			  password: 'password',
+			  grant_type: 'password'
+			}
+			```""";
 	private final String launchUuid = CommonUtils.namedId("launch_");
 	private final String featureId = CommonUtils.namedId("feature_");
 	private final String scenarioId = CommonUtils.namedId("scenario_");
@@ -54,18 +63,8 @@ public class HttpRequestLoggingTest {
 		mockBatchLogging(client);
 	}
 
-	@ParameterizedTest
-	@ValueSource(booleans = { true, false })
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	public void test_http_request_logging(boolean report) {
-		Results results;
-		if (report) {
-			results = TestUtils.runAsReport(rp, TEST_FEATURE);
-		} else {
-			results = TestUtils.runAsHook(rp, TEST_FEATURE);
-		}
-		assertThat(results.getFailCount(), equalTo(1));
-
+	private List<String> extractMessages() {
 		ArgumentCaptor<List> logCaptor = ArgumentCaptor.forClass(List.class);
 		verify(client, atLeastOnce()).log(logCaptor.capture());
 		List<SaveLogRQ> logs = logCaptor.getAllValues()
@@ -75,13 +74,26 @@ public class HttpRequestLoggingTest {
 				.collect(Collectors.toList());
 
 		assertThat(logs, hasSize(greaterThanOrEqualTo(2)));
-		List<String> messages = logs.stream().map(SaveLogRQ::getMessage).collect(Collectors.toList());
-		assertThat(
-				messages, hasItems(
-						equalTo("Docstring:\n\n```\n{\n" + "  username: 'user',\n" + "  password: 'password',\n"
-								+ "  grant_type: 'password'\n" + "}\n```"),
-						containsString("{\"username\":\"user\",\"password\":\"password\",\"grant_type\":\"password\"}")
-				)
-		);
+		return logs.stream().map(SaveLogRQ::getMessage).collect(Collectors.toList());
+	}
+
+	@Test
+	public void test_http_request_logging_result_listener() {
+		SuiteResult results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
+		assertThat(results.getFeatureFailedCount(), equalTo(1));
+		List<String> messages = extractMessages();
+		assertThat(messages, hasItem(equalTo(DOCSTRING_LOG_ENTRY)));
+		assertThat(messages, hasItem(containsString("{\"username\":\"user\",\"password\":\"password\",\"grant_type\":\"password\"}")));
+	}
+
+	@Test
+	public void test_http_request_logging_run_listener() {
+		SuiteResult results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
+		assertThat(results.getFeatureFailedCount(), equalTo(1));
+		List<String> messages = extractMessages();
+		assertThat(messages, hasItem(equalTo(DOCSTRING_LOG_ENTRY)));
+		assertThat(messages, hasItem(containsString("**>>> REQUEST**")));
+		assertThat(messages, hasItem(containsString("**<<< RESPONSE**")));
+		assertThat(messages, hasItem(containsString("\"username\" : \"user\"")));
 	}
 }

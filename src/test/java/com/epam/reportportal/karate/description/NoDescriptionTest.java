@@ -21,7 +21,7 @@ import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
-import com.intuit.karate.Results;
+import io.karatelabs.core.SuiteResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -56,13 +56,13 @@ public class NoDescriptionTest {
 	@ParameterizedTest
 	@ValueSource(booleans = { true, false })
 	public void test_description_for_all_possible_items(boolean report) {
-		Results results;
+		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
-			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
-		assertThat(results.getFailCount(), equalTo(0));
+		assertThat(results.getFeatureFailedCount(), equalTo(0));
 
 		ArgumentCaptor<StartTestItemRQ> featureCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
 		verify(client).startTestItem(featureCaptor.capture());
@@ -72,7 +72,7 @@ public class NoDescriptionTest {
 		verify(client, times(3)).startTestItem(same(scenarioId), stepCaptor.capture());
 
 		StartTestItemRQ featureStart = featureCaptor.getValue();
-		assertThat(featureStart.getDescription(), endsWith("feature/simple.feature"));
+		assertThat(featureStart.getDescription(), endsWith("build/resources/test/feature/simple.feature"));
 
 		StartTestItemRQ scenarioStart = scenarioCaptor.getValue();
 		assertThat(scenarioStart.getDescription(), emptyString());

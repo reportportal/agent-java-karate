@@ -23,7 +23,7 @@ import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
-import com.intuit.karate.Results;
+import io.karatelabs.core.SuiteResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -58,13 +58,13 @@ public class SimpleOneStepFailedTest {
 	@ParameterizedTest
 	@ValueSource(booleans = { true, false })
 	public void test_simple_one_step_failed(boolean report) {
-		Results results;
+		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
-			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
-		assertThat(results.getFailCount(), equalTo(1));
+		assertThat(results.getFeatureFailedCount(), equalTo(1));
 
 		ArgumentCaptor<FinishTestItemRQ> featureCaptor = ArgumentCaptor.forClass(FinishTestItemRQ.class);
 		verify(client).finishTestItem(same(featureId), featureCaptor.capture());
@@ -72,7 +72,7 @@ public class SimpleOneStepFailedTest {
 		verify(client).finishTestItem(same(scenarioId), scenarioCaptor.capture());
 		List<ArgumentCaptor<FinishTestItemRQ>> stepCaptors = Stream.generate(() -> ArgumentCaptor.forClass(FinishTestItemRQ.class))
 				.limit(stepIds.size())
-				.collect(Collectors.toList());
+				.toList();
 		IntStream.range(0, stepIds.size()).forEach(i -> verify(client).finishTestItem(same(stepIds.get(i)), stepCaptors.get(i).capture()));
 
 		FinishTestItemRQ featureRq = featureCaptor.getValue();
@@ -86,7 +86,7 @@ public class SimpleOneStepFailedTest {
 		assertThat(scenarioRq.getLaunchUuid(), allOf(notNullValue(), equalTo(launchUuid)));
 		assertThat(scenarioRq.getEndTime(), notNullValue());
 
-		List<FinishTestItemRQ> steps = stepCaptors.stream().map(ArgumentCaptor::getValue).collect(Collectors.toList());
+		List<FinishTestItemRQ> steps = stepCaptors.stream().map(ArgumentCaptor::getValue).toList();
 		steps.forEach(step -> {
 			assertThat(step.getLaunchUuid(), allOf(notNullValue(), equalTo(launchUuid)));
 			assertThat(step.getEndTime(), notNullValue());

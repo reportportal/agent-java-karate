@@ -22,7 +22,7 @@ import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.epam.ta.reportportal.ws.model.launch.StartLaunchRQ;
-import com.intuit.karate.Results;
+import io.karatelabs.core.SuiteResult;
 import io.reactivex.Maybe;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -68,19 +68,19 @@ public class SimpleTimingTest {
 	@ParameterizedTest
 	@MethodSource("testCases")
 	public void test_each_item_has_correct_start_date(boolean report, boolean useMicroseconds) {
-		Results results;
+		SuiteResult results;
 		if (report) {
 			if (useMicroseconds) {
 				when(client.getApiInfo()).thenReturn(Maybe.just(TestUtils.testApiInfo()));
 			}
-			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
 			if (useMicroseconds) {
 				when(client.getApiInfo()).thenReturn(Maybe.just(TestUtils.testApiInfo()));
 			}
-			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
-		assertThat(results.getFailCount(), equalTo(0));
+		assertThat(results.getFeatureFailedCount(), equalTo(0));
 
 		ArgumentCaptor<StartLaunchRQ> launchCaptor = ArgumentCaptor.forClass(StartLaunchRQ.class);
 		verify(client).startLaunch(launchCaptor.capture());
@@ -107,10 +107,10 @@ public class SimpleTimingTest {
 		);
 
 		List<StartTestItemRQ> steps = stepCaptor.getAllValues();
-		StartTestItemRQ firstStep = steps.stream().filter(s -> "Given def four = 4".equals(s.getName())).findAny().orElseThrow();
-		StartTestItemRQ secondStep = steps.stream().filter(s -> "When def actualFour = 2 * 2".equals(s.getName())).findAny().orElseThrow();
+		StartTestItemRQ firstStep = steps.stream().filter(s -> "Given four = 4".equals(s.getName())).findAny().orElseThrow();
+		StartTestItemRQ secondStep = steps.stream().filter(s -> "When actualFour = 2 * 2".equals(s.getName())).findAny().orElseThrow();
 		StartTestItemRQ thirdStep = steps.stream()
-				.filter(s -> "Then assert actualFour == four".equals(s.getName()))
+				.filter(s -> "Then actualFour == four".equals(s.getName()))
 				.findAny()
 				.orElseThrow();
 

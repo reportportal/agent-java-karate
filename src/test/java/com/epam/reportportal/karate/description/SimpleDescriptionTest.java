@@ -21,8 +21,8 @@ import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
-import com.intuit.karate.Results;
-import com.intuit.karate.core.Background;
+import io.karatelabs.core.SuiteResult;
+import io.karatelabs.gherkin.Background;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -62,13 +62,13 @@ public class SimpleDescriptionTest {
 	@ParameterizedTest
 	@ValueSource(booleans = { true, false })
 	public void test_description_for_all_possible_items(boolean report) {
-		Results results;
+		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
-			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
-		assertThat(results.getFailCount(), equalTo(0));
+		assertThat(results.getFeatureFailedCount(), equalTo(0));
 
 		ArgumentCaptor<StartTestItemRQ> featureCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
 		verify(client).startTestItem(featureCaptor.capture());
@@ -78,7 +78,7 @@ public class SimpleDescriptionTest {
 		verify(client, times(3)).startTestItem(same(scenarioId), stepCaptor.capture());
 
 		StartTestItemRQ featureStart = featureCaptor.getValue();
-		assertThat(featureStart.getDescription(), endsWith("feature/description.feature\n\n---\n\nThis is my Feature description."));
+		assertThat(featureStart.getDescription(), endsWith("build/resources/test/feature/description.feature\n\n---\n\nThis is my Feature description."));
 
 		StartTestItemRQ scenarioStart = scenarioCaptor.getValue();
 		assertThat(scenarioStart.getDescription(), equalTo(SCENARIO_DESCRIPTION));
@@ -88,7 +88,7 @@ public class SimpleDescriptionTest {
 				.filter(s -> s.getName().startsWith(Background.KEYWORD))
 				.collect(Collectors.toList());
 		assertThat(backgroundSteps, hasSize(1));
-		StartTestItemRQ backgroundStep = backgroundSteps.get(0);
+		StartTestItemRQ backgroundStep = backgroundSteps.getFirst();
 		assertThat(
 				"No support of Background description in Karate yet. But this is a part of Gherkin standard.",
 				backgroundStep.getDescription(),

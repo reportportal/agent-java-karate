@@ -21,7 +21,7 @@ import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
-import com.intuit.karate.Results;
+import io.karatelabs.core.SuiteResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -39,8 +39,7 @@ import static org.mockito.Mockito.*;
 
 public class SimpleItemNameTest {
 	private static final String TEST_FEATURE = "classpath:feature/simple.feature";
-	private static final String[] STEP_NAMES = new String[] { "Given def four = 4", "When def actualFour = 2 * 2",
-			"Then assert actualFour == four" };
+	private static final String[] STEP_NAMES = new String[] { "Given four = 4", "When actualFour = 2 * 2", "Then actualFour == four" };
 	private final String featureId = CommonUtils.namedId("feature_");
 	private final String scenarioId = CommonUtils.namedId("scenario_");
 	private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_")).limit(3).collect(Collectors.toList());
@@ -56,13 +55,13 @@ public class SimpleItemNameTest {
 	@ParameterizedTest
 	@ValueSource(booleans = { true, false })
 	public void test_item_names_simple(boolean report) {
-		Results results;
+		SuiteResult results;
 		if (report) {
-			results = TestUtils.runAsReport(rp, TEST_FEATURE);
+			results = TestUtils.runAsResultListener(rp, TEST_FEATURE);
 		} else {
-			results = TestUtils.runAsHook(rp, TEST_FEATURE);
+			results = TestUtils.runAsEventListener(rp, TEST_FEATURE);
 		}
-		assertThat(results.getFailCount(), equalTo(0));
+		assertThat(results.getFeatureFailedCount(), equalTo(0));
 
 		ArgumentCaptor<StartTestItemRQ> featureCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
 		verify(client, times(1)).startTestItem(featureCaptor.capture());

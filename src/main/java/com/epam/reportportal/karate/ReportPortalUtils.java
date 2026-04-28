@@ -35,7 +35,9 @@ import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.epam.ta.reportportal.ws.model.attribute.ItemAttributesRQ;
 import com.epam.ta.reportportal.ws.model.launch.StartLaunchRQ;
 import com.epam.ta.reportportal.ws.model.log.SaveLogRQ;
-import com.intuit.karate.core.*;
+import io.karatelabs.core.ScenarioResult;
+import io.karatelabs.core.StepResult;
+import io.karatelabs.gherkin.*;
 import io.reactivex.Maybe;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -54,25 +56,66 @@ import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 /**
- * Set of useful utils related to Karate -&gt; ReportPortal integration
+ * Utility methods for mapping Karate runtime entities to ReportPortal API requests.
  */
 public class ReportPortalUtils {
+	/**
+	 * Markdown template for rendering code blocks.
+	 */
 	public static final String MARKDOWN_CODE_PATTERN = "```\n%s\n```";
+	/**
+	 * Markdown template for rendering parameter tables.
+	 */
 	public static final String PARAMETERS_PATTERN = "Parameters:\n\n%s";
+	/**
+	 * Regex template used to match Karate outline variable placeholders in a step.
+	 */
 	public static final String VARIABLE_PATTERN = "(?:(?<=#\\()%1$s(?=\\)))|(?:(?<=[\\s=+-/*<>(]|^)%1$s(?=[\\s=+-/*<>)]|(?:\\r?\\n)|$))";
+	/**
+	 * Agent properties file name used to enrich launch/system attributes.
+	 */
 	public static final String AGENT_PROPERTIES_FILE = "agent.properties";
+	/**
+	 * System attribute key that controls skipped issue behavior in ReportPortal.
+	 */
 	public static final String SKIPPED_ISSUE_KEY = "skippedIssue";
+	/**
+	 * Code reference template for a concrete scenario.
+	 */
 	public static final String SCENARIO_CODE_REFERENCE_PATTERN = "%s/[SCENARIO:%s]";
+	/**
+	 * Code reference template for a scenario outline example.
+	 */
 	public static final String EXAMPLE_CODE_REFERENCE_PATTERN = "%s/[EXAMPLE:%s%s]";
+	/**
+	 * Markdown delimiter used to join logical description sections.
+	 */
 	public static final String MARKDOWN_DELIMITER = MarkdownUtils.LOGICAL_SEPARATOR;
+	/**
+	 * Pattern for joining two text blocks with a markdown delimiter.
+	 */
 	public static final String MARKDOWN_DELIMITER_PATTERN = "%s" + MARKDOWN_DELIMITER + "%s";
+	/**
+	 * Prefix used for naming called (inner) feature items.
+	 */
 	public static final String FEATURE_TAG = "Feature: ";
+	/**
+	 * Prefix used for naming called (inner) scenario items.
+	 */
 	public static final String SCENARIO_TAG = "Scenario: ";
 	private static final Logger LOGGER = LoggerFactory.getLogger(ReportPortalUtils.class);
 	private static final String PARAMETER_ITEMS_START = "[";
 	private static final String PARAMETER_ITEMS_END = "]";
 	private static final String PARAMETER_ITEMS_DELIMITER = ";";
 	private static final String KEY_VALUE_SEPARATOR = ":";
+	private static final Pattern CONSOLE_COLORS_PATTERN = Pattern.compile("\\u001B\\[[0-?]*[ -/]*[@-~]");
+
+	private static final List<String> CODE_REF_PREFIXES_TO_REMOVE = List.of(
+			"build/resources/test/",
+			"build/resources/main/",
+			"target/test-classes/",
+			"target/classes/"
+	);
 
 	private ReportPortalUtils() {
 		throw new RuntimeException("No instances should exist for the class!");
@@ -172,9 +215,21 @@ public class ReportPortalUtils {
 		return rq;
 	}
 
+	/**
+	 * Returns a feature file code reference.
+	 *
+	 * @param feature Karate feature
+	 * @return feature-relative code reference
+	 */
 	@Nonnull
 	public static String getCodeRef(@Nonnull Feature feature) {
-		return feature.getResource().getRelativePath();
+		String relativePath = feature.getResource().getRelativePath();
+		for (String prefix : CODE_REF_PREFIXES_TO_REMOVE) {
+			if (relativePath.startsWith(prefix)) {
+				return relativePath.substring(prefix.length());
+			}
+		}
+		return relativePath;
 	}
 
 	/**
@@ -230,6 +285,12 @@ public class ReportPortalUtils {
 		return rq;
 	}
 
+	/**
+	 * Converts Karate tags to ReportPortal attributes.
+	 *
+	 * @param tags Karate tags
+	 * @return ReportPortal attributes or {@code null} when there are no tags
+	 */
 	@Nullable
 	public static Set<ItemAttributesRQ> toAttributes(@Nullable List<Tag> tags) {
 		Set<ItemAttributesRQ> attributes = ofNullable(tags).orElse(Collections.emptyList()).stream().flatMap(tag -> {
@@ -306,18 +367,17 @@ public class ReportPortalUtils {
 	/**
 	 * Build ReportPortal request for start Scenario event
 	 *
-	 * @param result Karate's ScenarioResult object instance
+	 * @param scenario Karate's Scenario object instance
 	 * @return request to ReportPortal
 	 */
 	@Nonnull
-	public static StartTestItemRQ buildStartScenarioRq(@Nonnull ScenarioResult result) {
-		Scenario scenario = result.getScenario();
+	public static StartTestItemRQ buildStartScenarioRq(@Nonnull Scenario scenario) {
 		StartTestItemRQ rq = buildStartTestItemRq(scenario.getName(), Instant.now(), ItemType.STEP);
 		rq.setCodeRef(getCodeRef(scenario));
 		rq.setTestCaseId(ofNullable(getTestCaseId(scenario)).map(TestCaseIdEntry::getId).orElse(null));
 		rq.setAttributes(toAttributes(scenario.getTags()));
 		rq.setParameters(getParameters(scenario));
-		rq.setDescription(buildDescription(scenario, result.getErrorMessage(), getParameters(scenario)));
+		rq.setDescription(buildDescription(scenario, null, getParameters(scenario)));
 		return rq;
 	}
 
@@ -334,10 +394,18 @@ public class ReportPortalUtils {
 				Instant.now(),
 				result.getFailureMessageForDisplay() == null ? ItemStatus.PASSED : ItemStatus.FAILED
 		);
-		rq.setDescription(buildDescription(scenario, result.getErrorMessage(), getParameters(scenario)));
+		rq.setDescription(buildDescription(scenario, result.getFailureMessageForDisplay(), getParameters(scenario)));
 		return rq;
 	}
 
+	/**
+	 * Builds scenario description from parameters, scenario description and optional error details.
+	 *
+	 * @param scenario     scenario descriptor
+	 * @param errorMessage optional error message
+	 * @param parameters   optional outline parameters
+	 * @return formatted Markdown description
+	 */
 	@Nonnull
 	private static String buildDescription(@Nonnull Scenario scenario, @Nullable String errorMessage,
 			@Nullable List<ParameterResource> parameters) {
@@ -356,6 +424,12 @@ public class ReportPortalUtils {
 		return descriptionBuilder.toString();
 	}
 
+	/**
+	 * Appends text using the configured Markdown delimiter when needed.
+	 *
+	 * @param builder destination description builder
+	 * @param text    text block to append
+	 */
 	private static void appendWithDelimiter(StringBuilder builder, String text) {
 		if (!builder.isEmpty()) {
 			builder.append(MARKDOWN_DELIMITER);
@@ -366,14 +440,15 @@ public class ReportPortalUtils {
 	/**
 	 * Build ReportPortal request for start Background event.
 	 *
-	 * @param step     Karate's Step object instance
-	 * @param scenario Karate's Scenario object instance
+	 * @param startTime background start time
+	 * @param step      Karate's Step object instance
+	 * @param scenario  Karate's Scenario object instance
 	 * @return request to ReportPortal
 	 */
 	@Nonnull
 	@SuppressWarnings("unused")
-	public static StartTestItemRQ buildStartBackgroundRq(@Nonnull Step step, @Nonnull Scenario scenario) {
-		StartTestItemRQ rq = buildStartTestItemRq(Background.KEYWORD, Instant.now(), ItemType.STEP);
+	public static StartTestItemRQ buildStartBackgroundRq(Instant startTime, @Nonnull Step step, @Nonnull Scenario scenario) {
+		StartTestItemRQ rq = buildStartTestItemRq(Background.KEYWORD, startTime, ItemType.STEP);
 		rq.setHasStats(false);
 		return rq;
 	}
@@ -414,14 +489,12 @@ public class ReportPortalUtils {
 	 * @param status Karate item status
 	 * @return ReportPortal status
 	 */
-	public static ItemStatus getStepStatus(String status) {
+	@SuppressWarnings("UnnecessaryDefault")
+	public static ItemStatus getStepStatus(StepResult.Status status) {
 		return switch (status) {
-			case "failed" -> ItemStatus.FAILED;
-			case "passed" -> ItemStatus.PASSED;
-			case "skipped" -> ItemStatus.SKIPPED;
-			case "stopped" -> ItemStatus.STOPPED;
-			case "interrupted" -> ItemStatus.INTERRUPTED;
-			case "cancelled" -> ItemStatus.CANCELLED;
+			case FAILED -> ItemStatus.FAILED;
+			case PASSED -> ItemStatus.PASSED;
+			case SKIPPED -> ItemStatus.SKIPPED;
 			default -> {
 				LOGGER.warn("Unknown step status received! Set it as SKIPPED");
 				yield ItemStatus.SKIPPED;
@@ -464,22 +537,23 @@ public class ReportPortalUtils {
 	/**
 	 * Embed an attachment to ReportPortal.
 	 *
+	 * @param time   log time
 	 * @param itemId item ID future
 	 * @param embed  Karate's Embed object
 	 */
-	public static void embedAttachment(@Nonnull Maybe<String> itemId, @Nonnull Embed embed) {
+	public static void embedAttachment(@Nonnull Instant time, @Nonnull Maybe<String> itemId, @Nonnull StepResult.Embed embed) {
 		ReportPortal.emitLog(
 				itemId, id -> {
 					SaveLogRQ rq = new SaveLogRQ();
 					rq.setItemUuid(id);
 					rq.setLevel(LogLevel.INFO.name());
-					rq.setLogTime(Instant.now());
-					rq.setMessage("Attachment: " + embed.getResourceType().contentType);
+					rq.setLogTime(time);
+					rq.setMessage("Attachment: " + embed.getMimeType());
 
 					SaveLogRQ.File file = new SaveLogRQ.File();
-					file.setName(embed.getFile().getName());
-					file.setContent(embed.getBytes());
-					file.setContentType(embed.getResourceType().contentType);
+					file.setName(embed.getFileName());
+					file.setContent(embed.getData());
+					file.setContentType(embed.getMimeType());
 					rq.setFile(file);
 
 					return rq;
@@ -519,6 +593,20 @@ public class ReportPortalUtils {
 	}
 
 	/**
+	 * Remove ANSI color/control escape codes from console output.
+	 *
+	 * @param text text potentially containing ANSI escape codes
+	 * @return plain text without ANSI escape codes
+	 */
+	@Nullable
+	public static String stripConsoleColors(@Nullable String text) {
+		if (text == null) {
+			return null;
+		}
+		return CONSOLE_COLORS_PATTERN.matcher(text).replaceAll("");
+	}
+
+	/**
 	 * Build name of inner scenario (called by another scenario).
 	 *
 	 * @param name Scenario name
@@ -542,14 +630,14 @@ public class ReportPortalUtils {
 	 * Get step start time. To keep the steps order in case previous step startTime == current step startTime or
 	 * previous step startTime &gt; current step startTime.
 	 *
-	 * @param scenarioUniqueId Karate's Scenario Unique ID, a key for stepStartTimeMap
-	 * @param stepStartTimeMap a holder for start times for every particular scenario
-	 * @param useMicroseconds  if server supports microseconds
+	 * @param scenarioUniqueId     Karate's Scenario Unique ID, a key for stepStartTimeMap
+	 * @param stepStartTimeMap     a holder for start times for every particular scenario
+	 * @param currentStepStartTime scenario start time to use as baseline
+	 * @param useMicroseconds      if server supports microseconds
 	 * @return step new startTime in Instant format.
 	 */
 	public static Instant getStepStartTime(@Nullable String scenarioUniqueId, Map<String, Instant> stepStartTimeMap,
-			boolean useMicroseconds) {
-		Instant currentStepStartTime = Instant.now().truncatedTo(ChronoUnit.MICROS);
+			Instant currentStepStartTime, boolean useMicroseconds) {
 		if (scenarioUniqueId == null || stepStartTimeMap.isEmpty()) {
 			stepStartTimeMap.put(scenarioUniqueId, currentStepStartTime);
 			return currentStepStartTime;
@@ -570,5 +658,20 @@ public class ReportPortalUtils {
 		}
 		stepStartTimeMap.put(scenarioUniqueId, currentStepStartTime);
 		return currentStepStartTime;
+	}
+
+	/**
+	 * Get step start time. To keep the steps order in case previous step startTime == current step startTime or
+	 * previous step startTime &gt; current step startTime.
+	 *
+	 * @param scenarioUniqueId Karate's Scenario Unique ID, a key for stepStartTimeMap
+	 * @param stepStartTimeMap a holder for start times for every particular scenario
+	 * @param useMicroseconds  if server supports microseconds
+	 * @return step new startTime in Instant format.
+	 */
+	public static Instant getStepStartTime(@Nullable String scenarioUniqueId, Map<String, Instant> stepStartTimeMap,
+			boolean useMicroseconds) {
+		Instant currentStepStartTime = Instant.now().truncatedTo(ChronoUnit.MICROS);
+		return getStepStartTime(scenarioUniqueId, stepStartTimeMap, currentStepStartTime, useMicroseconds);
 	}
 }

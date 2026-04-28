@@ -28,7 +28,7 @@ jobs:
   release:
     uses: reportportal/.github/.github/workflows/agent-java-release.yml@main
     with:
-      java-version: '17'
+      java-version: '21'
     secrets:
       GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
       GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
