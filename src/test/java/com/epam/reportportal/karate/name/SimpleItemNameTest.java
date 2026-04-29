@@ -39,7 +39,7 @@ import static org.mockito.Mockito.*;
 
 public class SimpleItemNameTest {
 	private static final String TEST_FEATURE = "classpath:feature/simple.feature";
-	private static final String[] STEP_NAMES = new String[] { "Given four = 4", "When actualFour = 2 * 2", "Then actualFour == four" };
+	private static final String[] STEP_NAMES = new String[] { "Given def four = 4", "When def actualFour = 2 * 2", "Then assert actualFour == four" };
 	private final String featureId = CommonUtils.namedId("feature_");
 	private final String scenarioId = CommonUtils.namedId("scenario_");
 	private final List<String> stepIds = Stream.generate(() -> CommonUtils.namedId("step_")).limit(3).collect(Collectors.toList());
