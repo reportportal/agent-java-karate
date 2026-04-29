@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+## [5.5.1]
 ### Fixed
 - Step name generation for some cases, by @HardNorth
 
