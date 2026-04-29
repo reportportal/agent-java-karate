@@ -109,6 +109,7 @@ public class ReportPortalUtils {
 	private static final String PARAMETER_ITEMS_DELIMITER = ";";
 	private static final String KEY_VALUE_SEPARATOR = ":";
 	private static final Pattern CONSOLE_COLORS_PATTERN = Pattern.compile("\\u001B\\[[0-?]*[ -/]*[@-~]");
+	private static final String STEP_NAME_PART_SEPARATOR = " ";
 
 	private static final List<String> CODE_REF_PREFIXES_TO_REMOVE = List.of(
 			"build/resources/test/",
@@ -453,6 +454,25 @@ public class ReportPortalUtils {
 		return rq;
 	}
 
+	private static String getStepName(@Nonnull Step step) {
+		StringBuilder builder = new StringBuilder();
+		String prefix = step.getPrefix();
+		if (prefix != null && !prefix.isBlank()) {
+			builder.append(prefix);
+		}
+		String keyword = step.getKeyword();
+		if (keyword != null && !keyword.isBlank()) {
+			builder.append(STEP_NAME_PART_SEPARATOR);
+			builder.append(keyword);
+		}
+		String text = step.getText();
+		if (text != null && !text.isBlank()) {
+			builder.append(STEP_NAME_PART_SEPARATOR);
+			builder.append(text);
+		}
+		return builder.toString();
+	}
+
 	/**
 	 * Customize start step test item event/request
 	 *
@@ -462,7 +482,7 @@ public class ReportPortalUtils {
 	 */
 	@Nonnull
 	public static StartTestItemRQ buildStartStepRq(@Nonnull Step step, @Nonnull Scenario scenario) {
-		String stepName = step.getPrefix() + " " + step.getText();
+		String stepName = getStepName(step);
 		StartTestItemRQ rq = buildStartTestItemRq(stepName, Instant.now(), ItemType.STEP);
 		rq.setHasStats(false);
 		if (step.isOutline()) {
