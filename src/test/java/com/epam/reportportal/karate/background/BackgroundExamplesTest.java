@@ -115,6 +115,6 @@ public class BackgroundExamplesTest {
 		Set<String> nestedStepNames = nestedSteps.stream().map(StartTestItemRQ::getName).collect(Collectors.toSet());
 
 		assertThat(nestedStepNames, hasSize(1));
-		assertThat(nestedStepNames, hasItem("Given varb = 2"));
+		assertThat(nestedStepNames, hasItem("Given def varb = 2"));
 	}
 }

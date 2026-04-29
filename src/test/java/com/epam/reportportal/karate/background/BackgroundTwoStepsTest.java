@@ -101,6 +101,6 @@ public class BackgroundTwoStepsTest {
 		nestedSteps.forEach(step -> assertThat(step.isHasStats(), equalTo(Boolean.FALSE)));
 		Set<String> nestedStepNames = nestedSteps.stream().map(StartTestItemRQ::getName).collect(Collectors.toSet());
 
-		assertThat(nestedStepNames, allOf(hasItem("Given vara = 2"), hasItem("And varb = 2")));
+		assertThat(nestedStepNames, allOf(hasItem("Given def vara = 2"), hasItem("And def varb = 2")));
 	}
 }
