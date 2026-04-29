@@ -21,6 +21,7 @@ import com.epam.reportportal.listeners.LogLevel;
 import com.epam.reportportal.service.ReportPortal;
 import com.epam.reportportal.service.ReportPortalClient;
 import com.epam.reportportal.util.test.CommonUtils;
+import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.epam.ta.reportportal.ws.model.log.SaveLogRQ;
 import io.karatelabs.core.SuiteResult;
 import okhttp3.MultipartBody;
@@ -35,6 +36,7 @@ import java.util.stream.Stream;
 import static com.epam.reportportal.karate.utils.TestUtils.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.contains;
 import static org.mockito.Mockito.*;
 
 public class HttpRequestLoggingTest {
@@ -49,6 +51,9 @@ public class HttpRequestLoggingTest {
 			  grant_type: 'password'
 			}
 			```""";
+	public static final String[] STEP_NAMES = { "Given url 'https://example.com'", "And header Content-Type = 'application/json'",
+			"And path 'api/test'", "And request", "When method post", "Then status 404" };
+
 	private final String launchUuid = CommonUtils.namedId("launch_");
 	private final String featureId = CommonUtils.namedId("feature_");
 	private final String scenarioId = CommonUtils.namedId("scenario_");
@@ -74,7 +79,18 @@ public class HttpRequestLoggingTest {
 				.collect(Collectors.toList());
 
 		assertThat(logs, hasSize(greaterThanOrEqualTo(2)));
-		return logs.stream().map(SaveLogRQ::getMessage).collect(Collectors.toList());
+		return logs.stream().map(SaveLogRQ::getMessage).toList();
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private List<String> extractStepNames() {
+		ArgumentCaptor<StartTestItemRQ> stepCaptor = ArgumentCaptor.forClass(StartTestItemRQ.class);
+		verify(client, times(6)).startTestItem(same(scenarioId), stepCaptor.capture());
+		List<StartTestItemRQ> steps = stepCaptor.getAllValues();
+		return steps.stream()
+				.sorted((a, b) -> ((Comparable) a.getStartTime()).compareTo(b.getStartTime()))
+				.map(StartTestItemRQ::getName)
+				.toList();
 	}
 
 	@Test
@@ -84,6 +100,9 @@ public class HttpRequestLoggingTest {
 		List<String> messages = extractMessages();
 		assertThat(messages, hasItem(equalTo(DOCSTRING_LOG_ENTRY)));
 		assertThat(messages, hasItem(containsString("{\"username\":\"user\",\"password\":\"password\",\"grant_type\":\"password\"}")));
+
+		List<String> stepNames = extractStepNames();
+		assertThat(stepNames, contains(STEP_NAMES));
 	}
 
 	@Test
@@ -95,5 +114,8 @@ public class HttpRequestLoggingTest {
 		assertThat(messages, hasItem(containsString("**>>> REQUEST**")));
 		assertThat(messages, hasItem(containsString("**<<< RESPONSE**")));
 		assertThat(messages, hasItem(containsString("\"username\" : \"user\"")));
+
+		List<String> stepNames = extractStepNames();
+		assertThat(stepNames, contains(STEP_NAMES));
 	}
 }

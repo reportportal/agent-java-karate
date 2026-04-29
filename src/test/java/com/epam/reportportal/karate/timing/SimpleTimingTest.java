@@ -107,10 +107,10 @@ public class SimpleTimingTest {
 		);
 
 		List<StartTestItemRQ> steps = stepCaptor.getAllValues();
-		StartTestItemRQ firstStep = steps.stream().filter(s -> "Given four = 4".equals(s.getName())).findAny().orElseThrow();
-		StartTestItemRQ secondStep = steps.stream().filter(s -> "When actualFour = 2 * 2".equals(s.getName())).findAny().orElseThrow();
+		StartTestItemRQ firstStep = steps.stream().filter(s -> "Given def four = 4".equals(s.getName())).findAny().orElseThrow();
+		StartTestItemRQ secondStep = steps.stream().filter(s -> "When def actualFour = 2 * 2".equals(s.getName())).findAny().orElseThrow();
 		StartTestItemRQ thirdStep = steps.stream()
-				.filter(s -> "Then actualFour == four".equals(s.getName()))
+				.filter(s -> "Then assert actualFour == four".equals(s.getName()))
 				.findAny()
 				.orElseThrow();
 

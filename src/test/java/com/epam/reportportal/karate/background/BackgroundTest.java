@@ -97,7 +97,7 @@ public class BackgroundTest {
 		List<StartTestItemRQ> nestedSteps = nestedStepCaptor.getAllValues();
 		assertThat(nestedSteps, hasSize(1));
 		StartTestItemRQ nestedStep = nestedSteps.getFirst();
-		assertThat(nestedStep.getName(), equalTo("Given four = 4"));
+		assertThat(nestedStep.getName(), equalTo("Given def four = 4"));
 		assertThat(nestedStep.isHasStats(), equalTo(Boolean.FALSE));
 	}
 }
